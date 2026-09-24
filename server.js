@@ -100,10 +100,11 @@ function transcriptExists(id) {
   try { return fs.readdirSync(PROJECTS).some(d => fs.existsSync(path.join(PROJECTS, d, `${id}.jsonl`))); } catch { return false; }
 }
 
-function spawnSession(s, { resume } = {}) {
+function spawnSession(s, { resume, fork } = {}) {
   if (resume && !transcriptExists(resume)) resume = undefined;
   const args = ['--settings', HOOK_SETTINGS, ...splitArgs(s.args)];
   if (resume) args.push('--resume', resume);
+  if (resume && fork) args.push('--fork-session'); // ponctuel : jamais mémorisé dans s.args
   const env = { ...process.env, CSM_ID: s.id, CSM_PORT: String(PORT), CSM_TOKEN: TOKEN, COLORTERM: 'truecolor' };
   // Si le serveur a été lancé depuis une session Claude, ne pas propager son identité (sinon session "enfant" non persistée).
   for (const k of Object.keys(env)) if (/^(CLAUDECODE|CLAUDE_CODE_|CLAUDE_PID$|CLAUDE_EFFORT$|AI_AGENT$)/i.test(k)) delete env[k];
@@ -147,7 +148,7 @@ function appendOut(s, d) {
   broadcast({ t: 'out', id: s.id, d });
 }
 
-function createSession({ name, cwd, args, resume }) {
+function createSession({ name, cwd, args, resume, fork }) {
   cwd = cwd ? path.resolve(cwd.replace(/^~(?=$|[\\/])/, os.homedir())) : os.homedir();
   const id = crypto.randomBytes(6).toString('hex');
   const order = Math.max(0, ...[...sessions.values()].map(x => x.order || 0)) + 1;
@@ -157,7 +158,7 @@ function createSession({ name, cwd, args, resume }) {
     status: 'starting', message: '', statusSince: Date.now(), buf: '', pty: null, order,
   };
   sessions.set(id, s);
-  spawnSession(s, { resume });
+  spawnSession(s, { resume, fork });
   persist();
   broadcast({ t: 'session', s: publicView(s) });
   return s;
@@ -289,9 +290,13 @@ function externalSessions() {
 }
 
 // Déplace une session de terminal dans csm : arrête le processus du terminal puis reprend la conversation ici.
-async function importExternal(pid, sessionId) {
+// mode 'copy' : le terminal continue, csm reprend une copie de la conversation (--fork-session, nouvel id).
+async function importExternal(pid, sessionId, mode) {
   const ext = externalSessions().find(x => x.pid === pid && x.sessionId === sessionId);
   if (!ext) throw new Error('session introuvable (déjà fermée ou déjà dans csm)');
+  if (mode === 'copy') {
+    return createSession({ cwd: ext.cwd, name: `${ext.title.slice(0, 34)} (copie)`, resume: sessionId, args: '--model opus', fork: true });
+  }
   try { process.kill(pid); } catch { }
   for (let i = 0; i < 50 && pidAlive(pid); i++) await new Promise(r => setTimeout(r, 100));
   if (pidAlive(pid)) throw new Error(`le processus ${pid} ne s'arrête pas`);
@@ -370,10 +375,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/external' && req.method === 'GET') return json(res, 200, externalSessions());
     if (p === '/api/import' && req.method === 'POST') {
-      const { items } = await readBody(req);
+      const { items, mode } = await readBody(req);
       const done = [], errors = [];
       for (const it of items || []) {
-        try { done.push(publicView(await importExternal(Number(it.pid), String(it.sessionId)))); }
+        try { done.push(publicView(await importExternal(Number(it.pid), String(it.sessionId), mode))); }
         catch (e) { errors.push(`${it.title || it.sessionId}: ${e.message}`); }
       }
       return json(res, 200, { done, errors });
