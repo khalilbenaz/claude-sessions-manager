@@ -336,13 +336,17 @@ async function refreshExternal() {
 }
 async function importExternal(items) {
   const busy = items.filter(x => x.status === 'busy');
-  const msg = `Ramener ${items.length > 1 ? `${items.length} sessions` : `« ${items[0].title} »`} dans csm ?\n\n` +
-    `Le processus Claude est arrêté dans son terminal (l'onglet pourra être fermé) puis la conversation reprend ici, au même endroit.` +
-    (busy.length ? `\n\n⚠ ${busy.length} en train de travailler : la tâche en cours sera interrompue.` : '');
-  if (!confirm(msg)) return;
+  $('#impTitle').textContent = items.length > 1 ? `Ramener ${items.length} sessions dans csm` : `Ramener « ${items[0].title} »`;
+  $('#impWarn').hidden = !busy.length;
+  $('#impWarn').textContent = `⚠ ${busy.length > 1 ? `${busy.length} sessions travaillent` : 'Cette session travaille'} en ce moment : « Déplacer » interrompt la tâche en cours (tu pourras la relancer dans csm). « Copier » ne l'interrompt pas.`;
+  const dlg = $('#dlgImport');
+  dlg.returnValue = '';
+  dlg.showModal();
+  const mode = await new Promise(r => dlg.addEventListener('close', () => r(dlg.returnValue), { once: true }));
+  if (mode !== 'move' && mode !== 'copy') return;
   $('#btnImportAll').disabled = true;
   try {
-    const r = await api('POST', '/api/import', { items });
+    const r = await api('POST', '/api/import', { items, mode });
     for (const s of r.done) { sessions.set(s.id, s); ensureTerm(s.id); }
     if (r.done[0]) select(r.done[0].id);
     if (r.errors.length) alert(r.errors.join('\n'));

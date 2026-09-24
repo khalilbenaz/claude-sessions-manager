@@ -84,6 +84,25 @@
   </form>
 </dialog>
 
+<dialog id="dlgImport">
+  <form method="dialog">
+    <h2 id="impTitle">Ramener dans csm</h2>
+    <p class="impInfo">Ta conversation n'est <b>pas perdue</b> : elle reprend dans csm exactement là où elle en est (historique, contexte, dossier).</p>
+    <div class="impChoices">
+      <button value="move" class="primary choice">
+        <b>Déplacer</b>
+        <span>La session passe dans csm. Dans le terminal, Claude s'arrête : tu peux fermer cet onglet.</span>
+      </button>
+      <button value="copy" class="choice">
+        <b>Copier</b>
+        <span>Le terminal continue normalement. csm ouvre une copie de la conversation, qui évolue ensuite séparément.</span>
+      </button>
+    </div>
+    <p id="impWarn" class="impWarn" hidden></p>
+    <menu><button value="cancel">Annuler</button></menu>
+  </form>
+</dialog>
+
 <dialog id="dlgHistory">
   <div class="histHead">
     <h2>Historique</h2>

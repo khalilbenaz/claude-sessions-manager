@@ -77,6 +77,11 @@ dialog .pick { display: flex; gap: 6px; } dialog .pick input { flex: 1; min-widt
 dialog .row { display: flex; gap: 10px; } dialog .row label { flex: 1; }
 dialog menu { display: flex; justify-content: flex-end; gap: 8px; margin: 14px 0 0; padding: 0; }
 
+.impInfo { color: var(--fg); margin: 0 0 12px; }
+.impChoices { display: flex; flex-direction: column; gap: 8px; }
+.impChoices .choice { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; padding: 10px 12px; }
+.impChoices .choice span { font-weight: 400; font-size: 12px; opacity: .85; }
+.impWarn { color: var(--work); font-size: 12px; margin: 10px 0 0; }
 #dlgHistory { width: min(820px, 94vw); height: min(640px, 88vh); padding: 0; display: none; flex-direction: column; }
 #dlgHistory[open] { display: flex; }
 .histHead { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
