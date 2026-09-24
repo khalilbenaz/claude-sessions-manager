@@ -44,7 +44,10 @@
   <form method="dialog" id="formNew">
     <h2>Nouvelle session</h2>
     <label>Dossier de travail
-      <input name="cwd" list="dirs" required autocomplete="off" spellcheck="false">
+      <span class="pick">
+        <input name="cwd" list="dirs" required autocomplete="off" spellcheck="false" placeholder="C:\chemin\du\projet">
+        <button type="button" id="btnBrowse" title="Choisir un dossier">Parcourir…</button>
+      </span>
       <datalist id="dirs"></datalist>
     </label>
     <label>Nom <input name="name" placeholder="(nom du dossier)" autocomplete="off"></label>

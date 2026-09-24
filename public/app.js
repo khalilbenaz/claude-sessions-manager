@@ -234,6 +234,18 @@ function openNew() {
   f.cwd.select();
 }
 $('#btnNew').onclick = openNew;
+$('#btnBrowse').onclick = async () => {
+  const f = $('#formNew'), btn = $('#btnBrowse');
+  btn.disabled = true; btn.textContent = 'Ouverture…';
+  try {
+    const { path } = await api('POST', '/api/pick-folder', { initial: f.cwd.value.trim() });
+    if (path) {
+      f.cwd.value = path;
+      if (!f.name.value.trim()) f.name.placeholder = path.split(/[\\/]/).filter(Boolean).pop() || '(nom du dossier)';
+    }
+  } catch (e) { alert(`Sélecteur indisponible : ${e.message}`); }
+  finally { btn.disabled = false; btn.textContent = 'Parcourir…'; f.cwd.focus(); }
+};
 $('#dlgNew').addEventListener('close', async () => {
   if ($('#dlgNew').returnValue !== 'ok') return;
   const f = $('#formNew');
