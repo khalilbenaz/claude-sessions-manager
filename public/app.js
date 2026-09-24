@@ -1,6 +1,7 @@
 'use strict';
 const $ = s => document.querySelector(s);
 const TOKEN = window.CSM_TOKEN;
+const IS_MAC = /Mac/i.test(navigator.platform || navigator.userAgent);
 const LS = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } } };
 
 const sessions = new Map(); // id -> public view
@@ -27,7 +28,7 @@ function ensureTerm(id) {
   el.className = 'term';
   $('#terms').appendChild(el);
   const term = new Terminal({
-    fontFamily: '"Cascadia Mono", "Cascadia Code", Consolas, monospace', fontSize: LS.get('csm.font', 14),
+    fontFamily: '"Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", Menlo, monospace', fontSize: LS.get('csm.font', 14),
     cursorBlink: true, scrollback: 10000, allowProposedApi: true, macOptionIsMeta: true,
     theme: { background: '#101114', foreground: '#e6e6e6', cursor: '#d97757', selectionBackground: '#3a4150' },
   });
@@ -39,12 +40,13 @@ function ensureTerm(id) {
   term.attachCustomKeyEventHandler(e => {
     if (e.type !== 'keydown') return true;
     if (e.ctrlKey && e.altKey && globalShortcut(e)) return false;
-    // Ctrl+C avec sélection = copier ; Ctrl+V = coller (texte) via le presse-papiers du navigateur
-    if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'c' && term.hasSelection()) {
+    // Windows : Ctrl+C avec sélection = copier ; Ctrl+V = coller (texte) via le presse-papiers du navigateur.
+    // macOS : Cmd+C / Cmd+V sont natifs ; Ctrl+C et Ctrl+V restent à Claude (interrompre, coller une image).
+    if (!IS_MAC && e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'c' && term.hasSelection()) {
       navigator.clipboard.writeText(term.getSelection()); term.clearSelection(); return false;
     }
-    if (e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'v') return false; // laisse l'événement paste natif
-    if (e.ctrlKey && (e.key === '=' || e.key === '+' || e.key === '-' || e.key === '0')) { zoom(e.key); e.preventDefault(); return false; }
+    if (!IS_MAC && e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'v') return false; // laisse l'événement paste natif
+    if ((IS_MAC ? e.metaKey : e.ctrlKey) && (e.key === '=' || e.key === '+' || e.key === '-' || e.key === '0')) { zoom(e.key); e.preventDefault(); return false; }
     return true;
   });
   const t = { term, fit, el };
