@@ -1,15 +1,18 @@
 {
-  "name": "claude-sessions",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "claude-sessions-manager",
+  "version": "2.0.0",
+  "description": "Une fenêtre pour piloter plusieurs sessions Claude Code (Windows & macOS) : sessions persistantes, état en direct, historique, reprise automatique.",
+  "bin": { "csm": "bin/csm.js" },
+  "main": "server.js",
+  "files": ["bin/", "lib/", "public/", "scripts/", "server.js", "hook.js", "pick-folder.ps1", "README.md"],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "postinstall": "node scripts/postinstall.js",
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "engines": { "node": ">=18" },
+  "keywords": ["claude", "claude-code", "terminal", "sessions"],
+  "author": "Khalil Benazzouz",
+  "license": "MIT",
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-web-links": "^0.12.0",

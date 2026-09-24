@@ -5,9 +5,13 @@ Add-Type -AssemblyName System.Windows.Forms
 
 $dlg = [System.Windows.Forms.FolderBrowserDialog]::new()
 $dlg.Description = 'Dossier de travail de la session Claude'
-$dlg.UseDescriptionForTitle = $true
 $dlg.ShowNewFolderButton = $true
-if ($env:CSM_INITIAL -and (Test-Path -LiteralPath $env:CSM_INITIAL)) { $dlg.InitialDirectory = $env:CSM_INITIAL }
+# .NET 5+ (pwsh 7) seulement ; Windows PowerShell 5.1 n'a pas ces propriétés.
+$modern = [bool]$dlg.PSObject.Properties['InitialDirectory']
+if ($modern) { $dlg.UseDescriptionForTitle = $true }
+if ($env:CSM_INITIAL -and (Test-Path -LiteralPath $env:CSM_INITIAL)) {
+  if ($modern) { $dlg.InitialDirectory = $env:CSM_INITIAL } else { $dlg.SelectedPath = $env:CSM_INITIAL }
+}
 
 # Fenêtre propriétaire invisible au premier plan : sinon le dialogue s'ouvre derrière Edge (serveur sans fenêtre).
 $owner = [System.Windows.Forms.Form]::new()

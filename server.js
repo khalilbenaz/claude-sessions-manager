@@ -5,18 +5,23 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-const { execFileSync, execFile } = require('child_process');
+const { execFile } = require('child_process');
 const pty = require('node-pty');
 const { WebSocketServer } = require('ws');
+const { ROOT, PORT, IS_WIN, IS_MAC, DATA, LEGACY_DATA, which, resolveClaude } = require('./lib/config');
 
-const PORT = Number(process.env.CSM_PORT || 7890);
 const HOST = '127.0.0.1';
-const ROOT = __dirname;
-const DATA = path.join(ROOT, 'data');
 const PROJECTS = path.join(os.homedir(), '.claude', 'projects');
 const SCROLLBACK_MAX = 2 * 1024 * 1024;
 
 fs.mkdirSync(DATA, { recursive: true });
+
+// Migration v1 : les données vivaient dans <code>/data. On reprend jeton + sessions une seule fois.
+if (!process.env.CSM_DATA && PORT === 7890 && !fs.existsSync(path.join(DATA, 'sessions.json'))) {
+  for (const f of ['token', 'sessions.json']) {
+    try { fs.copyFileSync(path.join(LEGACY_DATA, f), path.join(DATA, f), fs.constants.COPYFILE_EXCL); } catch { }
+  }
+}
 
 // Journal fichier : le serveur tourne sans console (tâche planifiée / conhost --headless).
 const LOG = path.join(DATA, 'server.log');
@@ -36,18 +41,15 @@ const TOKEN = fs.existsSync(TOKEN_FILE)
   ? fs.readFileSync(TOKEN_FILE, 'utf8').trim()
   : (() => { const t = crypto.randomBytes(24).toString('hex'); fs.writeFileSync(TOKEN_FILE, t); return t; })();
 
-function resolveClaude() {
-  if (process.env.CSM_CLAUDE) return process.env.CSM_CLAUDE;
-  try {
-    const cmd = process.platform === 'win32' ? 'where' : 'which';
-    return execFileSync(cmd, ['claude'], { encoding: 'utf8' }).split(/\r?\n/).find(Boolean).trim();
-  } catch { return 'claude'; }
-}
 const CLAUDE = resolveClaude();
 
 // Hooks injectés via --settings : remontent l'état réel (travaille / attend / idle) et le session_id Claude.
-const HOOK_SCRIPT = path.join(ROOT, 'hook.js').replace(/\\/g, '/');
-const hookCmd = (ev) => [{ hooks: [{ type: 'command', command: `node "${HOOK_SCRIPT}" ${ev}`, timeout: 5 }] }];
+// Chemin absolu de node : le PATH d'un service (launchd, tâche planifiée) ne le contient pas forcément.
+// Barres obliques : valables pour le shell des hooks sous Windows (bash ou cmd) comme sous macOS.
+const fwd = p => p.replace(/\\/g, '/');
+const HOOK_SCRIPT = fwd(path.join(ROOT, 'hook.js'));
+const NODE = fwd(process.execPath);
+const hookCmd = (ev) => [{ hooks: [{ type: 'command', command: `"${NODE}" "${HOOK_SCRIPT}" ${ev}`, timeout: 5 }] }];
 const HOOK_SETTINGS = path.join(DATA, 'hooks-settings.json');
 fs.writeFileSync(HOOK_SETTINGS, JSON.stringify({
   hooks: {
@@ -255,12 +257,35 @@ function history() {
 let picking = null;
 function pickFolder(initial) {
   if (picking) return picking; // un seul dialogue à la fois
-  const shell = process.env.CSM_PWSH || 'pwsh';
   const env = { ...process.env, CSM_INITIAL: initial || '' };
+  let cmd, args;
+  if (IS_WIN) {
+    // pwsh 7 = dialogue moderne ; Windows PowerShell 5.1 (toujours présent) en secours.
+    cmd = process.env.CSM_PWSH || which('pwsh') || 'powershell.exe';
+    args = ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'pick-folder.ps1')];
+  } else if (IS_MAC) {
+    // Le dialogue est rattaché à l'application au premier plan (la fenêtre csm) pour ne pas s'ouvrir derrière.
+    cmd = 'osascript';
+    args = ['-e', 'set p to system attribute "CSM_INITIAL"',
+      '-e', 'tell application (path to frontmost application as text)',
+      '-e', 'if p is not "" then',
+      '-e', 'set f to choose folder with prompt "Dossier de travail de la session Claude" default location (POSIX file p)',
+      '-e', 'else',
+      '-e', 'set f to choose folder with prompt "Dossier de travail de la session Claude"',
+      '-e', 'end if',
+      '-e', 'end tell',
+      '-e', 'POSIX path of f'];
+    if (initial && !fs.existsSync(initial)) env.CSM_INITIAL = '';
+  } else {
+    cmd = 'zenity'; args = ['--file-selection', '--directory', ...(initial ? ['--filename', initial + '/'] : [])];
+  }
   picking = new Promise(resolve => {
-    execFile(shell, ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'pick-folder.ps1')],
-      { env, windowsHide: true, timeout: 10 * 60 * 1000, encoding: 'utf8' },
-      (err, stdout) => resolve(err ? null : (stdout || '').trim() || null));
+    execFile(cmd, args, { env, windowsHide: true, timeout: 10 * 60 * 1000, encoding: 'utf8' },
+      (err, stdout) => {
+        let p = err ? null : (stdout || '').trim() || null;
+        if (p && p.length > 1 && !IS_WIN) p = p.replace(/\/$/, '');
+        resolve(p);
+      });
   }).finally(() => { picking = null; });
   return picking;
 }
