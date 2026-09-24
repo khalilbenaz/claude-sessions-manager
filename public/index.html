@@ -16,6 +16,13 @@
     <button id="btnNew" class="primary" title="Nouvelle session (Ctrl+Alt+N)">+ Nouvelle</button>
   </header>
   <ul id="list"></ul>
+  <section id="ext" hidden>
+    <div class="extHead">
+      <span>Dans un terminal <b id="extCount"></b></span>
+      <button id="btnImportAll" title="Ferme ces sessions dans leur terminal et les reprend ici">Tout ramener</button>
+    </div>
+    <ul id="extList"></ul>
+  </section>
   <footer>
     <button id="btnHistory" title="Reprendre une ancienne session (Ctrl+Alt+H)">Historique</button>
     <span id="conn" class="conn off" title="Connexion au serveur"></span>

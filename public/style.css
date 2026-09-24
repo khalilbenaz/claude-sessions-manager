@@ -27,6 +27,15 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 4
 #list .k { color: var(--dim); font-size: 11px; }
 #list .sub { grid-column: 2 / 4; color: var(--dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #list li.attention .sub { color: var(--warn); }
+#ext { border-top: 1px solid var(--line); padding: 6px; max-height: 45%; overflow-y: auto; }
+.extHead { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 6px; color: var(--dim); font-size: 12px; }
+.extHead button { padding: 3px 8px; font-size: 12px; }
+#extList { list-style: none; margin: 0; padding: 0; }
+#extList li { display: grid; grid-template-columns: 14px 1fr auto; gap: 2px 8px; align-items: center; padding: 6px 8px; border-radius: 7px; cursor: pointer; opacity: .85; }
+#extList li:hover { background: var(--panel2); opacity: 1; }
+#extList .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#extList .k { color: var(--accent); font-size: 11px; }
+#extList .sub { grid-column: 2 / 4; color: var(--dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: Consolas, monospace; }
 #side footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-top: 1px solid var(--line); }
 .conn { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
 .conn.off { background: var(--warn); }

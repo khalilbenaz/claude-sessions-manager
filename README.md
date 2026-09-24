@@ -3,9 +3,10 @@
 Une seule fenêtre pour piloter plusieurs sessions Claude Code au lieu d'une pile d'onglets de terminal.
 
 ```
-csm            # démarre le serveur si besoin + ouvre la fenêtre (Edge en mode app)
-csm stop       # arrête le serveur et toutes les sessions
-csm restart | status | log
+csm install    # une fois : serveur lancé à chaque ouverture de session Windows + raccourci menu Démarrer
+csm            # ouvre la fenêtre (démarre le serveur si besoin)
+csm stop       # arrête le serveur (les sessions ouvertes reviendront au prochain démarrage)
+csm restart | status | log | uninstall
 ```
 
 ## Fonctionnement
@@ -15,6 +16,12 @@ csm restart | status | log
 - Le `session_id` Claude est capté par le hook SessionStart → après un `csm restart` ou un reboot, « Reprendre » relance `claude --resume <id>`.
 - **Historique** : toutes les conversations de `~/.claude/projects` (titre, dossier, branche, dernier prompt), filtrables, reprise en un clic dans le bon dossier.
 - Sécurité : écoute locale uniquement, contrôle de l'en-tête Host (anti DNS-rebinding), jeton aléatoire (`data/token`) exigé sur l'API et le WebSocket (anti-CSRF).
+
+## Persistance
+
+- Le serveur tourne hors de tout terminal (tâche planifiée, `conhost --headless`) : fermer un terminal ne touche à rien.
+- Chaque session ouverte est mémorisée (`data/sessions.json` : dossier, nom, modèle, ordre, id de conversation). Au démarrage du serveur (reboot, crash, `csm restart`), elles sont toutes relancées avec `--resume`. Seules celles arrêtées volontairement (bouton Arrêter, `/exit`) ou fermées restent fermées.
+- **Dans un terminal** : les sessions Claude ouvertes dans des terminaux (registre `~/.claude/sessions`) apparaissent en bas de la barre latérale ; « ramener » arrête le processus du terminal et reprend la conversation dans csm.
 
 ## Raccourcis (Ctrl+Alt+…)
 

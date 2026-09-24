@@ -18,6 +18,18 @@ const SCROLLBACK_MAX = 2 * 1024 * 1024;
 
 fs.mkdirSync(DATA, { recursive: true });
 
+// Journal fichier : le serveur tourne sans console (tâche planifiée / conhost --headless).
+const LOG = path.join(DATA, 'server.log');
+for (const k of ['log', 'error']) {
+  const orig = console[k];
+  console[k] = (...a) => {
+    try { fs.appendFileSync(LOG, `${new Date().toISOString()} ${a.map(x => x instanceof Error ? x.stack : String(x)).join(' ')}\n`); } catch { }
+    orig.apply(console, a);
+  };
+}
+process.on('uncaughtException', e => console.error('uncaught', e));
+process.on('unhandledRejection', e => console.error('unhandled', e));
+
 // Jeton anti-CSRF : un site tiers ne peut pas lire la page, donc ne peut pas connaître le jeton.
 const TOKEN_FILE = path.join(DATA, 'token');
 const TOKEN = fs.existsSync(TOKEN_FILE)
@@ -56,7 +68,7 @@ const sessions = new Map();
 function persist() {
   const list = [...sessions.values()].map(s => ({
     id: s.id, name: s.name, cwd: s.cwd, args: s.args, claudeSessionId: s.claudeSessionId,
-    createdAt: s.createdAt, order: s.order,
+    createdAt: s.createdAt, order: s.order, wantRun: s.wantRun !== false,
   }));
   fs.writeFileSync(STORE, JSON.stringify(list, null, 2));
 }
@@ -83,7 +95,13 @@ function splitArgs(str) {
   return out;
 }
 
+// Claude n'écrit le transcript qu'au premier message : une session jamais utilisée n'est pas reprenable.
+function transcriptExists(id) {
+  try { return fs.readdirSync(PROJECTS).some(d => fs.existsSync(path.join(PROJECTS, d, `${id}.jsonl`))); } catch { return false; }
+}
+
 function spawnSession(s, { resume } = {}) {
+  if (resume && !transcriptExists(resume)) resume = undefined;
   const args = ['--settings', HOOK_SETTINGS, ...splitArgs(s.args)];
   if (resume) args.push('--resume', resume);
   const env = { ...process.env, CSM_ID: s.id, CSM_PORT: String(PORT), CSM_TOKEN: TOKEN, COLORTERM: 'truecolor' };
@@ -102,11 +120,17 @@ function spawnSession(s, { resume } = {}) {
     return;
   }
   s.pty = p;
+  if (s.wantRun !== true) { s.wantRun = true; persist(); }
   setStatus(s, 'starting');
   p.onData(d => { s.lastActivity = Date.now(); appendOut(s, d); });
   p.onExit(({ exitCode }) => {
-    if (s.pty !== p) return;
+    if (s.pty !== p || !sessions.has(s.id)) return; // relancée entre-temps, ou fermée
     s.pty = null;
+    // Sortie volontaire (/exit) => ne pas la relancer au prochain démarrage. Le délai évite de marquer
+    // "arrêtées" les sessions tuées par l'extinction de Windows (le serveur meurt avant l'échéance).
+    setTimeout(() => {
+      if (!shuttingDown && !s.pty && sessions.has(s.id)) { s.wantRun = false; persist(); }
+    }, 8000);
     appendOut(s, `\r\n\x1b[90m[csm] session terminée (code ${exitCode})\x1b[0m\r\n`);
     setStatus(s, 'exited', `code ${exitCode}`);
   });
@@ -140,19 +164,30 @@ function createSession({ name, cwd, args, resume }) {
 }
 
 function killSession(s) {
-  if (s.pty) { try { s.pty.kill(); } catch { } s.pty = null; }
+  if (s.pty) { try { s.pty.kill(); } catch { } }
 }
 
-// Sessions de la dernière exécution du serveur : restaurées en "exited", reprenables d'un clic.
+// Sessions de la dernière exécution du serveur (reboot, crash, csm restart) : celles qui tournaient sont
+// relancées automatiquement avec --resume ; celles arrêtées volontairement restent reprenables d'un clic.
+let shuttingDown = false;
+const toRestore = [];
 try {
   for (const x of JSON.parse(fs.readFileSync(STORE, 'utf8'))) {
-    sessions.set(x.id, {
-      ...x, status: 'exited', message: 'serveur redémarré', statusSince: Date.now(), lastActivity: x.createdAt,
-      buf: `\x1b[90m[csm] Session de l'exécution précédente. ${x.claudeSessionId ? 'Cliquer « Reprendre » pour la relancer.' : ''}\x1b[0m\r\n`,
-      pty: null,
-    });
+    const s = { ...x, status: 'exited', message: 'arrêtée', statusSince: Date.now(), lastActivity: x.createdAt, buf: '', pty: null };
+    sessions.set(x.id, s);
+    if (x.wantRun !== false) toRestore.push(s);
+    else s.buf = `\x1b[90m[csm] Session arrêtée. Cliquer « Reprendre » pour la relancer.\x1b[0m\r\n`;
   }
 } catch { }
+
+function restoreSessions() {
+  toRestore.forEach((s, i) => setTimeout(() => {
+    if (!sessions.has(s.id) || s.pty) return;
+    s.buf = `\x1b[90m[csm] Session restaurée.\x1b[0m\r\n`;
+    broadcast({ t: 'clear', id: s.id });
+    spawnSession(s, { resume: s.claudeSessionId || undefined });
+  }, i * 1200)); // échelonné : évite de lancer N claude + hooks en même temps
+}
 
 // ---------------------------------------------------------------- historique (~/.claude/projects)
 const histCache = new Map(); // file -> { mtime, entry }
@@ -229,6 +264,41 @@ function pickFolder(initial) {
   return picking;
 }
 
+// ---------------------------------------------------------------- sessions ouvertes dans un terminal
+// Claude Code tient un registre des sessions interactives en cours : ~/.claude/sessions/<pid>.json.
+const REGISTRY = path.join(os.homedir(), '.claude', 'sessions');
+
+function pidAlive(pid) { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } }
+
+function externalSessions() {
+  const managedIds = new Set([...sessions.values()].map(s => s.claudeSessionId).filter(Boolean));
+  const managedPids = new Set([...sessions.values()].filter(s => s.pty).map(s => s.pty.pid));
+  let files = []; try { files = fs.readdirSync(REGISTRY).filter(f => /^\d+\.json$/.test(f)); } catch { }
+  const titles = new Map(history().map(h => [h.id, h.title]));
+  const out = [];
+  for (const f of files) {
+    let o; try { o = JSON.parse(fs.readFileSync(path.join(REGISTRY, f), 'utf8')); } catch { continue; }
+    if (o.kind !== 'interactive' || o.entrypoint !== 'cli' || !o.sessionId) continue; // exclut SDK / observateurs
+    if (managedIds.has(o.sessionId) || managedPids.has(o.pid) || !pidAlive(o.pid)) continue;
+    out.push({
+      pid: o.pid, sessionId: o.sessionId, cwd: o.cwd, status: o.status, startedAt: o.startedAt,
+      title: titles.get(o.sessionId) || path.basename(o.cwd || '') || o.sessionId.slice(0, 8),
+    });
+  }
+  return out.sort((a, b) => b.startedAt - a.startedAt);
+}
+
+// Déplace une session de terminal dans csm : arrête le processus du terminal puis reprend la conversation ici.
+async function importExternal(pid, sessionId) {
+  const ext = externalSessions().find(x => x.pid === pid && x.sessionId === sessionId);
+  if (!ext) throw new Error('session introuvable (déjà fermée ou déjà dans csm)');
+  try { process.kill(pid); } catch { }
+  for (let i = 0; i < 50 && pidAlive(pid); i++) await new Promise(r => setTimeout(r, 100));
+  if (pidAlive(pid)) throw new Error(`le processus ${pid} ne s'arrête pas`);
+  await new Promise(r => setTimeout(r, 300)); // laisse le transcript se fermer
+  return createSession({ cwd: ext.cwd, name: ext.title.slice(0, 40), resume: sessionId, args: '--model opus' });
+}
+
 // ---------------------------------------------------------------- HTTP
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png' };
 const STATIC = {
@@ -298,6 +368,16 @@ const server = http.createServer(async (req, res) => {
       const managed = new Set([...sessions.values()].map(s => s.claudeSessionId).filter(Boolean));
       return json(res, 200, history().slice(0, 400).map(h => ({ ...h, managed: managed.has(h.id) })));
     }
+    if (p === '/api/external' && req.method === 'GET') return json(res, 200, externalSessions());
+    if (p === '/api/import' && req.method === 'POST') {
+      const { items } = await readBody(req);
+      const done = [], errors = [];
+      for (const it of items || []) {
+        try { done.push(publicView(await importExternal(Number(it.pid), String(it.sessionId)))); }
+        catch (e) { errors.push(`${it.title || it.sessionId}: ${e.message}`); }
+      }
+      return json(res, 200, { done, errors });
+    }
     if (p === '/api/pick-folder' && req.method === 'POST') {
       const { initial } = await readBody(req);
       const picked = await pickFolder(initial);
@@ -323,7 +403,7 @@ const server = http.createServer(async (req, res) => {
       broadcast({ t: 'session', s: publicView(s) });
       return json(res, 200, publicView(s));
     }
-    if (s && m[2] === 'kill' && req.method === 'POST') { killSession(s); return json(res, 200, {}); }
+    if (s && m[2] === 'kill' && req.method === 'POST') { s.wantRun = false; persist(); killSession(s); return json(res, 200, {}); }
     if (s && m[2] === 'restart' && req.method === 'POST') {
       killSession(s);
       s.buf += '\x1b[2J\x1b[H';
@@ -372,12 +452,16 @@ server.on('upgrade', (req, sock, head) => {
   });
 });
 
+server.on('error', e => { console.error('écoute impossible', e.message); process.exit(1); }); // ex. déjà lancé
 server.listen(PORT, HOST, () => {
   fs.writeFileSync(path.join(DATA, 'server.pid'), String(process.pid));
   console.log(`Claude Sessions Manager -> http://${HOST}:${PORT}  (claude: ${CLAUDE})`);
+  restoreSessions();
 });
 
 function shutdown() {
+  shuttingDown = true;
+  persist(); // avant de tuer : les sessions ouvertes seront restaurées au prochain démarrage
   for (const s of sessions.values()) killSession(s);
   persist();
   process.exit(0);
