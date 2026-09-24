@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-const { execFileSync } = require('child_process');
+const { execFileSync, execFile } = require('child_process');
 const pty = require('node-pty');
 const { WebSocketServer } = require('ws');
 
@@ -215,6 +215,20 @@ function history() {
   return out.sort((a, b) => b.mtime - a.mtime);
 }
 
+// ---------------------------------------------------------------- sélecteur de dossier natif
+let picking = null;
+function pickFolder(initial) {
+  if (picking) return picking; // un seul dialogue à la fois
+  const shell = process.env.CSM_PWSH || 'pwsh';
+  const env = { ...process.env, CSM_INITIAL: initial || '' };
+  picking = new Promise(resolve => {
+    execFile(shell, ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'pick-folder.ps1')],
+      { env, windowsHide: true, timeout: 10 * 60 * 1000, encoding: 'utf8' },
+      (err, stdout) => resolve(err ? null : (stdout || '').trim() || null));
+  }).finally(() => { picking = null; });
+  return picking;
+}
+
 // ---------------------------------------------------------------- HTTP
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png' };
 const STATIC = {
@@ -283,6 +297,11 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/history' && req.method === 'GET') {
       const managed = new Set([...sessions.values()].map(s => s.claudeSessionId).filter(Boolean));
       return json(res, 200, history().slice(0, 400).map(h => ({ ...h, managed: managed.has(h.id) })));
+    }
+    if (p === '/api/pick-folder' && req.method === 'POST') {
+      const { initial } = await readBody(req);
+      const picked = await pickFolder(initial);
+      return json(res, 200, { path: picked });
     }
     if (p === '/api/order' && req.method === 'POST') {
       const { ids } = await readBody(req);
