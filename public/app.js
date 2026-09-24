@@ -158,11 +158,13 @@ function render() {
     li.draggable = true;
     li.dataset.id = s.id;
     li.title = `${s.cwd}\n${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + s.message : ''}`;
-    li.innerHTML = `<span class="dot ${s.status}"></span><span class="n"></span><span class="k">${i < 9 ? i + 1 : ''}${unread.has(s.id) && s.id !== active ? ' •' : ''}</span><span class="sub"></span>`;
+    li.innerHTML = `<span class="dot ${s.status}"></span><span class="n"></span><span class="acts"><button class="ren" title="Renommer">✎</button><span class="k">${i < 9 ? i + 1 : ''}${unread.has(s.id) && s.id !== active ? ' •' : ''}</span></span><span class="sub"></span>`;
     li.querySelector('.n').textContent = s.name;
     li.querySelector('.sub').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + s.message : ''} · ${ago(s.statusSince)}`;
     li.onclick = () => select(s.id);
-    li.ondblclick = () => { select(s.id); startRename(); };
+    li.ondblclick = () => renameSession(s.id);
+    li.querySelector('.ren').onclick = e => { e.stopPropagation(); renameSession(s.id); };
+    li.oncontextmenu = e => { e.preventDefault(); sessionMenu(s.id, e.clientX, e.clientY); };
     li.ondragstart = e => e.dataTransfer.setData('text/plain', s.id);
     li.ondragover = e => { e.preventDefault(); li.classList.add('dragover'); };
     li.ondragleave = () => li.classList.remove('dragover');
@@ -186,7 +188,7 @@ function renderBar() {
   const s = sessions.get(active);
   if (!s) return;
   $('#curDot').className = `dot ${s.status}`;
-  if ($('#curName').contentEditable !== 'true') $('#curName').textContent = s.name;
+  $('#curName').textContent = s.name;
   $('#curCwd').textContent = s.cwd;
   $('#curCwd').title = s.cwd + (s.claudeSessionId ? `\nsession ${s.claudeSessionId}` : '');
   $('#curMsg').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + s.message : ''}`;
@@ -207,21 +209,69 @@ function select(id) {
 }
 
 // ------------------------------------------------------------------ actions
-function startRename() {
-  const el = $('#curName');
-  el.contentEditable = 'true'; el.focus();
-  document.getSelection().selectAllChildren(el);
-  const done = ok => {
-    el.contentEditable = 'false'; el.onkeydown = el.onblur = null;
-    const name = el.textContent.trim();
-    if (ok && name && active) api('POST', `/api/sessions/${active}/rename`, { name });
-    else renderBar();
+// Boîte « Renommer » commune (barre, liste, menu clic droit, historique, Ctrl+Alt+R).
+function askName(title, current) {
+  const dlg = $('#dlgRename'), input = $('#renInput');
+  $('#renTitle').textContent = title;
+  input.value = current || '';
+  dlg.returnValue = '';
+  dlg.showModal();
+  input.select();
+  return new Promise(resolve => dlg.addEventListener('close', () => {
+    const v = input.value.trim();
+    resolve(dlg.returnValue === 'ok' && v && v !== current ? v : null);
     terms.get(active)?.term.focus();
-  };
-  el.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); done(true); } if (e.key === 'Escape') done(false); };
-  el.onblur = () => done(true);
+  }, { once: true }));
 }
+
+async function renameSession(id) {
+  const s = sessions.get(id); if (!s) return;
+  const name = await askName('Renommer la session', s.name);
+  if (!name) return;
+  try { const v = await api('POST', `/api/sessions/${id}/rename`, { name }); sessions.set(id, v); render(); }
+  catch (e) { alert(`Renommage impossible : ${e.message}`); }
+}
+function startRename() { if (active) renameSession(active); }
 $('#curName').ondblclick = startRename;
+$('#btnRename').onclick = startRename;
+
+// Menu clic droit sur une session de la liste.
+function sessionMenu(id, x, y) {
+  const s = sessions.get(id); if (!s) return;
+  const menu = $('#ctx');
+  const items = [
+    ['Renommer', () => renameSession(id)],
+    [s.alive ? 'Relancer' : 'Reprendre', () => api('POST', `/api/sessions/${id}/restart`)],
+    ...(s.alive ? [['Arrêter', () => api('POST', `/api/sessions/${id}/kill`)]] : []),
+    ['Copier le chemin', () => navigator.clipboard.writeText(s.cwd)],
+    ['Fermer', () => { select(id); $('#btnClose').click(); }, 'danger'],
+  ];
+  menu.innerHTML = '';
+  for (const [label, fn, cls] of items) {
+    const b = document.createElement('button');
+    b.textContent = label; if (cls) b.className = cls;
+    b.onclick = () => { hideMenu(); fn(); };
+    menu.appendChild(b);
+  }
+  menu.hidden = false;
+  const r = menu.getBoundingClientRect();
+  menu.style.left = `${Math.min(x, innerWidth - r.width - 6)}px`;
+  menu.style.top = `${Math.min(y, innerHeight - r.height - 6)}px`;
+}
+function hideMenu() { $('#ctx').hidden = true; }
+
+// Entrée dans un champ = bouton principal (sinon le navigateur valide le 1er bouton du formulaire : « Annuler »).
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.target.tagName !== 'INPUT') return;
+  const form = e.target.closest('dialog form');
+  const ok = form && form.querySelector('button.primary[value]');
+  if (!ok) return;
+  e.preventDefault();
+  form.requestSubmit(ok); // respecte la validation (ex. dossier obligatoire)
+}, true);
+document.addEventListener('mousedown', e => { if (!$('#ctx').contains(e.target)) hideMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideMenu(); });
+window.addEventListener('blur', hideMenu);
 
 $('#btnRestart').onclick = () => active && api('POST', `/api/sessions/${active}/restart`);
 $('#btnKill').onclick = () => active && api('POST', `/api/sessions/${active}/kill`);
@@ -284,6 +334,17 @@ function renderHistory() {
     const [t, d1, c, d2, p] = li.children;
     t.textContent = h.title;
     if (h.managed) t.insertAdjacentHTML('beforeend', '<span class="tag">ouverte</span>');
+    const ren = document.createElement('button');
+    ren.className = 'ren'; ren.textContent = '✎'; ren.title = 'Renommer';
+    ren.onclick = async e => {
+      e.stopPropagation();
+      const name = await askName('Renommer la conversation', h.title);
+      $('#histSearch').focus();
+      if (!name) return;
+      try { await api('POST', `/api/history/${h.id}/rename`, { name }); h.title = name; renderHistory(); }
+      catch (err) { alert(`Renommage impossible : ${err.message}`); }
+    };
+    t.prepend(ren);
     d1.textContent = new Date(h.mtime).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
     c.textContent = h.cwd || '';
     d2.textContent = h.branch || '';
@@ -361,6 +422,7 @@ refreshExternal();
 
 // ------------------------------------------------------------------ raccourcis
 function globalShortcut(e) {
+  if (document.querySelector('dialog[open]')) return false; // pas de raccourci pendant une saisie
   const k = e.key.toLowerCase();
   const list = sorted();
   const idx = list.findIndex(s => s.id === active);

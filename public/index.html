@@ -33,6 +33,7 @@
   <div id="bar">
     <span id="curDot" class="dot"></span>
     <span id="curName" class="name" title="Double-clic pour renommer"></span>
+    <button id="btnRename" class="ren show" title="Renommer (Ctrl+Alt+R)">✎</button>
     <span id="curCwd" class="cwd"></span>
     <span id="curMsg" class="msg"></span>
     <span class="spacer"></span>
@@ -83,6 +84,20 @@
     </menu>
   </form>
 </dialog>
+
+<dialog id="dlgRename">
+  <form method="dialog">
+    <h2 id="renTitle">Renommer</h2>
+    <input id="renInput" maxlength="80" autocomplete="off" spellcheck="false">
+    <p class="hint">Le nom est aussi enregistré dans la conversation Claude (historique, <code>claude --resume</code>).</p>
+    <menu>
+      <button value="cancel" formnovalidate>Annuler</button>
+      <button value="ok" class="primary">Renommer</button>
+    </menu>
+  </form>
+</dialog>
+
+<div id="ctx" class="ctx" hidden></div>
 
 <dialog id="dlgImport">
   <form method="dialog">

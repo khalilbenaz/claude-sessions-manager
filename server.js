@@ -70,7 +70,7 @@ const sessions = new Map();
 function persist() {
   const list = [...sessions.values()].map(s => ({
     id: s.id, name: s.name, cwd: s.cwd, args: s.args, claudeSessionId: s.claudeSessionId,
-    createdAt: s.createdAt, order: s.order, wantRun: s.wantRun !== false,
+    createdAt: s.createdAt, order: s.order, wantRun: s.wantRun !== false, named: !!s.named, titleFor: s.titleFor || null,
   }));
   fs.writeFileSync(STORE, JSON.stringify(list, null, 2));
 }
@@ -98,8 +98,29 @@ function splitArgs(str) {
 }
 
 // Claude n'écrit le transcript qu'au premier message : une session jamais utilisée n'est pas reprenable.
-function transcriptExists(id) {
-  try { return fs.readdirSync(PROJECTS).some(d => fs.existsSync(path.join(PROJECTS, d, `${id}.jsonl`))); } catch { return false; }
+function transcriptPath(id) {
+  if (!/^[\w-]+$/.test(id || '')) return null;
+  try {
+    for (const d of fs.readdirSync(PROJECTS)) { const f = path.join(PROJECTS, d, `${id}.jsonl`); if (fs.existsSync(f)) return f; }
+  } catch { }
+  return null;
+}
+const transcriptExists = id => !!transcriptPath(id);
+
+// Même enregistrement que /rename de Claude Code : le nom suit la conversation (historique, claude --resume).
+function writeCustomTitle(id, title) {
+  const f = transcriptPath(id);
+  if (!f || !title) return false;
+  try { fs.appendFileSync(f, JSON.stringify({ type: 'custom-title', customTitle: title, sessionId: id }) + '\n'); return true; }
+  catch { return false; }
+}
+
+function renameSession(s, name) {
+  s.name = String(name || s.name).trim().slice(0, 80) || s.name;
+  s.named = true;
+  s.titleFor = s.claudeSessionId && writeCustomTitle(s.claudeSessionId, s.name) ? s.claudeSessionId : null;
+  persist();
+  broadcast({ t: 'session', s: publicView(s) });
 }
 
 function spawnSession(s, { resume, fork } = {}) {
@@ -385,7 +406,13 @@ const server = http.createServer(async (req, res) => {
       if (event === 'start') setStatus(s, 'idle');
       else if (event === 'working') setStatus(s, 'working', data && data.tool_name ? data.tool_name : '');
       else if (event === 'attention') setStatus(s, 'attention', (data && data.message) || 'attend une réponse');
-      else if (event === 'idle') setStatus(s, 'idle', 'terminé');
+      else if (event === 'idle') {
+        setStatus(s, 'idle', 'terminé');
+        // Nom donné avant que le transcript existe (ou nouvel id après /clear) : on l'écrit maintenant.
+        if (s.named && s.claudeSessionId && s.titleFor !== s.claudeSessionId && writeCustomTitle(s.claudeSessionId, s.name)) {
+          s.titleFor = s.claudeSessionId; persist();
+        }
+      }
       broadcast({ t: 'session', s: publicView(s) });
       return json(res, 200, {});
     }
@@ -393,6 +420,15 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/sessions' && req.method === 'POST') {
       const b = await readBody(req);
       return json(res, 200, publicView(createSession(b)));
+    }
+    const hm = p.match(/^\/api\/history\/([\w-]+)\/rename$/);
+    if (hm && req.method === 'POST') {
+      const title = String((await readBody(req)).name || '').trim().slice(0, 80);
+      if (!title) return json(res, 400, { error: 'nom vide' });
+      const managed = [...sessions.values()].find(s => s.claudeSessionId === hm[1]);
+      if (managed) renameSession(managed, title);
+      else if (!writeCustomTitle(hm[1], title)) return json(res, 404, { error: 'conversation introuvable' });
+      return json(res, 200, { ok: true });
     }
     if (p === '/api/history' && req.method === 'GET') {
       const managed = new Set([...sessions.values()].map(s => s.claudeSessionId).filter(Boolean));
@@ -429,8 +465,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (s && m[2] === 'rename' && req.method === 'POST') {
       const { name } = await readBody(req);
-      s.name = String(name || s.name).slice(0, 80); persist();
-      broadcast({ t: 'session', s: publicView(s) });
+      renameSession(s, name);
       return json(res, 200, publicView(s));
     }
     if (s && m[2] === 'kill' && req.method === 'POST') { s.wantRun = false; persist(); killSession(s); return json(res, 200, {}); }
