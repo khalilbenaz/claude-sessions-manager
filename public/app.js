@@ -60,13 +60,23 @@ function zoom(k) {
   fitActive();
 }
 
-function fitActive() {
-  const t = active && terms.get(active);
+// redraw=true : force Claude à repeindre tout l'écran (le PTY ne signale un resize que si la taille change,
+// d'où l'aller-retour rows-1 → rows). Nécessaire après un changement de session ou une reconnexion,
+// car le terminal caché a reçu la sortie à une autre taille.
+function fitActive(redraw) {
+  const id = active, t = id && terms.get(id);
   if (!t || !t.el.classList.contains('show')) return;
   try { t.fit.fit(); } catch { }
-  send({ t: 'resize', id: active, cols: t.term.cols, rows: t.term.rows });
+  const { cols, rows } = t.term;
+  if (!redraw && t.sent === `${cols}x${rows}`) return;
+  t.sent = `${cols}x${rows}`;
+  if (redraw) send({ t: 'resize', id, cols, rows: rows - 1 });
+  setTimeout(() => send({ t: 'resize', id, cols, rows }), redraw ? 80 : 0);
+  t.term.refresh(0, rows - 1);
 }
-new ResizeObserver(() => requestAnimationFrame(fitActive)).observe($('#terms'));
+new ResizeObserver(() => requestAnimationFrame(() => fitActive(false))).observe($('#terms'));
+let redrawTimer = null;
+function scheduleRedraw() { clearTimeout(redrawTimer); redrawTimer = setTimeout(() => fitActive(true), 150); }
 
 // ------------------------------------------------------------------ WebSocket
 function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
@@ -86,6 +96,7 @@ function connect() {
     } else if (m.t === 'replay' || m.t === 'out') {
       ensureTerm(m.id).term.write(m.d);
       if (m.t === 'out' && m.id !== active) bump(m.id);
+      if (m.t === 'replay' && m.id === active) scheduleRedraw();
     } else if (m.t === 'clear') {
       terms.get(m.id)?.term.reset();
     } else if (m.t === 'session') {
@@ -188,7 +199,7 @@ function select(id) {
   unread.delete(id);
   for (const [k, t] of terms) t.el.classList.toggle('show', k === id);
   render();
-  requestAnimationFrame(() => { fitActive(); terms.get(id)?.term.focus(); });
+  requestAnimationFrame(() => { fitActive(true); terms.get(id)?.term.focus(); });
   const s = sessions.get(id);
   if (s && (s.status === 'attention' || (s.status === 'idle' && s.message === 'terminé'))) api('POST', `/api/sessions/${id}/seen`).catch(() => { });
 }
