@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Claude Sessions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="xterm.css">
+<link rel="stylesheet" href="style.css">
+<script>window.CSM_TOKEN = '__CSM_TOKEN__';</script>
+</head>
+<body>
+<aside id="side">
+  <header>
+    <div class="brand"><img src="icon.svg" alt=""> Sessions</div>
+    <button id="btnNew" class="primary" title="Nouvelle session (Ctrl+Alt+N)">+ Nouvelle</button>
+  </header>
+  <ul id="list"></ul>
+  <footer>
+    <button id="btnHistory" title="Reprendre une ancienne session (Ctrl+Alt+H)">Historique</button>
+    <span id="conn" class="conn off" title="Connexion au serveur"></span>
+  </footer>
+</aside>
+
+<main>
+  <div id="bar">
+    <span id="curDot" class="dot"></span>
+    <span id="curName" class="name" title="Double-clic pour renommer"></span>
+    <span id="curCwd" class="cwd"></span>
+    <span id="curMsg" class="msg"></span>
+    <span class="spacer"></span>
+    <button id="btnRestart" title="Relancer / reprendre la conversation">Reprendre</button>
+    <button id="btnKill" title="Arrêter le processus">Arrêter</button>
+    <button id="btnClose" class="danger" title="Fermer et retirer de la liste">Fermer</button>
+  </div>
+  <div id="terms"></div>
+  <div id="empty">
+    <h1>Aucune session</h1>
+    <p><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> nouvelle session · <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> historique · <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>1..9</kbd> / <kbd>↑</kbd><kbd>↓</kbd> naviguer</p>
+  </div>
+</main>
+
+<dialog id="dlgNew">
+  <form method="dialog" id="formNew">
+    <h2>Nouvelle session</h2>
+    <label>Dossier de travail
+      <input name="cwd" list="dirs" required autocomplete="off" spellcheck="false">
+      <datalist id="dirs"></datalist>
+    </label>
+    <label>Nom <input name="name" placeholder="(nom du dossier)" autocomplete="off"></label>
+    <div class="row">
+      <label>Modèle
+        <select name="model">
+          <option value="">par défaut</option>
+          <option value="sonnet">sonnet</option>
+          <option value="opus">opus</option>
+          <option value="haiku">haiku</option>
+        </select>
+      </label>
+      <label>Mode
+        <select name="mode">
+          <option value="">par défaut</option>
+          <option value="acceptEdits">acceptEdits</option>
+          <option value="plan">plan</option>
+          <option value="bypassPermissions">bypassPermissions</option>
+        </select>
+      </label>
+    </div>
+    <label>Arguments supplémentaires <input name="extra" placeholder="--continue, --add-dir ..." spellcheck="false"></label>
+    <menu>
+      <button value="cancel" formnovalidate>Annuler</button>
+      <button value="ok" class="primary">Lancer</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlgHistory">
+  <div class="histHead">
+    <h2>Historique</h2>
+    <input id="histSearch" placeholder="Filtrer (titre, dossier, prompt)…" autocomplete="off">
+    <button id="histClose">✕</button>
+  </div>
+  <ul id="histList"></ul>
+</dialog>
+
+<script src="xterm.js"></script>
+<script src="addon-fit.js"></script>
+<script src="addon-web-links.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

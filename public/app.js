@@ -1,0 +1,319 @@
+'use strict';
+const $ = s => document.querySelector(s);
+const TOKEN = window.CSM_TOKEN;
+const LS = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } } };
+
+const sessions = new Map(); // id -> public view
+const terms = new Map();    // id -> { term, fit, el }
+let active = LS.get('csm.active', null);
+let ws = null;
+let historyCache = [];
+
+const STATUS_LABEL = { starting: 'démarrage', working: 'travaille', attention: 'attend une réponse', idle: 'prêt', exited: 'arrêtée' };
+
+async function api(method, url, body) {
+  const r = await fetch(url, {
+    method, headers: { 'Content-Type': 'application/json', 'X-CSM-Token': TOKEN },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+  return r.json();
+}
+
+// ------------------------------------------------------------------ terminaux
+function ensureTerm(id) {
+  if (terms.has(id)) return terms.get(id);
+  const el = document.createElement('div');
+  el.className = 'term';
+  $('#terms').appendChild(el);
+  const term = new Terminal({
+    fontFamily: '"Cascadia Mono", "Cascadia Code", Consolas, monospace', fontSize: LS.get('csm.font', 14),
+    cursorBlink: true, scrollback: 10000, allowProposedApi: true, macOptionIsMeta: true,
+    theme: { background: '#101114', foreground: '#e6e6e6', cursor: '#d97757', selectionBackground: '#3a4150' },
+  });
+  const fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.loadAddon(new WebLinksAddon.WebLinksAddon((e, uri) => window.open(uri, '_blank')));
+  term.open(el);
+  term.onData(d => send({ t: 'input', id, d }));
+  term.attachCustomKeyEventHandler(e => {
+    if (e.type !== 'keydown') return true;
+    if (e.ctrlKey && e.altKey && globalShortcut(e)) return false;
+    // Ctrl+C avec sélection = copier ; Ctrl+V = coller (texte) via le presse-papiers du navigateur
+    if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'c' && term.hasSelection()) {
+      navigator.clipboard.writeText(term.getSelection()); term.clearSelection(); return false;
+    }
+    if (e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'v') return false; // laisse l'événement paste natif
+    if (e.ctrlKey && (e.key === '=' || e.key === '+' || e.key === '-' || e.key === '0')) { zoom(e.key); e.preventDefault(); return false; }
+    return true;
+  });
+  const t = { term, fit, el };
+  terms.set(id, t);
+  return t;
+}
+
+function zoom(k) {
+  let size = LS.get('csm.font', 14);
+  size = k === '0' ? 14 : Math.max(9, Math.min(28, size + (k === '-' ? -1 : 1)));
+  LS.set('csm.font', size);
+  for (const t of terms.values()) t.term.options.fontSize = size;
+  fitActive();
+}
+
+function fitActive() {
+  const t = active && terms.get(active);
+  if (!t || !t.el.classList.contains('show')) return;
+  try { t.fit.fit(); } catch { }
+  send({ t: 'resize', id: active, cols: t.term.cols, rows: t.term.rows });
+}
+new ResizeObserver(() => requestAnimationFrame(fitActive)).observe($('#terms'));
+
+// ------------------------------------------------------------------ WebSocket
+function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+
+function connect() {
+  ws = new WebSocket(`ws://${location.host}/ws?token=${TOKEN}`);
+  ws.onopen = () => $('#conn').classList.remove('off');
+  ws.onclose = () => { $('#conn').classList.add('off'); setTimeout(connect, 1500); };
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.t === 'sessions') {
+      const ids = new Set(m.list.map(s => s.id));
+      for (const id of [...sessions.keys()]) if (!ids.has(id)) removeLocal(id);
+      for (const s of m.list) { sessions.set(s.id, s); const t = ensureTerm(s.id); t.term.reset(); }
+      if (!sessions.has(active)) active = sorted()[0]?.id || null;
+      render(); select(active);
+    } else if (m.t === 'replay' || m.t === 'out') {
+      ensureTerm(m.id).term.write(m.d);
+      if (m.t === 'out' && m.id !== active) bump(m.id);
+    } else if (m.t === 'clear') {
+      terms.get(m.id)?.term.reset();
+    } else if (m.t === 'session') {
+      const prev = sessions.get(m.s.id);
+      sessions.set(m.s.id, m.s);
+      ensureTerm(m.s.id);
+      notifyTransition(prev, m.s);
+      render();
+      if (!active) select(m.s.id);
+      if (m.s.id === active) renderBar();
+    } else if (m.t === 'removed') {
+      removeLocal(m.id);
+      if (active === m.id) active = sorted()[0]?.id || null;
+      render(); select(active);
+    }
+  };
+}
+
+function removeLocal(id) {
+  sessions.delete(id);
+  const t = terms.get(id);
+  if (t) { t.term.dispose(); t.el.remove(); terms.delete(id); }
+}
+
+const unread = new Set();
+function bump(id) { if (!unread.has(id)) { unread.add(id); render(); } }
+
+// ------------------------------------------------------------------ notifications
+function notifyTransition(prev, s) {
+  if (!prev || prev.status === s.status) return;
+  const focused = document.hasFocus() && s.id === active;
+  const important = s.status === 'attention' || (s.status === 'idle' && prev.status === 'working');
+  if (!important || focused) return;
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const n = new Notification(`${s.name} — ${s.status === 'attention' ? 'attend une réponse' : 'terminé'}`, {
+      body: s.message || s.cwd, tag: s.id, icon: 'icon.svg', silent: false,
+    });
+    n.onclick = () => { window.focus(); select(s.id); n.close(); };
+  }
+}
+
+// ------------------------------------------------------------------ rendu
+function sorted() { return [...sessions.values()].sort((a, b) => (a.order || 0) - (b.order || 0)); }
+
+function ago(ts) {
+  const s = Math.max(0, (Date.now() - ts) / 1000);
+  if (s < 60) return `${Math.floor(s)}s`; if (s < 3600) return `${Math.floor(s / 60)}min`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h`; return `${Math.floor(s / 86400)}j`;
+}
+
+function render() {
+  const ul = $('#list');
+  ul.innerHTML = '';
+  sorted().forEach((s, i) => {
+    const li = document.createElement('li');
+    li.className = `${s.id === active ? 'active' : ''} ${s.status}`;
+    li.draggable = true;
+    li.dataset.id = s.id;
+    li.title = `${s.cwd}\n${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + s.message : ''}`;
+    li.innerHTML = `<span class="dot ${s.status}"></span><span class="n"></span><span class="k">${i < 9 ? i + 1 : ''}${unread.has(s.id) && s.id !== active ? ' •' : ''}</span><span class="sub"></span>`;
+    li.querySelector('.n').textContent = s.name;
+    li.querySelector('.sub').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + s.message : ''} · ${ago(s.statusSince)}`;
+    li.onclick = () => select(s.id);
+    li.ondblclick = () => { select(s.id); startRename(); };
+    li.ondragstart = e => e.dataTransfer.setData('text/plain', s.id);
+    li.ondragover = e => { e.preventDefault(); li.classList.add('dragover'); };
+    li.ondragleave = () => li.classList.remove('dragover');
+    li.ondrop = e => {
+      e.preventDefault(); li.classList.remove('dragover');
+      const from = e.dataTransfer.getData('text/plain'); if (!from || from === s.id) return;
+      const ids = sorted().map(x => x.id).filter(x => x !== from);
+      ids.splice(ids.indexOf(s.id), 0, from);
+      api('POST', '/api/order', { ids });
+    };
+    ul.appendChild(li);
+  });
+  const attn = [...sessions.values()].filter(s => s.status === 'attention').length;
+  document.title = attn ? `(${attn}) Claude Sessions` : 'Claude Sessions';
+  document.body.classList.toggle('nosession', sessions.size === 0);
+  renderBar();
+}
+setInterval(render, 15000);
+
+function renderBar() {
+  const s = sessions.get(active);
+  if (!s) return;
+  $('#curDot').className = `dot ${s.status}`;
+  if ($('#curName').contentEditable !== 'true') $('#curName').textContent = s.name;
+  $('#curCwd').textContent = s.cwd;
+  $('#curCwd').title = s.cwd + (s.claudeSessionId ? `\nsession ${s.claudeSessionId}` : '');
+  $('#curMsg').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + s.message : ''}`;
+  $('#curMsg').className = `msg ${s.status}`;
+  $('#btnKill').disabled = !s.alive;
+  $('#btnRestart').textContent = s.alive ? 'Relancer' : (s.claudeSessionId ? 'Reprendre' : 'Relancer');
+}
+
+function select(id) {
+  if (!id || !sessions.has(id)) { active = null; LS.set('csm.active', null); render(); return; }
+  active = id; LS.set('csm.active', id);
+  unread.delete(id);
+  for (const [k, t] of terms) t.el.classList.toggle('show', k === id);
+  render();
+  requestAnimationFrame(() => { fitActive(); terms.get(id)?.term.focus(); });
+  const s = sessions.get(id);
+  if (s && (s.status === 'attention' || (s.status === 'idle' && s.message === 'terminé'))) api('POST', `/api/sessions/${id}/seen`).catch(() => { });
+}
+
+// ------------------------------------------------------------------ actions
+function startRename() {
+  const el = $('#curName');
+  el.contentEditable = 'true'; el.focus();
+  document.getSelection().selectAllChildren(el);
+  const done = ok => {
+    el.contentEditable = 'false'; el.onkeydown = el.onblur = null;
+    const name = el.textContent.trim();
+    if (ok && name && active) api('POST', `/api/sessions/${active}/rename`, { name });
+    else renderBar();
+    terms.get(active)?.term.focus();
+  };
+  el.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); done(true); } if (e.key === 'Escape') done(false); };
+  el.onblur = () => done(true);
+}
+$('#curName').ondblclick = startRename;
+
+$('#btnRestart').onclick = () => active && api('POST', `/api/sessions/${active}/restart`);
+$('#btnKill').onclick = () => active && api('POST', `/api/sessions/${active}/kill`);
+$('#btnClose').onclick = () => {
+  const s = sessions.get(active); if (!s) return;
+  if (s.alive && !confirm(`Fermer « ${s.name} » ? Le processus Claude sera arrêté (la conversation reste reprenable depuis l'historique).`)) return;
+  api('DELETE', `/api/sessions/${active}`);
+};
+
+async function loadHistory() {
+  try { historyCache = await api('GET', '/api/history'); } catch { historyCache = []; }
+  const dirs = [...new Set([...sessions.values()].map(s => s.cwd).concat(historyCache.map(h => h.cwd)).filter(Boolean))];
+  $('#dirs').innerHTML = '';
+  for (const d of dirs.slice(0, 60)) { const o = document.createElement('option'); o.value = d; $('#dirs').appendChild(o); }
+}
+
+function openNew() {
+  const f = $('#formNew');
+  f.reset();
+  f.cwd.value = LS.get('csm.lastCwd', '') || sessions.get(active)?.cwd || '';
+  loadHistory();
+  $('#dlgNew').showModal();
+  f.cwd.select();
+}
+$('#btnNew').onclick = openNew;
+$('#dlgNew').addEventListener('close', async () => {
+  if ($('#dlgNew').returnValue !== 'ok') return;
+  const f = $('#formNew');
+  const args = [f.model.value && `--model ${f.model.value}`, f.mode.value && `--permission-mode ${f.mode.value}`, f.extra.value.trim()].filter(Boolean).join(' ');
+  const cwd = f.cwd.value.trim().replace(/^"|"$/g, '');
+  LS.set('csm.lastCwd', cwd);
+  const s = await api('POST', '/api/sessions', { cwd, name: f.name.value.trim() || undefined, args });
+  sessions.set(s.id, s); ensureTerm(s.id); select(s.id);
+  askNotify();
+});
+
+// ------------------------------------------------------------------ historique
+let histSel = 0;
+function renderHistory() {
+  const q = $('#histSearch').value.toLowerCase().trim();
+  const items = historyCache.filter(h => !q || `${h.title} ${h.cwd} ${h.lastPrompt} ${h.branch || ''}`.toLowerCase().includes(q)).slice(0, 200);
+  histSel = Math.min(histSel, Math.max(0, items.length - 1));
+  const ul = $('#histList'); ul.innerHTML = '';
+  items.forEach((h, i) => {
+    const li = document.createElement('li');
+    if (i === histSel) li.classList.add('sel');
+    li.innerHTML = `<span class="t"></span><span class="d"></span><span class="c"></span><span class="d"></span><span class="p"></span>`;
+    const [t, d1, c, d2, p] = li.children;
+    t.textContent = h.title;
+    if (h.managed) t.insertAdjacentHTML('beforeend', '<span class="tag">ouverte</span>');
+    d1.textContent = new Date(h.mtime).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+    c.textContent = h.cwd || '';
+    d2.textContent = h.branch || '';
+    p.textContent = h.lastPrompt;
+    li.onclick = () => resumeHistory(h);
+    ul.appendChild(li);
+  });
+  ul.children[histSel]?.scrollIntoView({ block: 'nearest' });
+  return items;
+}
+async function openHistory() {
+  $('#histSearch').value = ''; histSel = 0;
+  $('#histList').innerHTML = '<li><span class="t">Chargement…</span></li>';
+  $('#dlgHistory').showModal();
+  $('#histSearch').focus();
+  await loadHistory();
+  renderHistory();
+}
+async function resumeHistory(h) {
+  $('#dlgHistory').close();
+  const existing = [...sessions.values()].find(s => s.claudeSessionId === h.id);
+  if (existing) { select(existing.id); if (!existing.alive) api('POST', `/api/sessions/${existing.id}/restart`); return; }
+  const s = await api('POST', '/api/sessions', { cwd: h.cwd, name: h.title.slice(0, 40), resume: h.id });
+  sessions.set(s.id, s); ensureTerm(s.id); select(s.id);
+}
+$('#btnHistory').onclick = openHistory;
+$('#histClose').onclick = () => $('#dlgHistory').close();
+$('#histSearch').oninput = () => { histSel = 0; renderHistory(); };
+$('#histSearch').onkeydown = e => {
+  if (e.key === 'ArrowDown') { histSel++; renderHistory(); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { histSel = Math.max(0, histSel - 1); renderHistory(); e.preventDefault(); }
+  else if (e.key === 'Enter') { const it = renderHistory()[histSel]; if (it) resumeHistory(it); }
+};
+$('#dlgHistory').addEventListener('close', () => terms.get(active)?.term.focus());
+
+// ------------------------------------------------------------------ raccourcis
+function globalShortcut(e) {
+  const k = e.key.toLowerCase();
+  const list = sorted();
+  const idx = list.findIndex(s => s.id === active);
+  if (k === 'n') { openNew(); return true; }
+  if (k === 'h') { openHistory(); return true; }
+  if (k === 'r') { startRename(); return true; }
+  if (k === 'w') { $('#btnClose').click(); return true; }
+  if (/^[1-9]$/.test(e.key) && list[+e.key - 1]) { select(list[+e.key - 1].id); return true; }
+  if (e.key === 'ArrowDown' && list.length) { select(list[(idx + 1) % list.length].id); return true; }
+  if (e.key === 'ArrowUp' && list.length) { select(list[(idx - 1 + list.length) % list.length].id); return true; }
+  if (k === 'a') { const a = list.find(s => s.status === 'attention' && s.id !== active); if (a) select(a.id); return true; }
+  return false;
+}
+document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && globalShortcut(e)) e.preventDefault(); });
+
+function askNotify() {
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+}
+document.addEventListener('click', askNotify, { once: true });
+
+connect();
