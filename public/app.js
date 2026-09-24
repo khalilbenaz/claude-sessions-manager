@@ -317,6 +317,42 @@ $('#histSearch').onkeydown = e => {
 };
 $('#dlgHistory').addEventListener('close', () => terms.get(active)?.term.focus());
 
+// ------------------------------------------------------------------ sessions ouvertes dans un terminal
+let external = [];
+async function refreshExternal() {
+  try { external = await api('GET', '/api/external'); } catch { return; }
+  $('#ext').hidden = external.length === 0;
+  $('#extCount').textContent = external.length ? `(${external.length})` : '';
+  const ul = $('#extList'); ul.innerHTML = '';
+  for (const x of external) {
+    const li = document.createElement('li');
+    li.title = `${x.cwd}\nPID ${x.pid} · ${x.status === 'busy' ? 'travaille' : 'prête'}\nCliquer pour la ramener dans csm`;
+    li.innerHTML = `<span class="dot ${x.status === 'busy' ? 'working' : 'idle'}"></span><span class="n"></span><span class="k">ramener</span><span class="sub"></span>`;
+    li.querySelector('.n').textContent = x.title;
+    li.querySelector('.sub').textContent = x.cwd;
+    li.onclick = () => importExternal([x]);
+    ul.appendChild(li);
+  }
+}
+async function importExternal(items) {
+  const busy = items.filter(x => x.status === 'busy');
+  const msg = `Ramener ${items.length > 1 ? `${items.length} sessions` : `« ${items[0].title} »`} dans csm ?\n\n` +
+    `Le processus Claude est arrêté dans son terminal (l'onglet pourra être fermé) puis la conversation reprend ici, au même endroit.` +
+    (busy.length ? `\n\n⚠ ${busy.length} en train de travailler : la tâche en cours sera interrompue.` : '');
+  if (!confirm(msg)) return;
+  $('#btnImportAll').disabled = true;
+  try {
+    const r = await api('POST', '/api/import', { items });
+    for (const s of r.done) { sessions.set(s.id, s); ensureTerm(s.id); }
+    if (r.done[0]) select(r.done[0].id);
+    if (r.errors.length) alert(r.errors.join('\n'));
+  } catch (e) { alert(e.message); }
+  finally { $('#btnImportAll').disabled = false; refreshExternal(); }
+}
+$('#btnImportAll').onclick = () => external.length && importExternal(external);
+setInterval(refreshExternal, 5000);
+refreshExternal();
+
 // ------------------------------------------------------------------ raccourcis
 function globalShortcut(e) {
   const k = e.key.toLowerCase();
@@ -326,7 +362,9 @@ function globalShortcut(e) {
   if (k === 'h') { openHistory(); return true; }
   if (k === 'r') { startRename(); return true; }
   if (k === 'w') { $('#btnClose').click(); return true; }
-  if (/^[1-9]$/.test(e.key) && list[+e.key - 1]) { select(list[+e.key - 1].id); return true; }
+  // Chiffres par touche physique (AZERTY : 1 = « & »). Un caractère AltGr (@ # { [ | \ ^ ] }) n'est pas un raccourci.
+  const digit = /^Digit[1-9]$/.test(e.code) && (/^[0-9&é"'(\-è_çà]$/.test(e.key)) ? +e.code.slice(5) : 0;
+  if (digit) { if (list[digit - 1]) select(list[digit - 1].id); return true; }
   if (e.key === 'ArrowDown' && list.length) { select(list[(idx + 1) % list.length].id); return true; }
   if (e.key === 'ArrowUp' && list.length) { select(list[(idx - 1 + list.length) % list.length].id); return true; }
   if (k === 'a') { const a = list.find(s => s.status === 'attention' && s.id !== active); if (a) select(a.id); return true; }
