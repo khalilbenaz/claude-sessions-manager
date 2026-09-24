@@ -180,8 +180,11 @@ async function start() {
   if (!(await waitUp())) throw new Error(`le serveur n'a pas démarré — voir : csm log`);
 }
 
+// ./data (v1) = uniquement l'instance 7890 : une instance de test ne doit jamais tuer le vrai serveur.
+const PID_FILES = [path.join(DATA, 'server.pid'), ...(PORT === 7890 ? [path.join(LEGACY_DATA, 'server.pid')] : [])];
+
 async function stop() {
-  const pids = [path.join(DATA, 'server.pid'), path.join(LEGACY_DATA, 'server.pid')]
+  const pids = PID_FILES
     .map(f => { try { return Number(fs.readFileSync(f, 'utf8')); } catch { return 0; } }).filter(Boolean);
   let stopped = false;
   for (const pid of new Set(pids)) {
@@ -189,7 +192,7 @@ async function stop() {
     try { process.kill(pid, IS_WIN ? undefined : 'SIGTERM'); stopped = true; } catch { }
   }
   for (let i = 0; i < 40 && (await isUp()); i++) await sleep(150);
-  for (const f of [path.join(DATA, 'server.pid'), path.join(LEGACY_DATA, 'server.pid')]) try { fs.unlinkSync(f); } catch { }
+  for (const f of PID_FILES) try { fs.unlinkSync(f); } catch { }
   console.log(stopped ? 'serveur arrêté' : 'serveur non démarré');
 }
 
