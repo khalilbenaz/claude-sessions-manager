@@ -7,9 +7,15 @@ Une seule fenêtre pour piloter plusieurs sessions Claude Code au lieu d'une pil
 Prérequis : [Node.js](https://nodejs.org) 18+ et [Claude Code](https://docs.claude.com/claude-code) (`claude` dans le PATH).
 
 ```sh
-npm install -g <source>      # dossier du projet, archive .tgz (npm pack) ou github:<compte>/<dépôt>
+git clone https://github.com/khalilbenaz/claude-sessions-manager.git ~/claude-sessions-manager
+cd ~/claude-sessions-manager
+npm ci && npm install -g .   # commande « csm » globale, liée à ce dossier
 csm install                  # une fois : démarrage automatique + raccourci
 ```
+
+Mise à jour : `cd ~/claude-sessions-manager && git pull && npm ci && csm restart`.
+
+> `npm install -g github:…` directement n'est pas fiable sous Windows (bug npm avec les dépendances à script d'installation comme node-pty) : passer par le clone.
 
 `csm install` ajoute :
 
