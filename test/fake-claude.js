@@ -31,11 +31,15 @@ function hook(ev, data = {}) {
 
 const out = s => process.stdout.write(s);
 let turn = 0;
+let pending = null; // 'long' : réponse en cours (Ctrl+C l'interrompt) ; 'ask' : attend une permission (Entrée répond)
 async function prompt(text) {
   turn++;
   log({ type: 'user', message: { role: 'user', content: text }, uuid: crypto.randomUUID() });
   await hook('UserPromptSubmit', { prompt: text });
   await hook('PreToolUse', { tool_name: 'Read' });
+  // comme Claude Code : Ctrl+C n'appelle aucun hook, seule une ligne est ajoutée au transcript
+  if (/longue/.test(text)) { pending = 'long'; out('\r\n✻ réfléchit…'); return; }
+  if (/demande/.test(text)) { pending = 'ask'; await hook('Notification', { message: 'Claude needs your permission' }); out('\r\nDo you want to proceed? ❯ 1. Yes'); return; }
   const images = (text.match(/\S+\.(png|jpe?g|gif|webp)/gi) || []).length;
   const reply = `echo: ${text.replace(/\S+\.(png|jpe?g|gif|webp)/gi, m => `[Image #${images}]`)}`;
   log({ type: 'assistant', message: { id: `msg_${turn}_${sessionId.slice(0, 6)}`, model: 'claude-haiku-4-5', role: 'assistant',
@@ -57,6 +61,13 @@ async function prompt(text) {
   process.stdin.on('data', d => {
     buf += d.toString('utf8');
     buf = buf.replace(/\x1b\[20[01]~/g, '');
+    if (pending === 'long' && buf.includes('\x03')) {
+      buf = ''; pending = null;
+      log({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] }, uuid: crypto.randomUUID() });
+      out('\r\n  ⎿ Interrupted · What should Claude do instead?\r\n❯ ');
+      return;
+    }
+    if (pending === 'ask' && /[\r\n]/.test(buf)) { buf = ''; pending = null; hook('Stop').then(() => out('\r\n❯ ')); return; }
     let i;
     while ((i = buf.search(/[\r\n]/)) >= 0) {
       const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);

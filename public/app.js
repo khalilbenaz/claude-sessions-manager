@@ -424,7 +424,7 @@ function select(id) {
   render();
   requestAnimationFrame(() => terms.get(id)?.term.focus());
   const s = sessions.get(id);
-  if (s && !window.csmFeatures.isLockedHere?.(id) && (s.status === 'attention' || (s.status === 'idle' && s.message === 'terminé'))) api('POST', `/api/sessions/${id}/seen`).catch(() => { });
+  if (s && !window.csmFeatures.isLockedHere?.(id) && s.status === 'idle' && s.message === 'terminé') api('POST', `/api/sessions/${id}/seen`).catch(() => { });
 }
 
 // ------------------------------------------------------------------ actions

@@ -3,7 +3,7 @@
 // Les textes statiques de la page (nœuds texte, title, placeholder) sont traduits au chargement.
 const EN = {
   // états
-  'démarrage': 'starting', 'travaille': 'working', 'attend une réponse': 'waiting for you', 'prêt': 'ready', 'arrêtée': 'stopped', 'terminé': 'done',
+  'démarrage': 'starting', 'travaille': 'working', 'attend une réponse': 'waiting for you', 'prêt': 'ready', 'arrêtée': 'stopped', 'terminé': 'done', 'interrompu': 'interrupted',
   'attend toujours une réponse': 'is still waiting for you', 'travaille depuis longtemps': 'has been working for a long time',
   // barre latérale / barre
   'Sessions': 'Sessions', 'Nouvelle': 'New', '+ Nouvelle': '+ New', 'Rechercher…': 'Search…', 'Dans un terminal': 'In a terminal', 'Tout ramener': 'Bring all',
