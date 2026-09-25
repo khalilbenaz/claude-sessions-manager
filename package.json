@@ -1,7 +1,7 @@
 {
   "name": "claude-sessions-manager",
   "version": "3.3.0",
-  "description": "Une fenêtre pour piloter plusieurs sessions Claude Code (Windows & macOS) : sessions persistantes, état en direct, historique, reprise automatique.",
+  "description": "Une fenêtre pour piloter plusieurs sessions Claude Code (Windows et macOS) : sessions persistantes, état en direct, historique, reprise automatique.",
   "bin": {
     "csm": "bin/csm.js"
   },
@@ -25,7 +25,8 @@
     "dist:mac": "electron-builder --mac --arm64 --x64",
     "test": "node --test --test-concurrency=1 test/server.test.js",
     "test:app": "node --test --test-concurrency=1 test/app.test.js",
-    "guide": "node scripts/build-guide.js"
+    "guide": "node scripts/build-guide.js",
+    "dist:store": "electron-builder --win appx --publish never"
   },
   "engines": {
     "node": ">=18"
@@ -124,7 +125,21 @@
         "repo": "claude-sessions-manager",
         "releaseType": "release"
       }
-    ]
+    ],
+    "appx": {
+      "applicationId": "ClaudeSessions",
+      "displayName": "Claude Sessions",
+      "identityName": "KhalilBenazzouz.ClaudeSessions",
+      "publisher": "CN=00000000-0000-0000-0000-000000000000",
+      "publisherDisplayName": "Khalil Benazzouz",
+      "backgroundColor": "#16181c",
+      "languages": [
+        "fr-FR",
+        "en-US"
+      ],
+      "showNameOnTiles": true,
+      "artifactName": "Claude-Sessions-${version}-store.${ext}"
+    }
   },
   "homepage": "https://khalilbenaz.github.io/claude-sessions-manager/",
   "repository": {

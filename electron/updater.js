@@ -17,6 +17,8 @@ module.exports = function setupUpdater({ enabled, beforeInstall, onState, log })
   const state = { status: 'idle', version: null, url: `https://github.com/${REPO}/releases/latest`, error: null };
   const set = patch => { Object.assign(state, patch); onState({ ...state }); };
   if (!app.isPackaged) { set({ status: 'dev' }); return { state, check: async () => { }, install: () => { } }; }
+  // Version Microsoft Store : c'est le Store qui installe les mises à jour.
+  if (process.windowsStore) { set({ status: 'store' }); return { state, check: async () => { }, install: () => shell.openExternal('ms-windows-store://downloadsandupdates'), onFocus: () => { } }; }
 
   let updater = null;
   if (process.platform === 'win32') {

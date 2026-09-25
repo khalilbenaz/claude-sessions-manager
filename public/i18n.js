@@ -79,7 +79,7 @@ const EN = {
   'Version de développement : mises à jour automatiques désactivées.': 'Development build: automatic updates disabled.', 'Claude Sessions est à jour.': 'Claude Sessions is up to date.',
   'Mises à jour automatiques désactivées dans les réglages.': 'Automatic updates are disabled in Settings.', 'Téléchargement de la version {v}… {p}': 'Downloading version {v}… {p}',
   'Version {v} prête : redémarre pour l’installer.': 'Version {v} is ready: restart to install it.', 'Version {v} disponible au téléchargement.': 'Version {v} is available for download.',
-  'Échec de la vérification : {e}': 'Update check failed: {e}', 'Réglage non enregistré : ': 'Setting not saved: ',
+  'Échec de la vérification : {e}': 'Update check failed: {e}', 'Version Microsoft Store : les mises à jour sont installées par le Store.': 'Microsoft Store version: updates are installed by the Store.', 'Réglage non enregistré : ': 'Setting not saved: ',
   // accès depuis l'app Claude
   "📱 Accessible depuis l'": '📱 Accessible from the ', 'app Claude': 'Claude app', '(téléphone) et claude.ai/code — Remote Control de Claude Code': '(phone) and claude.ai/code — Claude Code Remote Control',
   "📱 Rendre les nouvelles sessions accessibles depuis l'app Claude (Remote Control)": 'Make new sessions available in the Claude app (Remote Control)',
