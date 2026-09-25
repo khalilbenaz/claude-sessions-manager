@@ -42,11 +42,14 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 4
 .ren.show, #list li:hover .ren, #list li.active .ren, #histList li:hover .ren, #histList li.sel .ren { opacity: 1; }
 #list .acts { display: flex; align-items: center; gap: 2px; }
 #histList .t .ren { margin-right: 4px; }
-.ctx { position: fixed; z-index: 100; min-width: 170px; display: flex; flex-direction: column; padding: 4px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
-.ctx[hidden] { display: none; }
-.ctx button { background: none; border: none; border-radius: 5px; text-align: left; padding: 6px 10px; }
-.ctx button:hover { background: var(--panel); }
-.ctx button.danger:hover { color: var(--warn); }
+.ctx { position: fixed; inset: auto; margin: 0; z-index: 100; min-width: 200px; display: flex; flex-direction: column; padding: 4px; color: inherit; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.45); user-select: none; }
+.ctx:not(:popover-open) { display: none; }
+.ctx button { display: flex; justify-content: space-between; gap: 24px; background: none; border: none; border-radius: 5px; text-align: left; padding: 6px 10px; }
+.ctx button:hover:not(:disabled), .ctx button:focus-visible { background: var(--panel); outline: none; }
+.ctx button:disabled { opacity: .4; cursor: default; }
+.ctx button.danger:hover:not(:disabled) { color: var(--warn); }
+.ctx kbd { font: inherit; font-size: 11px; color: var(--dim); background: none; border: none; padding: 0; }
+.ctx hr { border: none; border-top: 1px solid var(--line); margin: 4px 6px; }
 #dlgRename input { width: 100%; }
 dialog .hint { color: var(--dim); font-size: 12px; margin: 8px 0 0; }
 #side footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-top: 1px solid var(--line); }
