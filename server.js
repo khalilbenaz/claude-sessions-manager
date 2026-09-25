@@ -59,6 +59,9 @@ const HOOK_SCRIPT = fwd(path.join(ROOT, 'hook.js'));
 // applications Electron lancées depuis une session, ex. `code`). Un petit lanceur le pose pour le hook seul.
 function hookRunner() {
   if (!process.versions.electron) return `"${fwd(process.execPath)}" "${HOOK_SCRIPT}"`;
+  // Node du système s'il est installé : démarre bien plus vite qu'Electron (un hook par action de Claude).
+  const sysNode = which(IS_WIN ? 'node.exe' : 'node');
+  if (sysNode) return `"${fwd(sysNode)}" "${HOOK_SCRIPT}"`;
   const file = path.join(DATA, IS_WIN ? 'hook.cmd' : 'hook.sh');
   const body = IS_WIN
     ? `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\n"${process.execPath}" "${path.join(ROOT, 'hook.js')}" %*\r\n`
