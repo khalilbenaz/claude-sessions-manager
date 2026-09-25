@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const { execFile } = require('child_process');
 const pty = require('node-pty');
 const { WebSocketServer } = require('ws');
-const { ROOT, PORT, IS_WIN, IS_MAC, DATA, LEGACY_DATA, which, resolveClaude } = require('./lib/config');
+const { ROOT, PORT, IS_WIN, IS_MAC, DATA, LEGACY_DATA, which, resolveClaude, stablePath } = require('./lib/config');
 
 const HOST = '127.0.0.1';
 const VERSION = require('./package.json').version;
@@ -60,7 +60,7 @@ const HOOK_SCRIPT = fwd(path.join(ROOT, 'hook.js'));
 function hookRunner() {
   if (!process.versions.electron) return `"${fwd(process.execPath)}" "${HOOK_SCRIPT}"`;
   // Node du système s'il est installé : démarre bien plus vite qu'Electron (un hook par action de Claude).
-  const sysNode = which(IS_WIN ? 'node.exe' : 'node');
+  const sysNode = stablePath(which(IS_WIN ? 'node.exe' : 'node'));
   if (sysNode) return `"${fwd(sysNode)}" "${HOOK_SCRIPT}"`;
   const file = path.join(DATA, IS_WIN ? 'hook.cmd' : 'hook.sh');
   const body = IS_WIN

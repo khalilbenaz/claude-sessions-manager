@@ -44,7 +44,7 @@ Seul prérequis : **Claude Code** installé (la commande `claude` fonctionne dan
 
 L'application n'est pas encore signée par un certificat éditeur, donc chaque système prévient au premier lancement :
 - **Windows** : « Windows a protégé votre ordinateur » → *Informations complémentaires* → *Exécuter quand même*.
-- **macOS** : clic droit sur l'app → *Ouvrir* → *Ouvrir* (ou `xattr -cr "/Applications/Claude Sessions.app"`).
+- **macOS** : au premier lancement, macOS bloque l'app (« impossible de vérifier le développeur »). Ouvre **Réglages Système › Confidentialité et sécurité**, descends jusqu'au message sur Claude Sessions et clique **Ouvrir quand même** (puis confirme). Sur les macOS récents, « clic droit › Ouvrir » ne suffit plus. Autre possibilité, dans le Terminal : `xattr -cr "/Applications/Claude Sessions.app"`.
 
 Ensuite, les nouvelles versions s'installent toutes seules sous Windows (§ 17).
 
@@ -273,7 +273,7 @@ Sur Mac, <kbd>Ctrl</kbd>+<kbd>Alt</kbd> = <kbd>Ctrl</kbd>+<kbd>Option</kbd>. Dan
 | « Claude Code introuvable » / la session s'arrête aussitôt | vérifier `claude --version` dans un terminal ; Réglages › Diagnostic indique le chemin utilisé. Sur Mac : lancer une fois `open -a "Claude Sessions"` depuis le Terminal. |
 | Worktrees / Modifications indisponibles | `git` n'est pas installé (Diagnostic l'indique). |
 | L'icône n'apparaît pas près de l'horloge (Windows 11) | elle est sous la flèche **^** ; glisse-la dans la zone visible. |
-| macOS : « l'app est endommagée » | `xattr -cr "/Applications/Claude Sessions.app"` puis relancer. |
+| macOS : l'app ne s'ouvre pas (« développeur non vérifié », « endommagée ») | Réglages Système › Confidentialité et sécurité › **Ouvrir quand même** ; ou `xattr -cr "/Applications/Claude Sessions.app"` puis relancer. |
 | Mot de passe de verrouillage oublié | non récupérable : fermer la session ; la conversation reste dans les fichiers de Claude Code. |
 | Autre souci | Réglages › Diagnostic › **Copier le rapport**, puis [ouvrir une issue](https://github.com/khalilbenaz/claude-sessions-manager/issues). |
 

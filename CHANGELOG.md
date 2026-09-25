@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.3.1] — 2026-09-25
+
+### Corrigé (retours des tests sur Mac, #1)
+- **Premier lancement sur macOS récent** : procédure mise à jour (Réglages Système › Confidentialité et sécurité › *Ouvrir quand même*, ou `xattr -cr`) ; « clic droit › Ouvrir » ne suffit plus.
+- **Menus macOS** entièrement traduits (Édition, Fenêtre étaient en anglais), selon la langue du système ; ajout de Réglages… (⌘,) dans Fichier.
+- **Chemins de `claude` et `node` avec fnm** : les dossiers temporaires par shell (`fnm_multishells`) sont remplacés par leur emplacement réel.
+
+### Préparé
+- Paquet Microsoft Store (nom réservé : « Claude Sessions Manager ») — voir STORE.md (#29).
+
 ## [3.3.0] — 2026-09-25
 
 ### Ajouté

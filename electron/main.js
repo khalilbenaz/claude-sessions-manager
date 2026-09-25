@@ -311,16 +311,25 @@ function buildTray() {
   setInterval(refreshTrayIcon, 15000);
 }
 
+// Libellés des menus natifs selon la langue du système (la page, elle, suit le réglage « Langue »).
+const L = (fr, en) => (/^fr/i.test(app.getLocale() || '') ? fr : en);
 function buildAppMenu() {
   if (!IS_MAC) { Menu.setApplicationMenu(null); return; } // Windows : pas de barre de menus
   // macOS : menu requis pour Cmd+C/V/X/A/Q dans les champs.
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { role: 'appMenu', submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' },
-      { label: 'Quitter (les sessions continuent)', accelerator: 'Cmd+Q', click: () => { quitting = true; app.quit(); } }] },
-    { label: 'Fichier', submenu: [{ label: 'Nouvelle session…', accelerator: 'Cmd+N', click: () => send('new') }, { label: 'Historique…', accelerator: 'Cmd+Shift+H', click: () => send('history') }, { type: 'separator' }, { role: 'close', label: 'Fermer la fenêtre' }] },
-    { role: 'editMenu' },
-    { label: 'Présentation', submenu: [{ role: 'reload' }, { role: 'togglefullscreen' }] },
-    { role: 'windowMenu' },
+    { role: 'appMenu', submenu: [{ role: 'about', label: L('À propos de Claude Sessions', 'About Claude Sessions') }, { type: 'separator' }, { role: 'hide', label: L('Masquer Claude Sessions', 'Hide Claude Sessions') }, { role: 'hideOthers', label: L('Masquer les autres', 'Hide Others') }, { role: 'unhide', label: L('Tout afficher', 'Show All') }, { type: 'separator' },
+      { label: L('Quitter (les sessions continuent)', 'Quit (sessions keep running)'), accelerator: 'Cmd+Q', click: () => { quitting = true; app.quit(); } }] },
+    { label: L('Fichier', 'File'), submenu: [{ label: L('Nouvelle session…', 'New session…'), accelerator: 'Cmd+N', click: () => send('new') }, { label: L('Historique…', 'History…'), accelerator: 'Cmd+Shift+H', click: () => send('history') }, { label: L('Réglages…', 'Settings…'), accelerator: 'Cmd+,', click: () => send('settings') }, { type: 'separator' }, { role: 'close', label: L('Fermer la fenêtre', 'Close Window') }] },
+    // Édition et Fenêtre construits à la main : les menus prédéfinis d'Electron restent en anglais
+    { label: L('Édition', 'Edit'), submenu: [
+      { role: 'undo', label: L('Annuler', 'Undo') }, { role: 'redo', label: L('Rétablir', 'Redo') }, { type: 'separator' },
+      { role: 'cut', label: L('Couper', 'Cut') }, { role: 'copy', label: L('Copier', 'Copy') }, { role: 'paste', label: L('Coller', 'Paste') },
+      { role: 'pasteAndMatchStyle', label: L('Coller et adapter le style', 'Paste and Match Style') }, { role: 'delete', label: L('Supprimer', 'Delete') },
+      { role: 'selectAll', label: L('Tout sélectionner', 'Select All') }] },
+    { label: L('Présentation', 'View'), submenu: [{ role: 'reload', label: L('Recharger', 'Reload') }, { role: 'togglefullscreen', label: L('Plein écran', 'Toggle Full Screen') }] },
+    { label: L('Fenêtre', 'Window'), role: 'window', submenu: [
+      { role: 'minimize', label: L('Réduire', 'Minimize') }, { role: 'zoom', label: L('Zoom', 'Zoom') }, { type: 'separator' },
+      { role: 'front', label: L('Tout ramener au premier plan', 'Bring All to Front') }] },
   ]));
 }
 

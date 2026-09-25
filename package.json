@@ -1,6 +1,6 @@
 {
   "name": "claude-sessions-manager",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "description": "Une fenêtre pour piloter plusieurs sessions Claude Code (Windows et macOS) : sessions persistantes, état en direct, historique, reprise automatique.",
   "bin": {
     "csm": "bin/csm.js"
@@ -128,7 +128,7 @@
     ],
     "appx": {
       "applicationId": "ClaudeSessions",
-      "displayName": "Claude Sessions",
+      "displayName": "Claude Sessions Manager",
       "identityName": "KhalilBenazzouz.ClaudeSessions",
       "publisher": "CN=00000000-0000-0000-0000-000000000000",
       "publisherDisplayName": "Khalil Benazzouz",

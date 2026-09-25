@@ -10,7 +10,7 @@ Pourquoi : le Microsoft Store signe lui-même les applications qu'il distribue �
 ## 2. Réserver le nom de l'application
 
 1. Partner Center › **Apps et jeux** › **+ Nouveau produit** › **Application MSIX ou PWA**.
-2. Nom : **Claude Sessions** (si le nom est pris, en choisir un proche, par ex. « Claude Sessions Manager »).
+2. Nom réservé : **Claude Sessions Manager** (c'est aussi le nom affiché par le paquet Store : `build.appx.displayName`).
 3. Dans le produit : **Gestion des produits › Identité du produit**. Noter les trois valeurs :
 
 | Partner Center | Secret GitHub à créer |
