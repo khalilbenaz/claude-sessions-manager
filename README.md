@@ -88,3 +88,21 @@ Variables : `CSM_PORT` (défaut 7890 ; un autre port = instance séparée avec s
 | W | fermer la session |
 
 Dans le terminal — Windows : Ctrl+C avec sélection = copier, Ctrl+V = coller, Ctrl +/−/0 = zoom. macOS : Cmd+C / Cmd+V, Cmd +/−/0 ; Ctrl+C et Ctrl+V restent à Claude. Glisser-déposer pour réordonner.
+
+## Licence
+
+[MIT](LICENSE) — logiciel libre. Projet indépendant, non affilié à Anthropic ; « Claude » et « Claude Code » sont des marques d'Anthropic.
+
+## Code signing policy
+
+Windows builds are intended to be signed through the [SignPath Foundation](https://signpath.org) free code signing program for open-source projects (application pending).
+
+- Builds are produced only by the public GitHub Actions workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) from tagged commits of this repository; no locally built binary is ever signed.
+- Committers and reviewers: [@khalilbenaz](https://github.com/khalilbenaz)
+- Approvers (release signing): [@khalilbenaz](https://github.com/khalilbenaz)
+
+## Privacy policy
+
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
+
+Claude Sessions runs a server bound to `127.0.0.1` only (not reachable from the network) and stores its data locally (`%APPDATA%\claude-sessions`, `~/Library/Application Support/claude-sessions`). It collects no telemetry. Network traffic comes only from the Claude Code sessions the user starts, which talk to Anthropic's API as Claude Code normally does.
