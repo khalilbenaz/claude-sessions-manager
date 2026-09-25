@@ -113,7 +113,7 @@ function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
 
 function connect() {
   ws = new WebSocket(`ws://${location.host}/ws?token=${TOKEN}`);
-  ws.onopen = () => $('#conn').classList.remove('off');
+  ws.onopen = () => { $('#conn').classList.remove('off'); checkServerVersion(); };
   ws.onclose = () => { $('#conn').classList.add('off'); setTimeout(connect, 1500); };
   ws.onmessage = ev => {
     const m = JSON.parse(ev.data);
@@ -649,3 +649,23 @@ document.addEventListener('click', askNotify, { once: true });
 window.csmNative?.onAction(a => { if (a === 'new') openNew(); else if (a === 'history') openHistory(); });
 
 connect();
+
+// ------------------------------------------------------------------ version du serveur
+// Le serveur survit aux mises à jour de l'app : s'il tourne un ancien code, les nouvelles routes manquent.
+const UI_VERSION = document.querySelector('meta[name="csm-version"]')?.content || '';
+async function checkServerVersion() {
+  let server = '';
+  try { server = (await api('GET', '/api/version')).version; } catch { server = ''; } // ancienne version : route absente
+  const expected = window.csmNative?.appVersion?.() || UI_VERSION;
+  const stale = !server || (expected && server !== expected);
+  $('#stale').hidden = !stale;
+  if (!stale) return;
+  $('#staleMsg').textContent = `Le serveur tourne ${server ? 'la version ' + server : 'une ancienne version'}${expected ? ' (application : ' + expected + ')' : ''} : certaines fonctions ne marchent pas. Redémarrer le relance avec le bon code ; les sessions ouvertes reviennent toutes seules.`;
+  $('#btnStale').hidden = !window.csmNative?.restartServer;
+  if (!window.csmNative) $('#staleMsg').textContent += ' Commande : csm restart';
+}
+$('#btnStale').onclick = async () => {
+  $('#btnStale').disabled = true; $('#btnStale').textContent = 'Redémarrage…';
+  const ok = await window.csmNative.restartServer();
+  if (!ok) { $('#btnStale').disabled = false; $('#btnStale').textContent = 'Redémarrer le serveur'; toast('Le serveur ne redémarre pas — voir le journal', true); }
+};

@@ -23,6 +23,18 @@ if (!app.requestSingleInstanceLock()) { app.quit(); return; }
 let win = null;
 let tray = null;
 let quitting = false;
+let updates = null; // electron/updater.js
+
+// Lecture d'un réglage du serveur (le jeton est dans le dossier de données, lisible par l'utilisateur seul).
+function serverGet(p) {
+  return new Promise(resolve => {
+    let token = ''; try { token = fs.readFileSync(path.join(DATA, 'token'), 'utf8').trim(); } catch { }
+    const req = http.get(`${ORIGIN}${p}`, { headers: { 'X-CSM-Token': token }, timeout: 2000 }, res => {
+      let b = ''; res.on('data', c => b += c); res.on('end', () => { try { resolve(JSON.parse(b)); } catch { resolve(null); } });
+    });
+    req.on('error', () => resolve(null)); req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
 
 // ---------------------------------------------------------------- serveur
 function isUp() {
@@ -152,6 +164,21 @@ function registerIpc() {
     tray?.setToolTip(n ? `Claude Sessions — ${n} session(s) en attente` : 'Claude Sessions');
   });
   ipcMain.on('csm:focus', e => { if (trusted(e)) showWindow(); });
+  ipcMain.handle('csm:update', async (e, action) => {
+    if (!trusted(e) || !updates) return updates?.state || null;
+    if (action === 'check') await updates.check();
+    else if (action === 'install') await updates.install();
+    return updates.state;
+  });
+  ipcMain.on('csm:app-version', e => { e.returnValue = trusted(e) ? app.getVersion() : ''; });
+  ipcMain.handle('csm:restart-server', async e => {
+    if (!trusted(e)) return false;
+    stopServer();
+    for (let i = 0; i < 30 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200));
+    const ok = await ensureServer();
+    if (ok && win && !win.isDestroyed()) win.loadURL(URL_);
+    return ok;
+  });
 }
 
 let badge = null;
@@ -170,15 +197,25 @@ function badgeIcon() {
 function loginItem() { return app.getLoginItemSettings({ args: ['--hidden'] }).openAtLogin; }
 function setLoginItem(on) { app.setLoginItemSettings({ openAtLogin: on, openAsHidden: true, args: ['--hidden'] }); }
 
+let refreshTray = () => { };
+function updateMenuItems() {
+  const st = updates?.state; if (!st) return [];
+  if (st.status === 'ready') return [{ label: `Redémarrer pour installer la version ${st.version}`, click: () => updates.install() }, { type: 'separator' }];
+  if (st.status === 'available') return [{ label: `Télécharger la version ${st.version}…`, click: () => updates.install() }, { type: 'separator' }];
+  if (st.status === 'downloading') return [{ label: `Téléchargement de la version ${st.version || ''}… ${st.progress ? st.progress + ' %' : ''}`, enabled: false }, { type: 'separator' }];
+  return [];
+}
 function buildTray() {
   const img = nativeImage.createFromPath(path.join(ROOT, 'public', 'icon.png')).resize({ width: IS_MAC ? 18 : 16, height: IS_MAC ? 18 : 16 });
   tray = new Tray(img);
   tray.setToolTip('Claude Sessions');
   const menu = () => Menu.buildFromTemplate([
     { label: 'Ouvrir Claude Sessions', click: showWindow },
+    ...updateMenuItems(),
     { label: 'Nouvelle session…', click: () => send('new') },
     { label: 'Historique…', click: () => send('history') },
     { type: 'separator' },
+    { label: 'Rechercher des mises à jour', click: () => updates?.check(), visible: !!updates && app.isPackaged },
     { label: 'Lancer au démarrage de l’ordinateur', type: 'checkbox', checked: loginItem(), click: i => setLoginItem(i.checked) },
     { label: 'Redémarrer le serveur (les sessions reviennent)', click: async () => { stopServer(); await new Promise(r => setTimeout(r, 800)); await ensureServer(); win?.loadURL(URL_); } },
     { type: 'separator' },
@@ -186,6 +223,7 @@ function buildTray() {
     { label: 'Quitter et arrêter toutes les sessions', click: () => { quitting = true; stopServer(); app.quit(); } },
   ]);
   tray.setContextMenu(menu());
+  refreshTray = () => tray.setContextMenu(menu());
   tray.on('click', () => (IS_WIN ? showWindow() : null));
   tray.on('right-click', () => tray.setContextMenu(menu()));
 }
@@ -224,4 +262,10 @@ app.whenReady().then(async () => {
     dialog.showErrorBox('Claude Sessions', `Le serveur local ne démarre pas.\n\nJournal : ${path.join(DATA, 'server.log')}`);
   }
   createWindow();
+  updates = require('./updater')({
+    enabled: async () => ((await serverGet('/api/settings')) || {}).autoUpdate !== false,
+    beforeInstall: async () => { stopServer(); for (let i = 0; i < 30 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200)); },
+    onState: st => { refreshTray(); if (win && !win.isDestroyed()) win.webContents.send('csm:update-state', st); },
+    log: m => console.log(m),
+  });
 });

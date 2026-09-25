@@ -31,6 +31,8 @@ jobs:
           node --check server.js
           node --check electron/main.js
           node --check public/app.js
+      - name: Tests de bout en bout (faux claude)
+        run: npm test
       - name: Empaquetage
         run: npx electron-builder ${{ matrix.target }} --publish never
         env:
@@ -41,6 +43,8 @@ jobs:
           path: |
             dist/*.exe
             dist/*.dmg
+            dist/*.blockmap
+            dist/latest*.yml
           if-no-files-found: error
 
   release:
