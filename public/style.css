@@ -113,3 +113,9 @@ dialog menu { display: flex; justify-content: flex-end; gap: 8px; margin: 14px 0
 #histList .tag { color: var(--accent); font-size: 11px; margin-left: 6px; }
 
 ::-webkit-scrollbar { width: 10px; } ::-webkit-scrollbar-thumb { background: #333844; border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+
+/* ---- images / fichiers : zone de dépôt et notification */
+.term.dropping::after { content: 'Déposer pour joindre à la session'; position: absolute; inset: 8px; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--accent); border-radius: 10px; background: rgba(217,119,87,.10); color: var(--fg); font-size: 15px; pointer-events: none; }
+.toast { position: absolute; left: 50%; bottom: 18px; transform: translate(-50%, 10px); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s; z-index: 50; max-width: 80%; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.error { border-color: var(--warn); color: var(--warn); }

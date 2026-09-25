@@ -37,6 +37,22 @@ function ensureTerm(id) {
   term.loadAddon(new WebLinksAddon.WebLinksAddon((e, uri) => window.open(uri, '_blank')));
   term.open(el);
   term.onData(d => send({ t: 'input', id, d }));
+  // Images / fichiers : glisser-déposer ou coller → copie enregistrée par le serveur, chemin collé dans Claude.
+  el.addEventListener('dragover', e => { if (hasFiles(e.dataTransfer)) { e.preventDefault(); el.classList.add('dropping'); } });
+  el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('dropping'); });
+  el.addEventListener('drop', e => {
+    el.classList.remove('dropping');
+    const files = [...(e.dataTransfer?.files || [])];
+    if (!files.length) return;
+    e.preventDefault();
+    attachFiles(id, files);
+  });
+  el.addEventListener('paste', e => {
+    const files = [...(e.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+    if (!files.length) return; // texte : xterm s'en charge
+    e.preventDefault(); e.stopImmediatePropagation();
+    attachFiles(id, files);
+  }, true); // phase de capture : avant le gestionnaire de xterm, qui ne garderait que le texte
   term.attachCustomKeyEventHandler(e => {
     if (e.type !== 'keydown') return true;
     if (e.ctrlKey && e.altKey && globalShortcut(e)) return false;
@@ -275,7 +291,64 @@ $('#ctx').addEventListener('keydown', e => {
 const clip = {
   copy: t => navigator.clipboard.writeText(t).catch(() => { }),
   read: () => navigator.clipboard.readText().catch(() => ''),
+  // Images du presse-papiers (menu « Coller ») ; [] si refusé ou sans image.
+  async images() {
+    try {
+      const out = [];
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find(t => t.startsWith('image/'));
+        if (type) out.push(new File([await item.getType(type)], `image.${type.split('/')[1].replace('jpeg', 'jpg')}`, { type }));
+      }
+      return out;
+    } catch { return []; }
+  },
 };
+
+const hasFiles = dt => !!dt && [...dt.types].includes('Files');
+
+let pickTarget = null;
+function pickFiles(id) { pickTarget = id; $('#fileInput').value = ''; $('#fileInput').click(); }
+$('#fileInput').onchange = () => { const f = [...$('#fileInput').files]; if (f.length && pickTarget) attachFiles(pickTarget, f); };
+$('#btnAttach').onclick = () => active && pickFiles(active);
+
+async function uploadFile(file) {
+  const r = await fetch('/api/upload', {
+    method: 'POST', body: file,
+    headers: { 'X-CSM-Token': TOKEN, 'X-Filename': encodeURIComponent(file.name || 'image.png'), 'Content-Type': 'application/octet-stream' },
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j.path;
+}
+
+// Colle les chemins comme le ferait un terminal après un glisser-déposer : Claude détecte les images et les attache.
+async function attachFiles(id, files) {
+  const t = terms.get(id); if (!t) return;
+  toast(`Envoi de ${files.length > 1 ? `${files.length} fichiers` : `« ${files[0].name || 'image'} »`}…`);
+  try {
+    const paths = [];
+    for (const f of files) paths.push(await uploadFile(f));
+    const quoted = paths.map(p => (/\s/.test(p) ? `"${p}"` : p));
+    t.term.paste(quoted.join(' ') + ' ');
+    toast(files.length > 1 ? `${files.length} fichiers ajoutés` : 'Ajouté — il sera envoyé avec ton message');
+  } catch (e) { toast(`Échec : ${e.message}`, true); }
+  t.term.focus();
+}
+
+let toastTimer = null;
+function toast(msg, error) {
+  const el = $('#toast');
+  el.textContent = msg; el.className = `toast show${error ? ' error' : ''}`;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.className = 'toast'; }, error ? 5000 : 2500);
+}
+
+// Déposer un fichier ailleurs que sur un terminal ne doit pas faire quitter la page.
+window.addEventListener('dragover', e => { if (hasFiles(e.dataTransfer)) e.preventDefault(); });
+window.addEventListener('drop', e => {
+  if (!hasFiles(e.dataTransfer)) return;
+  e.preventDefault();
+  if (active && !e.target.closest('.term')) attachFiles(active, [...e.dataTransfer.files]);
+});
 
 function sessionItems(id) {
   const s = sessions.get(id); if (!s) return [];
@@ -297,7 +370,12 @@ function terminalItems(id) {
   const { term } = t;
   return [
     ['Copier', () => { clip.copy(term.getSelection()); term.clearSelection(); term.focus(); }, { disabled: !term.hasSelection(), kbd: IS_MAC ? '⌘C' : 'Ctrl+C' }],
-    ['Coller', async () => { const txt = await clip.read(); if (txt) term.paste(txt); term.focus(); }, { kbd: IS_MAC ? '⌘V' : 'Ctrl+V' }],
+    ['Coller', async () => {
+      const imgs = await clip.images();
+      if (imgs.length) return attachFiles(id, imgs);
+      const txt = await clip.read(); if (txt) term.paste(txt); term.focus();
+    }, { kbd: IS_MAC ? '⌘V' : 'Ctrl+V' }],
+    ['Joindre un fichier…', () => pickFiles(id)],
     ['Tout sélectionner', () => term.selectAll()],
     ['Effacer l’écran', () => { term.clear(); term.focus(); }],
     '-',
