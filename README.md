@@ -2,7 +2,33 @@
 
 Une seule fenêtre pour piloter plusieurs sessions Claude Code au lieu d'une pile d'onglets de terminal. **Windows et macOS.**
 
-## Installation
+## Application (recommandé)
+
+Télécharger depuis les [Releases](https://github.com/khalilbenaz/claude-sessions-manager/releases) :
+
+| | Fichier | Installation |
+|---|---|---|
+| **Windows** | `Claude-Sessions-Setup-x.y.z.exe` | double-clic — installation en un clic, sans droits administrateur |
+| **Mac Apple Silicon** | `Claude-Sessions-x.y.z-arm64.dmg` | ouvrir le .dmg, glisser dans Applications |
+| **Mac Intel** | `Claude-Sessions-x.y.z-x64.dmg` | idem |
+
+Seul prérequis : [Claude Code](https://docs.claude.com/claude-code) installé (`claude`). Node.js n'est **pas** nécessaire.
+
+L'application n'est pas signée par un certificat éditeur :
+- **Windows** : « Windows a protégé votre ordinateur » → *Informations complémentaires* → *Exécuter quand même* (une seule fois).
+- **macOS** : au premier lancement, clic droit sur l'app → *Ouvrir* → *Ouvrir* ; ou `xattr -cr "/Applications/Claude Sessions.app"`.
+
+Ce que fait l'application :
+- fenêtre dédiée, icône dans la barre des tâches (Windows) / la barre de menus (macOS) avec : nouvelle session, historique, lancer au démarrage, redémarrer le serveur, quitter ;
+- **fermer la fenêtre ne coupe rien** : les sessions tournent dans un serveur local séparé ; « Quitter » ferme l'app et laisse les sessions tourner, « Quitter et arrêter toutes les sessions » les arrête (elles reviendront au prochain lancement) ;
+- lancement automatique à l'ouverture de session (activé au premier lancement, réglable dans le menu de l'icône) ;
+- sélecteur de dossier natif, notifications système, pastille du nombre de sessions en attente (Dock / barre des tâches), rendu GPU du terminal.
+
+Sécurité : page isolée (`contextIsolation` + `sandbox`, aucun accès Node côté page), navigation limitée au serveur local, liens externes ouverts dans le navigateur, permissions restreintes (notifications, presse-papiers), CSP sans script inline, IPC vérifié par origine ; serveur en écoute sur `127.0.0.1` uniquement avec jeton aléatoire et contrôle de l'en-tête Host.
+
+Construire soi-même : `npm ci && npm run dist:win` (Windows) ou `npm run dist:mac` (macOS) → `dist/`. Un tag `v*` poussé sur GitHub construit les deux et publie la release (`.github/workflows/release.yml`).
+
+## Installation en ligne de commande (sans application)
 
 Prérequis : [Node.js](https://nodejs.org) 18+ et [Claude Code](https://docs.claude.com/claude-code) (`claude` dans le PATH).
 

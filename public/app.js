@@ -1,6 +1,6 @@
 'use strict';
 const $ = s => document.querySelector(s);
-const TOKEN = window.CSM_TOKEN;
+const TOKEN = document.querySelector('meta[name="csm-token"]').content;
 const IS_MAC = /Mac/i.test(navigator.platform || navigator.userAgent);
 const LS = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } } };
 
@@ -68,6 +68,18 @@ function ensureTerm(id) {
   const t = { term, fit, el };
   terms.set(id, t);
   return t;
+}
+
+// Rendu GPU (WebGL) pour le terminal affiché seulement : fluide, et un seul contexte WebGL quel que soit
+// le nombre de sessions (les navigateurs en limitent le nombre). Repli automatique sur le rendu DOM.
+function gpu(t, on) {
+  if (on && !t.webgl && window.WebglAddon) {
+    try {
+      const gl = new WebglAddon.WebglAddon();
+      gl.onContextLoss(() => { gl.dispose(); t.webgl = null; });
+      t.term.loadAddon(gl); t.webgl = gl;
+    } catch { t.webgl = null; }
+  } else if (!on && t.webgl) { try { t.webgl.dispose(); } catch { } t.webgl = null; }
 }
 
 function zoom(k) {
@@ -152,7 +164,7 @@ function notifyTransition(prev, s) {
     const n = new Notification(`${s.name} — ${s.status === 'attention' ? 'attend une réponse' : 'terminé'}`, {
       body: s.message || s.cwd, tag: s.id, icon: 'icon.svg', silent: false,
     });
-    n.onclick = () => { window.focus(); select(s.id); n.close(); };
+    n.onclick = () => { window.csmNative ? window.csmNative.focus() : window.focus(); select(s.id); n.close(); };
   }
 }
 
@@ -195,6 +207,7 @@ function render() {
   });
   const attn = [...sessions.values()].filter(s => s.status === 'attention').length;
   document.title = attn ? `(${attn}) Claude Sessions` : 'Claude Sessions';
+  window.csmNative?.setAttention(attn); // pastille Dock / barre des tâches
   document.body.classList.toggle('nosession', sessions.size === 0);
   renderBar();
 }
@@ -217,7 +230,7 @@ function select(id) {
   if (!id || !sessions.has(id)) { active = null; LS.set('csm.active', null); render(); return; }
   active = id; LS.set('csm.active', id);
   unread.delete(id);
-  for (const [k, t] of terms) t.el.classList.toggle('show', k === id);
+  for (const [k, t] of terms) { t.el.classList.toggle('show', k === id); gpu(t, k === id); }
   render();
   requestAnimationFrame(() => { fitActive(true); terms.get(id)?.term.focus(); });
   const s = sessions.get(id);
@@ -468,7 +481,9 @@ $('#btnBrowse').onclick = async () => {
   const f = $('#formNew'), btn = $('#btnBrowse');
   btn.disabled = true; btn.textContent = 'Ouverture…';
   try {
-    const { path } = await api('POST', '/api/pick-folder', { initial: f.cwd.value.trim() });
+    const initial = f.cwd.value.trim();
+    // Application : boîte de dialogue native d'Electron ; navigateur : dialogue système ouvert par le serveur.
+    const path = window.csmNative ? await window.csmNative.pickFolder(initial) : (await api('POST', '/api/pick-folder', { initial })).path;
     if (path) {
       f.cwd.value = path;
       if (!f.name.value.trim()) f.name.placeholder = path.split(/[\\/]/).filter(Boolean).pop() || '(nom du dossier)';
@@ -629,5 +644,8 @@ function askNotify() {
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 }
 document.addEventListener('click', askNotify, { once: true });
+
+// Actions venant du menu de l'application (barre des tâches / de menus).
+window.csmNative?.onAction(a => { if (a === 'new') openNew(); else if (a === 'history') openHistory(); });
 
 connect();
