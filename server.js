@@ -12,6 +12,11 @@ const { ROOT, PORT, IS_WIN, IS_MAC, DATA, LEGACY_DATA, which, resolveClaude } = 
 
 const HOST = '127.0.0.1';
 const PROJECTS = path.join(os.homedir(), '.claude', 'projects');
+// Fichiers déposés / images collées : le navigateur ne donne pas le chemin d'origine, on enregistre une copie
+// et on colle son chemin dans Claude (qui l'attache comme dans un vrai terminal). Dossier temporaire sans espace
+// (le dossier de données macOS « Application Support » en contient un, ce qui casse la détection du chemin).
+const UPLOADS = path.join(os.tmpdir(), 'csm-uploads');
+const UPLOAD_MAX = 30 * 1024 * 1024;
 const SCROLLBACK_MAX = 2 * 1024 * 1024;
 
 fs.mkdirSync(DATA, { recursive: true });
@@ -369,6 +374,37 @@ function json(res, code, body) {
   res.end(JSON.stringify(body));
 }
 
+function saveUpload(req, rawName) {
+  return new Promise((resolve, reject) => {
+    const chunks = []; let size = 0;
+    req.on('data', c => {
+      size += c.length;
+      if (size > UPLOAD_MAX) { reject(new Error('fichier trop gros (30 Mo max)')); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      try {
+        fs.mkdirSync(UPLOADS, { recursive: true });
+        let name = decodeURIComponent(rawName || '') || 'image.png';
+        name = path.basename(name).replace(/[^\w.-]+/g, '_').replace(/^\.+/, '').slice(-80) || 'fichier';
+        const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+        const file = path.join(UPLOADS, `${stamp}-${crypto.randomBytes(3).toString('hex')}-${name}`);
+        fs.writeFileSync(file, Buffer.concat(chunks));
+        resolve(file);
+      } catch (e) { reject(e); }
+    });
+    req.on('error', reject);
+  });
+}
+
+// Ménage : copies de plus de 7 jours.
+try {
+  for (const f of fs.readdirSync(UPLOADS)) {
+    const full = path.join(UPLOADS, f);
+    if (Date.now() - fs.statSync(full).mtimeMs > 7 * 86400e3) fs.unlinkSync(full);
+  }
+} catch { }
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let b = ''; req.on('data', c => { b += c; if (b.length > 1e6) req.destroy(); });
@@ -398,6 +434,10 @@ const server = http.createServer(async (req, res) => {
   if (req.headers['x-csm-token'] !== TOKEN) return json(res, 401, { error: 'token' });
 
   try {
+    if (p === '/api/upload' && req.method === 'POST') {
+      const file = await saveUpload(req, String(req.headers['x-filename'] || ''));
+      return json(res, 200, { path: file });
+    }
     if (p === '/api/hook' && req.method === 'POST') {
       const { csm, event, data } = await readBody(req);
       const s = sessions.get(csm);

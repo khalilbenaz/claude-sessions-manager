@@ -37,11 +37,14 @@
     <span id="curCwd" class="cwd"></span>
     <span id="curMsg" class="msg"></span>
     <span class="spacer"></span>
+    <button id="btnAttach" title="Joindre une image ou un fichier (ou glisser-déposer / coller dans le terminal)">📎 Joindre</button>
+    <input type="file" id="fileInput" multiple hidden>
     <button id="btnRestart" title="Relancer / reprendre la conversation">Reprendre</button>
     <button id="btnKill" title="Arrêter le processus">Arrêter</button>
     <button id="btnClose" class="danger" title="Fermer et retirer de la liste">Fermer</button>
   </div>
   <div id="terms"></div>
+  <div id="toast" class="toast" role="status"></div>
   <div id="empty">
     <h1>Aucune session</h1>
     <p><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> nouvelle session · <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> historique · <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>1..9</kbd> / <kbd>↑</kbd><kbd>↓</kbd> naviguer</p>
