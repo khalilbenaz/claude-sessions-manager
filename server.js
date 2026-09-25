@@ -94,7 +94,7 @@ function persist() {
   const list = [...sessions.values()].map(s => ({
     id: s.id, name: s.name, cwd: s.cwd, args: s.args, claudeSessionId: s.claudeSessionId,
     createdAt: s.createdAt, order: s.order, wantRun: s.wantRun !== false, named: !!s.named, titleFor: s.titleFor || null,
-    ...extra(s),
+    ...extra(s), ...(s.lock ? { lock: s.lock } : {}),
   }));
   fs.writeFileSync(STORE, JSON.stringify(list, null, 2));
 }
@@ -104,6 +104,8 @@ function publicView(s) {
     id: s.id, name: s.name, cwd: s.cwd, args: s.args, status: s.status, message: s.message,
     claudeSessionId: s.claudeSessionId, createdAt: s.createdAt, lastActivity: s.lastActivity,
     statusSince: s.statusSince, alive: !!s.pty, order: s.order, ...extra(s),
+    // verrouillée : ni message (peut citer une commande), ni texte des prompts en attente
+    ...(s.lock ? { locked: true, lockHint: s.lock.hint || '', message: '', queue: s.queue ? s.queue.map(q => ({ id: q.id, text: '' })) : undefined } : {}),
   };
 }
 
@@ -193,7 +195,8 @@ function appendOut(s, d) {
     const nl = s.buf.indexOf('\n', cut);
     s.buf = s.buf.slice(nl > 0 ? nl + 1 : cut);
   }
-  broadcast({ t: 'out', id: s.id, d });
+  const data = JSON.stringify({ t: 'out', id: s.id, d });
+  for (const c of clients) if (c.readyState === 1 && (!s.lock || ctx.wsCan?.(s, c))) c.send(data);
 }
 
 function createSession({ name, cwd, args, resume, fork, ...more }) {
@@ -476,6 +479,20 @@ const server = http.createServer(async (req, res) => {
   if (!p.startsWith('/api/')) { res.writeHead(404); return res.end(); }
   if (req.headers['x-csm-token'] !== TOKEN) return json(res, 401, { error: 'token' });
 
+  // Session verrouillée : routes refusées sans ticket de déverrouillage de cette fenêtre (lib/lock.js).
+  const lockOf = (() => {
+    const sm = p.match(/^\/api\/sessions\/(\w+)(\/[\w-]+(?:\/[\w-]+)*)?$/);
+    if (sm) { const ls = sessions.get(sm[1]); if (ls?.lock && !['/lock', '/unlock-remove'].includes(sm[2] || '')) return ls; }
+    const hx = p.match(/^\/api\/history\/([\w-]+)\//);
+    if (hx) return ctx.lockedByConversation?.(hx[1]);
+    return null;
+  })();
+  if (lockOf && !ctx.canAccess?.(lockOf, req)) {
+    // lire le corps jusqu'au bout avant de répondre : sinon la connexion (keep-alive) est coupée
+    await new Promise(r => { req.on('end', r); req.on('error', r); req.resume(); });
+    return json(res, 423, { error: 'session verrouillée' });
+  }
+
   try {
     if (p === '/api/version' && req.method === 'GET') return json(res, 200, { version: VERSION, pid: process.pid, runtime: process.versions.electron ? 'electron' : 'node' });
     if (p === '/api/upload' && req.method === 'POST') {
@@ -504,6 +521,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/sessions' && req.method === 'GET') return json(res, 200, [...sessions.values()].map(publicView));
     if (p === '/api/sessions' && req.method === 'POST') {
       const b = await readBody(req);
+      const lk = b.resume && ctx.lockedByConversation?.(b.resume);
+      if (lk && !ctx.canAccess(lk, req)) return json(res, 423, { error: 'conversation d\u2019une session verrouillée' });
       return json(res, 200, publicView(createSession(b)));
     }
     const hm = p.match(/^\/api\/history\/([\w-]+)\/rename$/);
@@ -517,7 +536,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/history' && req.method === 'GET') {
       const managed = new Set([...sessions.values()].map(s => s.claudeSessionId).filter(Boolean));
-      return json(res, 200, history().slice(0, 400).map(h => ({ ...h, managed: managed.has(h.id) })));
+      return json(res, 200, history().slice(0, 400).map(h => {
+        const lk = ctx.lockedByConversation?.(h.id);
+        return lk ? { ...h, managed: true, locked: true, title: `🔒 ${lk.name}`, lastPrompt: '' } : { ...h, managed: managed.has(h.id) };
+      }));
     }
     if (p === '/api/external' && req.method === 'GET') return json(res, 200, externalSessions());
     if (p === '/api/import' && req.method === 'POST') {
@@ -592,18 +614,20 @@ server.on('upgrade', (req, sock, head) => {
   wss.handleUpgrade(req, sock, head, ws => {
     clients.add(ws);
     ws.send(JSON.stringify({ t: 'sessions', list: [...sessions.values()].map(publicView) }));
-    for (const s of sessions.values()) if (s.buf) ws.send(JSON.stringify({ t: 'replay', id: s.id, d: s.buf }));
+    for (const s of sessions.values()) if (s.buf && !s.lock) ws.send(JSON.stringify({ t: 'replay', id: s.id, d: s.buf }));
     ws.on('message', raw => {
       let m; try { m = JSON.parse(raw); } catch { return; }
+      if (ctx.onWsMessage?.(ws, m)) return;
       const s = sessions.get(m.id);
       if (!s) return;
+      if (s.lock && !ctx.wsCan?.(s, ws)) return; // verrouillée : ni saisie ni redimensionnement
       if (m.t === 'input' && s.pty) s.pty.write(m.d);
       else if (m.t === 'resize' && m.cols > 10 && m.rows > 3) {
         s.cols = m.cols; s.rows = m.rows;
         if (s.pty) try { s.pty.resize(m.cols, m.rows); } catch { }
       }
     });
-    ws.on('close', () => clients.delete(ws));
+    ws.on('close', () => { clients.delete(ws); ctx.onWsClose?.(ws); });
   });
 });
 
@@ -615,7 +639,7 @@ const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, broadcast, createSession, killSession, spawnSession,
   renameSession, history, transcriptPath, setStatus, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
 };
-for (const mod of ['git', 'settings', 'usage', 'tools', 'queue']) {
+for (const mod of ['lock', 'git', 'settings', 'usage', 'tools', 'queue']) {
   try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }
 }
 

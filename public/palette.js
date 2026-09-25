@@ -54,6 +54,7 @@
       ['⬇', t('Exporter la conversation'), () => F.exportConversation(s)],
       ['↻', s.alive ? t('Relancer la session') : t('Reprendre la session'), () => api('POST', `/api/sessions/${s.id}/restart`)],
       ['✕', t('Fermer la session'), () => closeSession(s.id), `${MOD}+Alt+W`],
+      ['🔒', s.locked ? t('Verrouiller maintenant') : t('Verrouiller par mot de passe…'), () => (s.locked ? F.lockNow(s.id) : F.setPassword(s.id)), `${MOD}+Alt+L`],
     );
     return a.map(([icon, label, run, kbd]) => ({ kind: 'action', icon, label, run, kbd }));
   }

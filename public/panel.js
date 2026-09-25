@@ -27,6 +27,11 @@
   document.querySelectorAll('.ptabs [data-tab]').forEach(b => { b.onclick = () => setOpen(true, b.dataset.tab); });
 
   function refresh() {
+    if (F.isLockedHere?.(active)) {
+      $('#changesCount').textContent = t('Modifications'); $('#btnChanges').classList.remove('has');
+      for (const n of ['changes', 'timeline', 'usage']) $(`#tab-${n}`).innerHTML = `<p class="hint">🔒 ${t('Session verrouillée')}</p>`;
+      return;
+    }
     if (tab === 'changes' || !open) loadChanges(); // compteur de la barre toujours à jour
     if (!open) return;
     if (tab === 'timeline') loadTimeline();

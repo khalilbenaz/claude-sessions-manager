@@ -40,6 +40,7 @@
 
   F.openSettings = async (which = 'general') => {
     fill();
+    dlg.querySelectorAll('.app-only').forEach(el => { el.hidden = !window.csmNative; });
     try {
       const eds = await api('GET', '/api/editors');
       const sel = $('#setEditor');

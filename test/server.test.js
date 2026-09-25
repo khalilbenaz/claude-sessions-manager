@@ -31,7 +31,7 @@ function req(method, p, body, { raw, headers = {}, host } = {}) {
     const r = http.request({ host: '127.0.0.1', port: PORT, path: p, method, headers: { Host: host || `127.0.0.1:${PORT}`, 'X-CSM-Token': token, 'Content-Type': 'application/json', ...headers } }, res => {
       let b = ''; res.on('data', c => b += c); res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch { } resolve({ status: res.statusCode, body: j, text: b }); });
     });
-    r.on('error', reject);
+    r.on('error', e => reject(new Error(`${method} ${p} : ${e.message}`)));
     if (data) r.write(data); r.end();
   });
 }
@@ -174,6 +174,63 @@ test('worktree : création, modifications, commit, fusion, suppression', async (
   await api('POST', `/api/sessions/${W.id}/worktree/remove`, { deleteBranch: true });
   assert.ok(!fs.existsSync(W.worktree.path));
   c.ws.close();
+});
+
+test('verrouillage par mot de passe : appliqué côté serveur', async () => {
+  const L = await api('POST', '/api/sessions', { cwd: WORK, name: 'secrète' });
+  const ready = await idle(L.id);
+  const c0 = await wsClient(); // un premier échange : la conversation a un transcript (historique)
+  c0.input(L.id, 'avant le verrou\r');
+  await waitFor(() => (c0.out[L.id] || '').includes('echo: avant le verrou'), 8000, 'premier échange');
+  c0.ws.close();
+  const v = await api('POST', `/api/sessions/${L.id}/lock`, { password: 'correct-horse', hint: 'cheval' });
+  assert.equal(v.locked, true); assert.equal(v.lockHint, 'cheval'); assert.equal(v.lock, undefined, 'le hash ne sort jamais');
+  assert.equal((await req('POST', `/api/sessions/${L.id}/lock`, { password: 'x' })).status, 400, 'trop court');
+
+  // fenêtre non déverrouillée : pas de relecture, pas de sortie, saisie ignorée, routes refusées
+  const c = await wsClient();
+  await sleep(400);
+  assert.equal(c.out[L.id], undefined, 'aucune relecture');
+  c.input(L.id, 'ne doit pas passer\r');
+  await sleep(1200);
+  assert.equal(c.out[L.id], undefined, 'saisie ignorée, aucune sortie');
+  for (const [m, p] of [['GET', `/api/sessions/${L.id}/git`], ['GET', `/api/sessions/${L.id}/timeline`], ['POST', `/api/sessions/${L.id}/prompt`], ['DELETE', `/api/sessions/${L.id}`], ['GET', `/api/history/${ready.claudeSessionId}/export`]])
+    assert.equal((await req(m, p, m === 'POST' ? { text: 'x' } : undefined)).status, 423, `${m} ${p} refusé`);
+  assert.equal((await req('POST', '/api/sessions', { cwd: WORK, resume: ready.claudeSessionId })).status, 423, 'reprise depuis l’historique refusée');
+  const h = (await api('GET', '/api/history')).find(x => x.id === ready.claudeSessionId);
+  assert.equal(h.locked, true); assert.equal(h.lastPrompt, '');
+
+  // mauvais mot de passe puis bon
+  const results = [];
+  c.ws.on('message', raw => { const m = JSON.parse(raw); if (m.t === 'unlock-result') results.push(m); });
+  c.ws.send(JSON.stringify({ t: 'unlock', id: L.id, password: 'faux' }));
+  await waitFor(() => results.length === 1, 5000, 'refus');
+  assert.equal(results[0].ok, false);
+  c.ws.send(JSON.stringify({ t: 'unlock', id: L.id, password: 'correct-horse' }));
+  await waitFor(() => results.length === 2, 5000, 'déverrouillage');
+  assert.equal(results[1].ok, true);
+  await waitFor(() => (c.out[L.id] || '').includes('FAUX CLAUDE'), 5000, 'relecture après déverrouillage');
+  c.input(L.id, 'maintenant oui\r');
+  await waitFor(() => (c.out[L.id] || '').includes('echo: maintenant oui'), 8000, 'saisie acceptée');
+  const tk = { headers: { 'X-CSM-Unlock': `${L.id}:${results[1].ticket}` } };
+  assert.equal((await req('GET', `/api/sessions/${L.id}/timeline`, undefined, tk)).status, 200, 'ticket accepté');
+  assert.equal((await req('GET', `/api/sessions/${L.id}/timeline`, undefined, { headers: { 'X-CSM-Unlock': `${L.id}:inventé` } })).status, 423, 'faux ticket refusé');
+
+  // une autre fenêtre ne profite pas du déverrouillage
+  const c2 = await wsClient(); await sleep(400);
+  assert.equal(c2.out[L.id], undefined, 'autre fenêtre : toujours verrouillée');
+  c2.ws.close();
+
+  // reverrouiller : ticket révoqué
+  c.ws.send(JSON.stringify({ t: 'lock', id: L.id })); await sleep(300);
+  assert.equal((await req('GET', `/api/sessions/${L.id}/timeline`, undefined, tk)).status, 423, 'ticket révoqué');
+  c.ws.close();
+
+  // le verrou survit au redémarrage du serveur
+  await stopServer(); await startServer();
+  assert.equal((await session(L.id)).locked, true);
+  assert.equal((await req('POST', `/api/sessions/${L.id}/unlock-remove`, { password: 'faux' })).status, 403);
+  assert.equal((await api('POST', `/api/sessions/${L.id}/unlock-remove`, { password: 'correct-horse' })).locked, undefined);
 });
 
 test('diagnostic et journaux', async () => {

@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.2.0] — 2026-09-25
+
+### Ajouté
+- **Verrouiller une session par mot de passe** (menu ⋯, clic droit, palette ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd>). Le verrou est appliqué par le serveur : tant qu'une fenêtre n'a pas déverrouillé la session, elle n'en reçoit ni l'affichage ni l'historique, sa saisie est ignorée et les actions sensibles (modifications, export, chronologie, file d'attente, fermeture) sont refusées ; le titre est masqué dans l'historique. Mot de passe haché (scrypt), essais limités, indice facultatif. Reverrouillage automatique quand la fenêtre est réduite ou après une inactivité (Réglages › Sécurité). Le verrou protège l'affichage dans l'application : les transcripts de Claude Code restent des fichiers locaux.
+- **Réduire dans la zone de notification** (Windows) / la barre de menus (macOS) au lieu de la barre des tâches ; clic sur l'icône = afficher / masquer ; menu de l'icône avec la liste des sessions et leur état (clic = y aller) ; point rouge sur l'icône quand une session attend ; infobulle avec le nombre de sessions. Réglages « réduire » et « fermer » dans Général.
+
 ## [3.1.0] — 2026-09-25
 
 ### Travail en parallèle
