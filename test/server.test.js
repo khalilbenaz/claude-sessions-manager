@@ -66,7 +66,12 @@ const session = async id => (await api('GET', '/api/sessions')).find(s => s.id =
 const idle = id => waitFor(async () => { const s = await session(id); return s && s.status === 'idle' && s.claudeSessionId ? s : null; }, 15000, 'session prête');
 
 before(startServer);
-after(async () => { await stopServer(); fs.rmSync(TMP, { recursive: true, force: true }); });
+after(async () => {
+  await stopServer();
+  // Windows : un faux claude qui finit de s'arrêter garde son dossier ouvert (EBUSY) — nettoyage tolérant,
+  // un échec ici ne doit pas faire échouer la suite (le dossier est dans le répertoire temporaire).
+  try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 }); } catch (e) { console.warn('nettoyage incomplet :', e.code); }
+});
 
 test('sécurité : jeton et en-tête Host exigés', async () => {
   assert.equal((await req('GET', '/api/sessions', undefined, { headers: { 'X-CSM-Token': 'mauvais' } })).status, 401);
