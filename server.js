@@ -53,8 +53,21 @@ const CLAUDE = resolveClaude();
 // Barres obliques : valables pour le shell des hooks sous Windows (bash ou cmd) comme sous macOS.
 const fwd = p => p.replace(/\\/g, '/');
 const HOOK_SCRIPT = fwd(path.join(ROOT, 'hook.js'));
-const NODE = fwd(process.execPath);
-const hookCmd = (ev) => [{ hooks: [{ type: 'command', command: `"${NODE}" "${HOOK_SCRIPT}" ${ev}`, timeout: 5 }] }];
+// Dans l'application (Electron lancé en mode Node), l'exécutable n'est pas « node » : il faut
+// ELECTRON_RUN_AS_NODE=1, qu'on ne laisse pas fuiter dans l'environnement de claude (il casserait les
+// applications Electron lancées depuis une session, ex. `code`). Un petit lanceur le pose pour le hook seul.
+function hookRunner() {
+  if (!process.versions.electron) return `"${fwd(process.execPath)}" "${HOOK_SCRIPT}"`;
+  const file = path.join(DATA, IS_WIN ? 'hook.cmd' : 'hook.sh');
+  const body = IS_WIN
+    ? `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\n"${process.execPath}" "${path.join(ROOT, 'hook.js')}" %*\r\n`
+    : `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec "${process.execPath}" "${path.join(ROOT, 'hook.js')}" "$@"\n`;
+  fs.writeFileSync(file, body);
+  if (!IS_WIN) fs.chmodSync(file, 0o755);
+  return `"${fwd(file)}"`;
+}
+const HOOK_RUNNER = hookRunner();
+const hookCmd = (ev) => [{ hooks: [{ type: 'command', command: `${HOOK_RUNNER} ${ev}`, timeout: 5 }] }];
 const HOOK_SETTINGS = path.join(DATA, 'hooks-settings.json');
 fs.writeFileSync(HOOK_SETTINGS, JSON.stringify({
   hooks: {
@@ -135,7 +148,7 @@ function spawnSession(s, { resume, fork } = {}) {
   if (resume && fork) args.push('--fork-session'); // ponctuel : jamais mémorisé dans s.args
   const env = { ...process.env, CSM_ID: s.id, CSM_PORT: String(PORT), CSM_TOKEN: TOKEN, COLORTERM: 'truecolor' };
   // Si le serveur a été lancé depuis une session Claude, ne pas propager son identité (sinon session "enfant" non persistée).
-  for (const k of Object.keys(env)) if (/^(CLAUDECODE|CLAUDE_CODE_|CLAUDE_PID$|CLAUDE_EFFORT$|AI_AGENT$)/i.test(k)) delete env[k];
+  for (const k of Object.keys(env)) if (/^(CLAUDECODE|CLAUDE_CODE_|CLAUDE_PID$|CLAUDE_EFFORT$|AI_AGENT$|ELECTRON_RUN_AS_NODE$)/i.test(k)) delete env[k];
   let p;
   try {
     p = pty.spawn(CLAUDE, args, {
@@ -362,6 +375,21 @@ const STATIC = {
   '/xterm.css': 'node_modules/@xterm/xterm/css/xterm.css',
   '/addon-fit.js': 'node_modules/@xterm/addon-fit/lib/addon-fit.js',
   '/addon-web-links.js': 'node_modules/@xterm/addon-web-links/lib/addon-web-links.js',
+  '/addon-webgl.js': 'node_modules/@xterm/addon-webgl/lib/addon-webgl.js',
+};
+
+// Aucun script inline ni ressource externe ; WebSocket limité au serveur local ; pas d'intégration dans un cadre.
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': [
+    "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'", // xterm injecte des <style>
+    "img-src 'self' data: blob:", "font-src 'self' data:",
+    `connect-src 'self' ws://127.0.0.1:${PORT} ws://localhost:${PORT}`,
+    "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+  ].join('; '),
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  'Cross-Origin-Opener-Policy': 'same-origin',
 };
 
 function hostOk(req) {
@@ -420,13 +448,13 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
     const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8').replace('__CSM_TOKEN__', TOKEN);
-    res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store' });
+    res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
     return res.end(html);
   }
   if (req.method === 'GET' && (STATIC[p] || /^\/[\w.-]+\.(js|css|svg|png)$/.test(p))) {
     const file = STATIC[p] ? path.join(ROOT, STATIC[p]) : path.join(ROOT, 'public', p.slice(1));
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end(); }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' });
     return fs.createReadStream(file).pipe(res);
   }
 
