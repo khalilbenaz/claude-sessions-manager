@@ -53,6 +53,7 @@
       ['⏳', t('File d’attente de la session'), () => F.openQueue(s.id), `${MOD}+Alt+Q`],
       ['⬇', t('Exporter la conversation'), () => F.exportConversation(s)],
       ['⚡', t('Enregistrer la session comme modèle'), () => saveSessionAsTemplate(s.id)],
+      ['📱', isRemote(s) ? t('Désactiver l’accès depuis l’app Claude') : t('📱 Accès depuis l’app Claude (téléphone)'), () => setRemote(s.id, !isRemote(s))],
       ['↻', s.alive ? t('Relancer la session') : t('Reprendre la session'), () => api('POST', `/api/sessions/${s.id}/restart`)],
       ['✕', t('Fermer la session'), () => closeSession(s.id), `${MOD}+Alt+W`],
       ['🔒', s.locked ? t('Verrouiller maintenant') : t('Verrouiller par mot de passe…'), () => (s.locked ? F.lockNow(s.id) : F.setPassword(s.id)), `${MOD}+Alt+L`],

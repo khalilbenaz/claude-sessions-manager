@@ -19,7 +19,7 @@ Une seule fenêtre pour piloter plusieurs sessions [Claude Code](https://docs.cl
 11. [Palette, recherche, prompts, file d'attente, envoi groupé](#11-palette-recherche-prompts-file-dattente-envoi-groupé)
 12. [Modèles de session](#12-modèles-de-session)
 13. [Verrouiller une session par mot de passe](#13-verrouiller-une-session-par-mot-de-passe)
-14. [Notifications, zone de notification, arrière-plan](#14-notifications-zone-de-notification-arrière-plan)
+14. [Notifications, zone de notification, arrière-plan](#14-notifications-zone-de-notification-arrière-plan) — et [accès depuis l'app Claude (téléphone)](#14-bis-accès-depuis-lapp-claude-téléphone)
 15. [Thème clair / sombre, langue](#15-thème-clair--sombre-langue)
 16. [Réglages](#16-réglages)
 17. [Mises à jour](#17-mises-à-jour)
@@ -195,6 +195,17 @@ Pour masquer une session sensible (écran partagé, poste laissé ouvert) : ⋯ 
 - **Zone de notification** (Windows, près de l'horloge) / **barre de menus** (macOS) : **réduire ou fermer la fenêtre l'y envoie**, les sessions continuent. Clic sur l'icône = afficher / masquer ; **clic droit** = la **liste des sessions et leur état** (🟠 travaille, 🔴 attend, 🟢 prête ; clic pour y aller), nouvelle session, historique, réglages, lancer au démarrage, redémarrer le serveur, quitter. Un **point rouge** sur l'icône signale une session qui t'attend. Windows 11 : si l'icône est cachée, elle est sous la flèche **^** (glisse-la dans la zone visible).
 - **Quitter** : « Quitter (les sessions continuent) » ferme l'app ; « Quitter et arrêter toutes les sessions » arrête aussi le serveur (elles reviendront au prochain lancement).
 - **Lancement au démarrage** de l'ordinateur : activé au premier lancement, réglable dans le menu de l'icône.
+
+### 14 bis. Accès depuis l'app Claude (téléphone)
+
+Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iOS / Android, onglet **Code**) et depuis **claude.ai/code** : c'est la fonction **Remote Control** de Claude Code, que Claude Sessions active pour toi.
+
+- **Pour une nouvelle session** : coche **📱 Accessible depuis l'app Claude** dans « Nouvelle session ».
+- **Pour une session ouverte** : ⋯ › **📱 Accès depuis l'app Claude** (ou palette). La conversation continue, sans relancer ; même menu pour désactiver.
+- **Pour toutes les nouvelles sessions** : Réglages › Général › *Rendre les nouvelles sessions accessibles depuis l'app Claude*.
+- La session apparaît dans l'app Claude sous le **nom qu'elle a dans Claude Sessions** (pastille verte quand elle est en ligne) ; le badge **📱** la repère dans la liste. Après un redémarrage, elle se reconnecte toute seule.
+- **Prérequis** : abonnement Claude **Pro, Max, Team ou Enterprise**, connecté dans Claude Code avec `/login` (une clé API ne suffit pas). En Team / Enterprise, l'administrateur doit autoriser Remote Control.
+- **Sécurité** : connexion sortante chiffrée via Anthropic, **aucun port ouvert** sur ton PC ; le code et les fichiers restent chez toi. Le transcript de la session est stocké par Anthropic pour la synchronisation ([détails](https://code.claude.com/docs/en/remote-control)).
 
 ## 15. Thème clair / sombre, langue
 

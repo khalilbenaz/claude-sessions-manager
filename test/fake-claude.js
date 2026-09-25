@@ -50,6 +50,7 @@ async function prompt(text) {
 
 (async () => {
   await hook('SessionStart', { source: resume ? 'resume' : 'startup' });
+  if (argv.includes('--remote-control')) out(`REMOTE:${opt('--remote-control')}\r\n`);
   out(`FAUX CLAUDE prêt ${resume ? '(reprise ' + resume.slice(0, 8) + ')' : ''} — session ${sessionId}\r\n❯ `);
   let buf = '';
   process.stdin.setRawMode?.(true);

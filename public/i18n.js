@@ -80,6 +80,12 @@ const EN = {
   'Mises à jour automatiques désactivées dans les réglages.': 'Automatic updates are disabled in Settings.', 'Téléchargement de la version {v}… {p}': 'Downloading version {v}… {p}',
   'Version {v} prête : redémarre pour l’installer.': 'Version {v} is ready: restart to install it.', 'Version {v} disponible au téléchargement.': 'Version {v} is available for download.',
   'Échec de la vérification : {e}': 'Update check failed: {e}', 'Réglage non enregistré : ': 'Setting not saved: ',
+  // accès depuis l'app Claude
+  "📱 Accessible depuis l'": '📱 Accessible from the ', 'app Claude': 'Claude app', '(téléphone) et claude.ai/code — Remote Control de Claude Code': '(phone) and claude.ai/code — Claude Code Remote Control',
+  "📱 Rendre les nouvelles sessions accessibles depuis l'app Claude (Remote Control)": 'Make new sessions available in the Claude app (Remote Control)',
+  "Remote Control de Claude Code : la session apparaît dans l'app Claude (onglet Code) et sur claude.ai/code. Connexion sortante via Anthropic, aucun port ouvert ; le code reste sur ce PC. Nécessite un abonnement Pro, Max, Team ou Enterprise connecté avec /login (pas une clé API).": 'Claude Code Remote Control: the session shows up in the Claude app (Code tab) and on claude.ai/code. Outbound connection through Anthropic, no open port; your code stays on this computer. Requires a Pro, Max, Team or Enterprise subscription signed in with /login (not an API key).',
+  'Session accessible depuis l’app Claude (onglet Code)': 'Session available in the Claude app (Code tab)', 'Accès depuis l’app Claude désactivé': 'Claude app access turned off',
+  'Désactiver l’accès depuis l’app Claude': 'Turn off Claude app access', '📱 Accès depuis l’app Claude (téléphone)': '📱 Access from the Claude app (phone)',
   // modèles / prompts
   'Enregistrer comme modèle…': 'Save as template…', 'Enregistrer la session comme modèle': 'Save session as template',
   'Reprend le dossier, le groupe, le modèle et le mode de cette session. Retrouvable dans « Nouvelle session » et la palette (Ctrl+K).': 'Uses this session\u2019s folder, group, model and mode. Available in “New session” and the palette (Ctrl+K).',
