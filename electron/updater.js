@@ -65,7 +65,11 @@ module.exports = function setupUpdater({ enabled, beforeInstall, onState, log })
     } else shell.openExternal(state.url);
   }
 
-  setTimeout(check, 20e3);
-  setInterval(check, EVERY);
-  return { state, check, install };
+  // au lancement, toutes les 6 h, et au retour sur la fenêtre si la dernière vérification date de plus d'une heure
+  let last = 0;
+  const run = () => { last = Date.now(); return check(); };
+  setTimeout(run, 20e3);
+  setInterval(run, EVERY);
+  const onFocus = () => { if (Date.now() - last > 3600e3 && state.status !== 'ready' && state.status !== 'downloading') run(); };
+  return { state, check: run, install, onFocus };
 };

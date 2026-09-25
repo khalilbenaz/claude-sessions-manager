@@ -2,7 +2,7 @@
 // Claude Sessions — application de bureau (Windows / macOS).
 // La fenêtre n'est qu'une vue : les sessions vivent dans le serveur local (processus séparé), qui continue
 // de tourner quand on ferme ou quitte l'application.
-const { app, BrowserWindow, Tray, Menu, nativeImage, shell, dialog, ipcMain, session, screen, Notification } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, shell, dialog, ipcMain, session, screen, Notification, nativeTheme } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
@@ -100,7 +100,7 @@ function createWindow() {
   const st = loadState();
   win = new BrowserWindow({
     x: st.x, y: st.y, width: st.width || 1400, height: st.height || 900, minWidth: 760, minHeight: 480,
-    title: 'Claude Sessions', icon: ICON, show: false, backgroundColor: '#16181c', autoHideMenuBar: true,
+    title: 'Claude Sessions', icon: ICON, show: false, backgroundColor: nativeTheme.shouldUseDarkColors ? '#16181c' : '#f4f1ec', autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true,
@@ -124,7 +124,8 @@ function createWindow() {
   // Réduire : dans la zone de notification (Windows) / la barre de menus (macOS) plutôt que la barre des tâches.
   win.on('minimize', () => { if (prefs.minimizeToTray && tray) toTray(); });
   for (const ev of ['resize', 'move']) win.on(ev, debounce(saveState, 500));
-  win.on('focus', () => win.flashFrame(false));
+  win.on('focus', () => { win.flashFrame(false); updates?.onFocus?.(); });
+  win.on('show', () => updates?.onFocus?.());
 
   win.webContents.on('did-fail-load', async (e, code, desc, url, isMain) => {
     if (!isMain) return;
