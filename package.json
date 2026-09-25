@@ -1,6 +1,6 @@
 {
   "name": "claude-sessions-manager",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Une fenêtre pour piloter plusieurs sessions Claude Code (Windows & macOS) : sessions persistantes, état en direct, historique, reprise automatique.",
   "bin": {
     "csm": "bin/csm.js"
@@ -23,7 +23,8 @@
     "app": "electron .",
     "dist:win": "electron-builder --win --x64",
     "dist:mac": "electron-builder --mac --arm64 --x64",
-    "test": "node --test --test-concurrency=1 test/server.test.js"
+    "test": "node --test --test-concurrency=1 test/server.test.js",
+    "test:app": "node --test --test-concurrency=1 test/app.test.js"
   },
   "engines": {
     "node": ">=18"
@@ -47,7 +48,8 @@
   },
   "devDependencies": {
     "electron": "^44.4.5",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "playwright-core": "^1.63.0"
   },
   "productName": "Claude Sessions",
   "build": {
@@ -71,7 +73,8 @@
       "pick-folder.ps1",
       "package.json",
       "!**/*.pdb",
-      "!**/*.map"
+      "!**/*.map",
+      "!test/**"
     ],
     "win": {
       "target": [

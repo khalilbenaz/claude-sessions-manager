@@ -13,19 +13,22 @@
 <body>
 <aside id="side">
   <header>
-    <div class="brand"><img src="icon.svg" alt=""> Sessions</div>
-    <button id="btnNew" class="primary" title="Nouvelle session (Ctrl+Alt+N)">+ Nouvelle</button>
+    <div class="brand"><img src="icon.svg" alt=""> <span class="lbl">Sessions</span></div>
+    <button id="btnNew" class="primary" title="Nouvelle session (Ctrl+Alt+N)">+ <span class="lbl">Nouvelle</span></button>
   </header>
+  <button id="btnPalette" class="palHint" title="Palette de commandes">🔍 <span class="lbl">Rechercher…</span> <kbd class="lbl" id="palKbd">Ctrl+K</kbd></button>
   <ul id="list"></ul>
   <section id="ext" hidden>
     <div class="extHead">
-      <span>Dans un terminal <b id="extCount"></b></span>
+      <span class="lbl">Dans un terminal <b id="extCount"></b></span>
       <button id="btnImportAll" title="Ferme ces sessions dans leur terminal et les reprend ici">Tout ramener</button>
     </div>
     <ul id="extList"></ul>
   </section>
   <footer>
-    <button id="btnHistory" title="Reprendre une ancienne session (Ctrl+Alt+H)">Historique</button>
+    <button id="btnHistory" title="Reprendre une ancienne session (Ctrl+Alt+H)">🕘 <span class="lbl">Historique</span></button>
+    <button id="btnSettings" class="icon" title="Réglages (Ctrl+,)">⚙</button>
+    <button id="btnCompact" class="icon" title="Barre latérale compacte">⇤</button>
     <span id="conn" class="conn off" title="Connexion au serveur"></span>
   </footer>
 </aside>
@@ -35,30 +38,64 @@
     <span id="curDot" class="dot"></span>
     <span id="curName" class="name" title="Double-clic pour renommer"></span>
     <button id="btnRename" class="ren show" title="Renommer (Ctrl+Alt+R)">✎</button>
+    <span id="curBranch" class="branch" hidden></span>
     <span id="curCwd" class="cwd"></span>
     <span id="curMsg" class="msg"></span>
+    <span id="curQueue" class="qbadge" hidden title="Prompts en attente"></span>
     <span class="spacer"></span>
-    <button id="btnAttach" title="Joindre une image ou un fichier (ou glisser-déposer / coller dans le terminal)">📎 Joindre</button>
+    <span class="layouts" role="group" aria-label="Disposition">
+      <button data-layout="1" class="icon" title="Une session">▢</button>
+      <button data-layout="2c" class="icon" title="Deux colonnes">◫</button>
+      <button data-layout="2r" class="icon" title="Deux lignes">⊟</button>
+      <button data-layout="4" class="icon" title="Grille 2×2">⊞</button>
+    </span>
+    <button id="btnChanges" title="Fichiers modifiés par la session (Ctrl+Alt+G)">± <span id="changesCount">Modifications</span></button>
+    <button id="btnOpen" title="Ouvrir le dossier dans…">↗ Ouvrir</button>
+    <button id="btnAttach" class="icon" title="Joindre une image ou un fichier (ou glisser-déposer / coller dans le terminal)">📎</button>
     <input type="file" id="fileInput" multiple hidden>
     <button id="btnRestart" title="Relancer / reprendre la conversation">Reprendre</button>
-    <button id="btnKill" title="Arrêter le processus">Arrêter</button>
+    <button id="btnMore" class="icon" title="Plus d'actions">⋯</button>
+    <button id="btnKill" hidden>Arrêter</button>
     <button id="btnClose" class="danger" title="Fermer et retirer de la liste">Fermer</button>
   </div>
   <div id="stale" class="stale" hidden>
-    <span id="staleMsg">Le serveur tourne une ancienne version : certaines fonctions (images…) ne marchent pas.</span>
+    <span id="staleMsg"></span>
     <button id="btnStale" class="primary">Redémarrer le serveur</button>
   </div>
-  <div id="terms"></div>
+  <div id="updateBar" class="stale ok" hidden>
+    <span id="updateMsg"></span>
+    <button id="btnUpdate" class="primary">Redémarrer pour mettre à jour</button>
+  </div>
+  <div id="work">
+    <div id="terms" data-layout="1"></div>
+    <aside id="panel" hidden>
+      <div class="ptabs">
+        <button data-tab="changes" class="on">Modifications</button>
+        <button data-tab="timeline">Chronologie</button>
+        <button data-tab="usage">Consommation</button>
+        <span class="spacer"></span>
+        <button id="panelClose" class="icon" title="Fermer le panneau">✕</button>
+      </div>
+      <div id="tab-changes" class="ptab"></div>
+      <div id="tab-timeline" class="ptab" hidden></div>
+      <div id="tab-usage" class="ptab" hidden></div>
+    </aside>
+  </div>
+  <div id="park" hidden></div>
   <div id="toast" class="toast" role="status"></div>
   <div id="empty">
     <h1>Aucune session</h1>
-    <p><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> nouvelle session · <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> historique · <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>1..9</kbd> / <kbd>↑</kbd><kbd>↓</kbd> naviguer</p>
+    <p><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> nouvelle session · <kbd>Ctrl</kbd>+<kbd>K</kbd> palette · <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> historique</p>
+    <p><button id="emptyNew" class="primary">+ Nouvelle session</button></p>
   </div>
 </main>
 
 <dialog id="dlgNew">
   <form method="dialog" id="formNew">
     <h2>Nouvelle session</h2>
+    <label id="tplRow" hidden>Modèle de session
+      <select name="template"><option value="">— aucun —</option></select>
+    </label>
     <label>Dossier de travail
       <span class="pick">
         <input name="cwd" list="dirs" required autocomplete="off" spellcheck="false" placeholder="C:\chemin\du\projet">
@@ -66,11 +103,15 @@
       </span>
       <datalist id="dirs"></datalist>
     </label>
-    <label>Nom <input name="name" placeholder="(nom du dossier)" autocomplete="off"></label>
+    <div class="row">
+      <label>Nom <input name="name" placeholder="(nom du dossier)" autocomplete="off"></label>
+      <label>Groupe <input name="group" list="groups" placeholder="(aucun)" autocomplete="off"></label>
+      <datalist id="groups"></datalist>
+    </div>
     <div class="row">
       <label>Modèle
         <select name="model">
-          <option value="opus" selected>opus</option>
+          <option value="opus">opus</option>
           <option value="sonnet">sonnet</option>
           <option value="haiku">haiku</option>
           <option value="">défaut Claude Code</option>
@@ -85,8 +126,18 @@
         </select>
       </label>
     </div>
-    <label>Arguments supplémentaires <input name="extra" placeholder="--continue, --add-dir ..." spellcheck="false"></label>
+    <div class="wtBox" id="wtBox">
+      <label class="check"><input type="checkbox" name="worktree"> <span>Travailler dans un <b>worktree git</b> dédié (nouvelle branche, sans toucher au dépôt principal)</span></label>
+      <label id="wtBranchRow" hidden>Branche <input name="branch" autocomplete="off" spellcheck="false"></label>
+      <p class="hint" id="wtHint"></p>
+    </div>
+    <details>
+      <summary>Options avancées</summary>
+      <label>Premier prompt (envoyé dès que la session est prête) <textarea name="prompt" rows="3" spellcheck="false"></textarea></label>
+      <label>Arguments supplémentaires <input name="extra" placeholder="--add-dir ..." spellcheck="false"></label>
+    </details>
     <menu>
+      <button type="button" id="btnSaveTpl" class="left">Enregistrer comme modèle</button>
       <button value="cancel" formnovalidate>Annuler</button>
       <button value="ok" class="primary">Lancer</button>
     </menu>
@@ -97,10 +148,176 @@
   <form method="dialog">
     <h2 id="renTitle">Renommer</h2>
     <input id="renInput" maxlength="80" autocomplete="off" spellcheck="false">
-    <p class="hint">Le nom est aussi enregistré dans la conversation Claude (historique, <code>claude --resume</code>).</p>
+    <p class="hint" id="renHint">Le nom est aussi enregistré dans la conversation Claude (historique, <code>claude --resume</code>).</p>
     <menu>
       <button value="cancel" formnovalidate>Annuler</button>
-      <button value="ok" class="primary">Renommer</button>
+      <button value="ok" class="primary">Valider</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlgCloseWt">
+  <form method="dialog">
+    <h2 id="cwTitle">Fermer la session</h2>
+    <p id="cwInfo"></p>
+    <div class="impChoices">
+      <button value="keep" class="primary choice"><b>Fermer et garder le worktree</b><span>Le dossier et la branche restent : tu pourras y revenir, fusionner plus tard ou les supprimer à la main.</span></button>
+      <button value="merge" class="choice"><b>Fusionner puis supprimer</b><span>Fusionne la branche dans sa branche de base, puis supprime le worktree et la branche. Les modifications doivent être commitées.</span></button>
+      <button value="remove" class="choice danger"><b>Supprimer le worktree et la branche</b><span>Abandonne tout le travail de cette branche.</span></button>
+    </div>
+    <menu><button value="cancel">Annuler</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlgQueue">
+  <form method="dialog">
+    <h2>File d'attente — <span id="qName"></span></h2>
+    <p class="hint">Chaque prompt est envoyé automatiquement quand la session a fini le précédent.</p>
+    <ol id="qList"></ol>
+    <textarea id="qNew" rows="3" placeholder="Nouveau prompt à mettre en file…" spellcheck="false"></textarea>
+    <menu>
+      <button type="button" id="qAdd" class="left">Ajouter</button>
+      <button value="cancel">Fermer</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlgBroadcast">
+  <form method="dialog">
+    <h2>Envoyer à plusieurs sessions</h2>
+    <textarea id="bcText" rows="4" placeholder="Prompt à envoyer…" spellcheck="false" required></textarea>
+    <div id="bcList" class="checklist"></div>
+    <label class="check"><input type="checkbox" id="bcQueue"> <span>Mettre en file d'attente si la session travaille (sinon envoi immédiat)</span></label>
+    <menu>
+      <button value="cancel" formnovalidate>Annuler</button>
+      <button value="ok" class="primary">Envoyer</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlgSearch" class="wide">
+  <div class="histHead">
+    <h2>Rechercher dans les sessions</h2>
+    <input id="srchInput" placeholder="Texte à chercher dans tous les terminaux ouverts…" autocomplete="off">
+    <button id="srchClose" class="icon">✕</button>
+  </div>
+  <ul id="srchList" class="results"></ul>
+</dialog>
+
+<dialog id="dlgPalette" class="palette">
+  <input id="palInput" placeholder="Session, conversation, action…" autocomplete="off" spellcheck="false">
+  <ul id="palList"></ul>
+</dialog>
+
+<dialog id="dlgPrompts" class="wide">
+  <div class="histHead">
+    <h2>Bibliothèque de prompts</h2>
+    <input id="prSearch" placeholder="Filtrer…" autocomplete="off">
+    <button id="prNew">+ Nouveau</button>
+    <button id="prClose" class="icon">✕</button>
+  </div>
+  <ul id="prList" class="results"></ul>
+</dialog>
+
+<dialog id="dlgPromptEdit">
+  <form method="dialog">
+    <h2>Prompt</h2>
+    <label>Titre <input id="peTitle" maxlength="100" required></label>
+    <label>Texte <textarea id="peText" rows="8" spellcheck="false" required></textarea></label>
+    <p class="hint">Variables : <code>{dossier}</code>, <code>{branche}</code>, <code>{nom}</code>, <code>{selection}</code> (texte sélectionné dans le terminal).</p>
+    <label>Étiquettes <input id="peTags" placeholder="revue, tests…"></label>
+    <menu>
+      <button type="button" id="peDelete" class="left danger">Supprimer</button>
+      <button value="cancel" formnovalidate>Annuler</button>
+      <button value="ok" class="primary">Enregistrer</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlgSettings" class="wide settings">
+  <div class="histHead">
+    <h2>Réglages</h2>
+    <span class="spacer"></span>
+    <button id="setClose" class="icon">✕</button>
+  </div>
+  <div class="setBody">
+    <nav class="setNav">
+      <button data-st="general" class="on">Général</button>
+      <button data-st="terminal">Terminal</button>
+      <button data-st="alerts">Notifications</button>
+      <button data-st="templates">Modèles de session</button>
+      <button data-st="prompts">Prompts</button>
+      <button data-st="diag">Diagnostic</button>
+      <button data-st="logs">Journaux</button>
+      <button data-st="about">À propos</button>
+    </nav>
+    <div class="setPages">
+      <section data-st="general">
+        <label>Thème <select data-set="theme"><option value="dark">Sombre</option><option value="light">Clair</option><option value="system">Système</option></select></label>
+        <label>Langue <select data-set="lang"><option value="auto">Automatique</option><option value="fr">Français</option><option value="en">English</option></select></label>
+        <label>Modèle par défaut <select data-set="defaultModel"><option value="opus">opus</option><option value="sonnet">sonnet</option><option value="haiku">haiku</option><option value="">défaut Claude Code</option></select></label>
+        <label>Mode par défaut <select data-set="defaultMode"><option value="">par défaut</option><option value="acceptEdits">acceptEdits</option><option value="plan">plan</option><option value="bypassPermissions">bypassPermissions</option></select></label>
+        <label class="check"><input type="checkbox" data-set="worktreeDefault"> <span>Proposer un worktree git par défaut dans un dépôt</span></label>
+        <label>Éditeur pour « Ouvrir dans » <select data-set="editor" id="setEditor"><option value="auto">Automatique</option></select></label>
+        <label id="editorCmdRow">Commande personnalisée <input data-set="editorCommand" placeholder="mon-editeur {path}" spellcheck="false"></label>
+        <label class="check"><input type="checkbox" data-set="autoUpdate"> <span>Mises à jour automatiques</span></label>
+        <label class="check"><input type="checkbox" data-set="compactSidebar"> <span>Barre latérale compacte</span></label>
+      </section>
+      <section data-st="terminal" hidden>
+        <label>Taille du texte <input type="number" min="9" max="28" data-set="fontSize"></label>
+        <label>Police <input data-set="fontFamily" placeholder="Cascadia Mono, Menlo…" spellcheck="false"></label>
+        <p class="hint">Raccourcis : <kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>−</kbd>/<kbd>0</kbd> pour zoomer.</p>
+      </section>
+      <section data-st="alerts" hidden>
+        <label class="check"><input type="checkbox" data-set="notifications"> <span>Notifications système</span></label>
+        <label>Son <select data-set="sound"><option value="off">Aucun</option><option value="soft">Discret</option><option value="bell">Clochette</option></select> <button type="button" id="soundTest">▶ Tester</button></label>
+        <label class="check"><input type="checkbox" data-set="dnd"> <span>Ne pas déranger (ni notification ni son)</span></label>
+        <label>Rappel si une session attend depuis (minutes, 0 = jamais) <input type="number" min="0" max="600" data-set="waitingMinutes"></label>
+        <label>Alerte si une session travaille depuis plus de (minutes, 0 = jamais) <input type="number" min="0" max="600" data-set="longRunMinutes"></label>
+      </section>
+      <section data-st="templates" hidden>
+        <p class="hint">Un modèle mémorise dossier, nom, modèle, mode, worktree, groupe et premier prompt. Créer : « Enregistrer comme modèle » dans la fenêtre Nouvelle session.</p>
+        <ul id="tplList" class="results"></ul>
+      </section>
+      <section data-st="prompts" hidden>
+        <p class="hint">Snippets réutilisables, insérés dans la session active depuis la palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) ou le menu ⋯.</p>
+        <button type="button" id="openPrompts">Ouvrir la bibliothèque de prompts</button>
+      </section>
+      <section data-st="diag" hidden>
+        <pre id="diagOut" class="mono">…</pre>
+        <button type="button" id="diagCopy">Copier le rapport</button>
+        <button type="button" id="diagRefresh">Actualiser</button>
+      </section>
+      <section data-st="logs" hidden>
+        <div class="row"><input id="logFilter" placeholder="Filtrer les journaux…"><button type="button" id="logRefresh">Actualiser</button></div>
+        <pre id="logOut" class="mono logs"></pre>
+      </section>
+      <section data-st="about" hidden>
+        <p><b>Claude Sessions</b> <span id="aboutVersion"></span> — logiciel libre (MIT).</p>
+        <p><a href="https://github.com/khalilbenaz/claude-sessions-manager" target="_blank" rel="noopener">github.com/khalilbenaz/claude-sessions-manager</a></p>
+        <p id="updateStatus" class="hint"></p>
+        <button type="button" id="updateCheck">Rechercher des mises à jour</button>
+      </section>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlgWelcome">
+  <form method="dialog">
+    <h2>Bienvenue dans Claude Sessions 👋</h2>
+    <div id="welcomeCheck" class="checks"></div>
+    <ul class="tips">
+      <li><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> nouvelle session · <kbd>Ctrl</kbd>+<kbd>K</kbd> palette de commandes</li>
+      <li>Fermer la fenêtre ne coupe rien : les sessions continuent et reviennent après un redémarrage.</li>
+      <li>Glisser une session sur un panneau (⊞ en haut) pour en suivre plusieurs à la fois.</li>
+      <li>Coche « worktree git » pour faire travailler plusieurs Claude sur le même dépôt sans conflit.</li>
+    </ul>
+    <label>Premier dossier de travail
+      <span class="pick"><input id="welcomeCwd" autocomplete="off" spellcheck="false"><button type="button" id="welcomeBrowse">Parcourir…</button></span>
+    </label>
+    <menu>
+      <button value="skip" formnovalidate>Plus tard</button>
+      <button value="ok" class="primary">Créer ma première session</button>
     </menu>
   </form>
 </dialog>
@@ -126,19 +343,23 @@
   </form>
 </dialog>
 
-<dialog id="dlgHistory">
+<dialog id="dlgHistory" class="wide">
   <div class="histHead">
     <h2>Historique</h2>
     <input id="histSearch" placeholder="Filtrer (titre, dossier, prompt)…" autocomplete="off">
-    <button id="histClose">✕</button>
+    <button id="histClose" class="icon">✕</button>
   </div>
   <ul id="histList"></ul>
 </dialog>
 
+<script src="i18n.js"></script>
 <script src="xterm.js"></script>
 <script src="addon-fit.js"></script>
 <script src="addon-web-links.js"></script>
 <script src="addon-webgl.js"></script>
 <script src="app.js"></script>
+<script src="panel.js"></script>
+<script src="settings.js"></script>
+<script src="palette.js"></script>
 </body>
 </html>

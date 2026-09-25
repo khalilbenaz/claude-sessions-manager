@@ -20,11 +20,13 @@ L'application n'est pas signée par un certificat éditeur :
 - **Windows** : « Windows a protégé votre ordinateur » → *Informations complémentaires* → *Exécuter quand même* (une seule fois).
 - **macOS** : au premier lancement, clic droit sur l'app → *Ouvrir* → *Ouvrir* ; ou `xattr -cr "/Applications/Claude Sessions.app"`.
 
-Ce que fait l'application :
-- fenêtre dédiée, icône dans la barre des tâches (Windows) / la barre de menus (macOS) avec : nouvelle session, historique, lancer au démarrage, redémarrer le serveur, quitter ;
-- **fermer la fenêtre ne coupe rien** : les sessions tournent dans un serveur local séparé ; « Quitter » ferme l'app et laisse les sessions tourner, « Quitter et arrêter toutes les sessions » les arrête (elles reviendront au prochain lancement) ;
-- lancement automatique à l'ouverture de session (activé au premier lancement, réglable dans le menu de l'icône) ;
-- sélecteur de dossier natif, notifications système, pastille du nombre de sessions en attente (Dock / barre des tâches), rendu GPU du terminal.
+Ce que fait l'application (détail dans le [journal des versions](CHANGELOG.md)) :
+- **Sessions persistantes** : fermer la fenêtre ne coupe rien ; « Quitter » laisse les sessions tourner, « Quitter et arrêter toutes les sessions » les arrête (elles reviendront au prochain lancement). Lancement automatique à l'ouverture de session.
+- **Travail en parallèle** : une session = un **worktree git** (branche dédiée, fusion en un clic) ; **vue partagée** 1 / 2 / 4 panneaux ; panneau **Modifications** (diff, annuler, commit).
+- **Organisation** : groupes, épinglage, couleurs, **modèles de session**, **palette de commandes** (Ctrl/⌘+K), recherche dans tous les terminaux.
+- **Automatisation** : **file d'attente** de prompts, **bibliothèque de prompts** avec variables, **envoi groupé**.
+- **Suivi** : état en direct, notifications et son, rappels, **consommation** (tokens, coût estimé), **chronologie** des outils, export Markdown / PDF.
+- **Outils** : ouvrir dans VS Code / Cursor / l'Explorateur / un terminal, **réglages**, **diagnostic**, journaux, thème clair / sombre, interface **FR / EN**, **mises à jour automatiques** (Windows).
 
 Sécurité : page isolée (`contextIsolation` + `sandbox`, aucun accès Node côté page), navigation limitée au serveur local, liens externes ouverts dans le navigateur, permissions restreintes (notifications, presse-papiers), CSP sans script inline, IPC vérifié par origine ; serveur en écoute sur `127.0.0.1` uniquement avec jeton aléatoire et contrôle de l'en-tête Host.
 
@@ -78,18 +80,35 @@ Variables : `CSM_PORT` (défaut 7890 ; un autre port = instance séparée avec s
 - **Parcourir…** ouvre le sélecteur de dossier natif (Windows : boîte de dialogue système ; macOS : `choose folder`).
 - Sécurité : écoute locale uniquement, contrôle de l'en-tête Host (anti DNS-rebinding), jeton aléatoire exigé sur l'API et le WebSocket (anti-CSRF).
 
-## Raccourcis (Ctrl+Alt+… — sur Mac : Ctrl+Option+…)
+## Raccourcis
 
-| Touche | Action |
+| Raccourci | Action |
 |---|---|
-| N | nouvelle session |
-| H | historique |
-| 1…9 / ↑ ↓ | changer de session (touche physique : fonctionne en AZERTY) |
-| A | aller à la prochaine session qui attend une réponse |
-| R | renommer (ou double-clic sur le nom) |
-| W | fermer la session |
+| Ctrl/⌘ + K | palette de commandes (sessions, conversations, modèles, prompts, actions) |
+| Ctrl/⌘ + , | réglages |
+| Ctrl/⌘ + Maj + F | rechercher dans toutes les sessions |
+| Ctrl + Alt + N | nouvelle session |
+| Ctrl + Alt + H | historique |
+| Ctrl + Alt + 1…9 / ↑ ↓ | changer de session (touche physique : fonctionne en AZERTY) |
+| Ctrl + Alt + ← → | changer de panneau (vue partagée) |
+| Ctrl + Alt + A | prochaine session qui attend une réponse |
+| Ctrl + Alt + G | panneau Modifications |
+| Ctrl + Alt + E | ouvrir le dossier dans l'éditeur |
+| Ctrl + Alt + Q | file d'attente de la session |
+| Ctrl + Alt + B | envoyer à plusieurs sessions |
+| Ctrl + Alt + F | mode focus (masquer la barre latérale) |
+| Ctrl + Alt + R / W | renommer / fermer la session |
 
-Dans le terminal — Windows : Ctrl+C avec sélection = copier, Ctrl+V = coller, Ctrl +/−/0 = zoom. macOS : Cmd+C / Cmd+V, Cmd +/−/0 ; Ctrl+C et Ctrl+V restent à Claude. Glisser-déposer pour réordonner.
+Sur Mac, Ctrl + Alt = Ctrl + Option. Dans le terminal — Windows : Ctrl+C avec sélection = copier, Ctrl+V = coller, Ctrl +/−/0 = zoom. macOS : Cmd+C / Cmd+V, Cmd +/−/0 ; Ctrl+C et Ctrl+V restent à Claude. Glisser-déposer une session pour la réordonner ou la placer dans un panneau.
+
+## Développement
+
+```sh
+npm ci
+npm test            # serveur de bout en bout (faux claude, profil temporaire, aucun appel API)
+npm run test:app    # application Electron (Playwright, fenêtre invisible)
+npm run app         # lancer l'application en développement (CSM_PORT=7891 pour une instance séparée)
+```
 
 ## Licence
 

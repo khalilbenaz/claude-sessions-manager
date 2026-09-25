@@ -17,6 +17,8 @@ const STATE = path.join(DATA, 'app-window.json');
 const START_HIDDEN = process.argv.includes('--hidden');
 
 app.setName('Claude Sessions');
+// Autre port = instance séparée (tests, essais) : profil et verrou d'instance unique distincts.
+if (PORT !== 7890) app.setPath('userData', path.join(DATA, 'electron'));
 if (IS_WIN) app.setAppUserModelId('com.claude-sessions.app'); // notifications Windows rattachées à l'app
 if (!app.requestSingleInstanceLock()) { app.quit(); return; }
 
@@ -109,7 +111,7 @@ function createWindow() {
   win.webContents.on('will-navigate', (e, url) => { if (!sameOrigin(url)) { e.preventDefault(); if (external(url)) shell.openExternal(url); } });
   win.webContents.on('will-attach-webview', e => e.preventDefault());
 
-  win.once('ready-to-show', () => { if (!START_HIDDEN || win.__forceShow) win.show(); });
+  win.once('ready-to-show', () => { if (process.env.CSM_HIDE_WINDOW) return; if (!START_HIDDEN || win.__forceShow) win.show(); }); // CSM_HIDE_WINDOW : tests automatiques, rien à l'écran
   win.on('close', e => {
     saveState();
     if (!quitting) { e.preventDefault(); win.hide(); } // fermer = masquer (notifications, sessions continuent)
@@ -121,7 +123,7 @@ function createWindow() {
     if (!isMain) return;
     // Serveur pas encore prêt ou arrêté : on le relance puis on recharge.
     if (await ensureServer()) setTimeout(() => !win.isDestroyed() && win.loadURL(URL_), 300);
-    else dialog.showErrorBox('Claude Sessions', `Le serveur local ne démarre pas.\n\nJournal : ${path.join(DATA, 'server.log')}`);
+    else (process.env.CSM_HIDE_WINDOW ? (t, m) => console.error(m) : dialog.showErrorBox)('Claude Sessions', `Le serveur local ne démarre pas.\n\nJournal : ${path.join(DATA, 'server.log')}`);
   });
   win.loadURL(URL_);
 }
@@ -130,6 +132,7 @@ function showWindow() {
   if (!win || win.isDestroyed()) createWindow();
   win.__forceShow = true;
   if (win.isMinimized()) win.restore();
+  if (process.env.CSM_HIDE_WINDOW) return;
   win.show(); win.focus();
 }
 const send = (action) => { showWindow(); win.webContents.send('csm:action', action); };
@@ -214,6 +217,7 @@ function buildTray() {
     ...updateMenuItems(),
     { label: 'Nouvelle session…', click: () => send('new') },
     { label: 'Historique…', click: () => send('history') },
+    { label: 'Réglages…', click: () => send('settings') },
     { type: 'separator' },
     { label: 'Rechercher des mises à jour', click: () => updates?.check(), visible: !!updates && app.isPackaged },
     { label: 'Lancer au démarrage de l’ordinateur', type: 'checkbox', checked: loginItem(), click: i => setLoginItem(i.checked) },
@@ -254,12 +258,12 @@ app.whenReady().then(async () => {
   hardenSession();
   registerIpc();
   buildAppMenu();
-  buildTray();
+  if (!process.env.CSM_HIDE_WINDOW) buildTray();
   // Premier lancement : démarrage automatique activé (désactivable dans le menu de l'icône).
   const firstRun = path.join(DATA, 'app-first-run');
   if (app.isPackaged && PORT === 7890 && !fs.existsSync(firstRun)) { fs.mkdirSync(DATA, { recursive: true }); fs.writeFileSync(firstRun, new Date().toISOString()); setLoginItem(true); }
   if (!(await ensureServer())) {
-    dialog.showErrorBox('Claude Sessions', `Le serveur local ne démarre pas.\n\nJournal : ${path.join(DATA, 'server.log')}`);
+    (process.env.CSM_HIDE_WINDOW ? (t, m) => console.error(m) : dialog.showErrorBox)('Claude Sessions', `Le serveur local ne démarre pas.\n\nJournal : ${path.join(DATA, 'server.log')}`);
   }
   createWindow();
   updates = require('./updater')({

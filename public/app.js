@@ -10,7 +10,35 @@ let active = LS.get('csm.active', null);
 let ws = null;
 let historyCache = [];
 
-const STATUS_LABEL = { starting: 'démarrage', working: 'travaille', attention: 'attend une réponse', idle: 'prêt', exited: 'arrêtée' };
+const STATUS_LABEL = { starting: t('démarrage'), working: t('travaille'), attention: t('attend une réponse'), idle: t('prêt'), exited: t('arrêtée') };
+
+// Réglages (serveur) : voir lib/settings.js. Valeurs par défaut en attendant la réponse.
+let SETTINGS = { theme: 'dark', fontSize: 14, fontFamily: '', defaultModel: 'opus', defaultMode: '', notifications: true, sound: 'soft', dnd: false, waitingMinutes: 10, longRunMinutes: 0, worktreeDefault: false, compactSidebar: false, autoUpdate: true, onboarded: true };
+const THEMES = {
+  dark: { background: '#101114', foreground: '#e6e6e6', cursor: '#d97757', selectionBackground: '#3a4150' },
+  light: { background: '#fbfaf8', foreground: '#1f1b18', cursor: '#c4613f', selectionBackground: '#d9d2c7', black: '#1f1b18', brightBlack: '#6b6560', white: '#8b8580', brightWhite: '#1f1b18', yellow: '#9a6b00', brightYellow: '#8a5a00', green: '#1f7a3f', brightGreen: '#1a6b36', cyan: '#0e6f86', brightCyan: '#0b5f73', blue: '#1f5fbf', brightBlue: '#1a4fa0', magenta: '#8a3fa0', brightMagenta: '#7a2f90', red: '#c0392b', brightRed: '#a93226' },
+};
+const themeName = () => SETTINGS.theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : SETTINGS.theme;
+const termTheme = () => THEMES[themeName()] || THEMES.dark;
+function applySettings() {
+  document.documentElement.dataset.theme = themeName();
+  document.body.classList.toggle('compact', !!SETTINGS.compactSidebar);
+  for (const tt of terms.values()) {
+    tt.term.options.theme = termTheme();
+    if (SETTINGS.fontFamily) tt.term.options.fontFamily = SETTINGS.fontFamily;
+  }
+  fitAll(false);
+}
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => SETTINGS.theme === 'system' && applySettings());
+async function loadSettings() {
+  try { SETTINGS = { ...SETTINGS, ...(await api('GET', '/api/settings')) }; } catch { }
+  setLang(SETTINGS.lang); applySettings();
+}
+async function saveSettings(patch) {
+  SETTINGS = { ...SETTINGS, ...patch };
+  applySettings();
+  try { SETTINGS = await api('PUT', '/api/settings', patch); } catch (e) { toast(t('Réglage non enregistré : ') + e.message, true); }
+}
 
 async function api(method, url, body) {
   const r = await fetch(url, {
@@ -26,17 +54,22 @@ function ensureTerm(id) {
   if (terms.has(id)) return terms.get(id);
   const el = document.createElement('div');
   el.className = 'term';
-  $('#terms').appendChild(el);
+  $('#park').appendChild(el);
   const term = new Terminal({
-    fontFamily: '"Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", Menlo, monospace', fontSize: LS.get('csm.font', 14),
+    fontFamily: SETTINGS.fontFamily || '"Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", Menlo, monospace', fontSize: LS.get('csm.font', SETTINGS.fontSize || 14),
     cursorBlink: true, scrollback: 10000, allowProposedApi: true, macOptionIsMeta: true,
-    theme: { background: '#101114', foreground: '#e6e6e6', cursor: '#d97757', selectionBackground: '#3a4150' },
+    theme: termTheme(),
   });
   const fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
   term.loadAddon(new WebLinksAddon.WebLinksAddon((e, uri) => window.open(uri, '_blank')));
   term.open(el);
   term.onData(d => send({ t: 'input', id, d }));
+  // clic / focus dans un panneau de la vue partagée : ce panneau devient le panneau actif
+  term.textarea?.addEventListener('focus', () => {
+    const i = panes.indexOf(id);
+    if (i >= 0 && id !== active) { focusedPane = i; active = id; LS.set('csm.active', id); unread.delete(id); render(); renderPaneFrames(); }
+  });
   // Images / fichiers : glisser-déposer ou coller → copie enregistrée par le serveur, chemin collé dans Claude.
   el.addEventListener('dragover', e => { if (hasFiles(e.dataTransfer)) { e.preventDefault(); el.classList.add('dropping'); } });
   el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('dropping'); });
@@ -87,14 +120,14 @@ function zoom(k) {
   size = k === '0' ? 14 : Math.max(9, Math.min(28, size + (k === '-' ? -1 : 1)));
   LS.set('csm.font', size);
   for (const t of terms.values()) t.term.options.fontSize = size;
-  fitActive();
+  fitAll();
 }
 
 // redraw=true : force Claude à repeindre tout l'écran (le PTY ne signale un resize que si la taille change,
 // d'où l'aller-retour rows-1 → rows). Nécessaire après un changement de session ou une reconnexion,
 // car le terminal caché a reçu la sortie à une autre taille.
-function fitActive(redraw) {
-  const id = active, t = id && terms.get(id);
+function fitOne(id, redraw) {
+  const t = id && terms.get(id);
   if (!t || !t.el.classList.contains('show')) return;
   try { t.fit.fit(); } catch { }
   const { cols, rows } = t.term;
@@ -104,9 +137,81 @@ function fitActive(redraw) {
   setTimeout(() => send({ t: 'resize', id, cols, rows }), redraw ? 80 : 0);
   t.term.refresh(0, rows - 1);
 }
-new ResizeObserver(() => requestAnimationFrame(() => fitActive(false))).observe($('#terms'));
-let redrawTimer = null;
-function scheduleRedraw() { clearTimeout(redrawTimer); redrawTimer = setTimeout(() => fitActive(true), 150); }
+function fitAll(redraw) { for (const id of visibleIds()) fitOne(id, redraw); }
+const fitActive = redraw => fitOne(active, redraw);
+new ResizeObserver(() => requestAnimationFrame(() => fitAll(false))).observe($('#terms'));
+const redrawTimers = {};
+function scheduleRedraw(id = active) { clearTimeout(redrawTimers[id]); redrawTimers[id] = setTimeout(() => fitOne(id, true), 150); }
+
+// ------------------------------------------------------------------ vue partagée (#11)
+// Disposition : 1 panneau, 2 colonnes, 2 lignes ou grille 2×2 ; chaque panneau affiche une session.
+const LAYOUTS = { 1: 1, '2c': 2, '2r': 2, 4: 4 };
+let layout = LS.get('csm.layout', '1');
+let panes = LS.get('csm.panes', []);
+let focusedPane = 0;
+const paneEls = () => [...$('#terms').querySelectorAll(':scope > .pane')];
+const visibleIds = () => panes.slice(0, LAYOUTS[layout] || 1).filter(id => id && sessions.has(id));
+
+function setLayout(l) {
+  if (!LAYOUTS[l]) return;
+  layout = l; LS.set('csm.layout', l);
+  const n = LAYOUTS[l];
+  panes = panes.filter(id => sessions.has(id));
+  if (active && !panes.slice(0, n).includes(active)) panes = [active, ...panes.filter(x => x !== active)];
+  for (const s of sorted()) { if (panes.length >= n) break; if (!panes.includes(s.id)) panes.push(s.id); }
+  panes = panes.slice(0, n);
+  focusedPane = Math.max(0, panes.indexOf(active));
+  renderPanes();
+  document.querySelectorAll('[data-layout]').forEach(b => b.classList.toggle('on', b.dataset.layout === l));
+}
+
+function renderPaneFrames() {
+  paneEls().forEach((p, i) => {
+    p.classList.toggle('focused', i === focusedPane && (LAYOUTS[layout] || 1) > 1);
+    const s = sessions.get(panes[i]);
+    p.querySelector('.phead .dot').className = `dot ${s ? s.status : ''}`;
+    p.querySelector('.phead .pn').textContent = s ? s.name : t('(vide — glisser une session ici)');
+    p.querySelector('.phead .pb').textContent = s?.worktree ? `⎇ ${s.worktree.branch}` : '';
+  });
+}
+
+function makePane() {
+  const p = document.createElement('div');
+  p.className = 'pane';
+  p.innerHTML = '<div class="phead"><span class="dot"></span><span class="pn"></span><span class="pb"></span><button class="pclose">✕</button></div><div class="pslot"></div>';
+  p.querySelector('.pclose').title = t('Vider ce panneau');
+  const idx = () => paneEls().indexOf(p);
+  p.addEventListener('mousedown', () => { const k = idx(); if (k !== focusedPane) { focusedPane = k; if (panes[k]) select(panes[k]); else renderPaneFrames(); } });
+  p.querySelector('.pclose').onclick = e => { e.stopPropagation(); panes[idx()] = null; renderPanes(); };
+  p.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/csm-session')) { e.preventDefault(); p.classList.add('dragover'); } });
+  p.addEventListener('dragleave', () => p.classList.remove('dragover'));
+  p.addEventListener('drop', e => {
+    const sid = e.dataTransfer.getData('text/csm-session'); p.classList.remove('dragover');
+    if (!sid) return; e.preventDefault(); e.stopPropagation();
+    const k = idx(), old = panes.indexOf(sid);
+    if (old >= 0 && old !== k) panes[old] = panes[k] || null;
+    panes[k] = sid; focusedPane = k; select(sid);
+  });
+  return p;
+}
+
+function renderPanes() {
+  const n = LAYOUTS[layout] || 1;
+  const grid = $('#terms');
+  grid.dataset.layout = layout;
+  while (paneEls().length < 4) grid.appendChild(makePane());
+  paneEls().forEach((p, i) => { p.hidden = i >= n; });
+  const shown = new Set(visibleIds());
+  for (const [id, tt] of terms) {
+    const slot = shown.has(id) ? paneEls()[panes.indexOf(id)].querySelector('.pslot') : $('#park');
+    if (tt.el.parentElement !== slot) slot.appendChild(tt.el);
+    tt.el.classList.toggle('show', shown.has(id));
+    gpu(tt, shown.has(id));
+  }
+  LS.set('csm.panes', panes);
+  renderPaneFrames();
+  requestAnimationFrame(() => fitAll(true));
+}
 
 // ------------------------------------------------------------------ WebSocket
 function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
@@ -122,11 +227,11 @@ function connect() {
       for (const id of [...sessions.keys()]) if (!ids.has(id)) removeLocal(id);
       for (const s of m.list) { sessions.set(s.id, s); const t = ensureTerm(s.id); t.term.reset(); }
       if (!sessions.has(active)) active = sorted()[0]?.id || null;
-      render(); select(active);
+      render(); select(active); setLayout(layout);
     } else if (m.t === 'replay' || m.t === 'out') {
       ensureTerm(m.id).term.write(m.d);
       if (m.t === 'out' && m.id !== active) bump(m.id);
-      if (m.t === 'replay' && m.id === active) scheduleRedraw();
+      if (m.t === 'replay' && visibleIds().includes(m.id)) scheduleRedraw(m.id);
     } else if (m.t === 'clear') {
       terms.get(m.id)?.term.reset();
     } else if (m.t === 'session') {
@@ -134,12 +239,21 @@ function connect() {
       sessions.set(m.s.id, m.s);
       ensureTerm(m.s.id);
       notifyTransition(prev, m.s);
+      window.dispatchEvent(new CustomEvent('csm:session', { detail: { prev, s: m.s } }));
       render();
       if (!active) select(m.s.id);
       if (m.s.id === active) renderBar();
+      if (panes.includes(m.s.id)) renderPaneFrames();
+    } else if (m.t === 'settings') {
+      const langChanged = m.settings.lang !== SETTINGS.lang;
+      SETTINGS = { ...SETTINGS, ...m.settings }; applySettings();
+      if (langChanged) location.reload();
+    } else if (m.t === 'templates' || m.t === 'prompts') {
+      window.dispatchEvent(new CustomEvent(`csm:${m.t}`, { detail: m[m.t] }));
     } else if (m.t === 'removed') {
       removeLocal(m.id);
-      if (active === m.id) active = sorted()[0]?.id || null;
+      panes = panes.map(x => (x === m.id ? null : x));
+      if (active === m.id) active = visibleIds()[0] || sorted()[0]?.id || null;
       render(); select(active);
     }
   };
@@ -157,19 +271,62 @@ function bump(id) { if (!unread.has(id)) { unread.add(id); render(); } }
 // ------------------------------------------------------------------ notifications
 function notifyTransition(prev, s) {
   if (!prev || prev.status === s.status) return;
-  const focused = document.hasFocus() && s.id === active;
+  const focused = document.hasFocus() && visibleIds().includes(s.id);
   const important = s.status === 'attention' || (s.status === 'idle' && prev.status === 'working');
   if (!important || focused) return;
-  if ('Notification' in window && Notification.permission === 'granted') {
-    const n = new Notification(`${s.name} — ${s.status === 'attention' ? 'attend une réponse' : 'terminé'}`, {
-      body: s.message || s.cwd, tag: s.id, icon: 'icon.svg', silent: false,
-    });
-    n.onclick = () => { window.csmNative ? window.csmNative.focus() : window.focus(); select(s.id); n.close(); };
-  }
+  alertUser(s, s.status === 'attention' ? t('attend une réponse') : t('terminé'), s.message || s.cwd);
 }
 
+function alertUser(s, what, body) {
+  if (SETTINGS.dnd || s.alerts?.mute) return;
+  playSound();
+  if (!SETTINGS.notifications || !('Notification' in window) || Notification.permission !== 'granted') return;
+  const n = new Notification(`${s.name} — ${what}`, { body, tag: s.id, icon: 'icon.svg', silent: true });
+  n.onclick = () => { window.csmNative ? window.csmNative.focus() : window.focus(); select(s.id); n.close(); };
+}
+
+// Son synthétisé (aucun fichier) : « discret » = deux notes douces, « clochette » = tintement.
+let audioCtx = null;
+function playSound(kind = SETTINGS.sound) {
+  if (!kind || kind === 'off') return;
+  try {
+    audioCtx = audioCtx || new AudioContext();
+    const now = audioCtx.currentTime;
+    const notes = kind === 'bell' ? [[1318, 0, 0.9], [1975, 0.02, 0.6]] : [[660, 0, 0.18], [880, 0.12, 0.22]];
+    for (const [freq, at, dur] of notes) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = kind === 'bell' ? 'triangle' : 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, now + at); g.gain.exponentialRampToValueAtTime(0.12, now + at + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + at + dur);
+      o.connect(g).connect(audioCtx.destination); o.start(now + at); o.stop(now + at + dur + 0.05);
+    }
+  } catch { }
+}
+
+// Rappels : session qui attend depuis longtemps / qui travaille depuis trop longtemps.
+const reminded = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const s of sessions.values()) {
+    const key = `${s.id}:${s.status}:${s.statusSince}`;
+    if (reminded.get(s.id) === key) continue;
+    const mins = (now - s.statusSince) / 60000;
+    if (s.status === 'attention' && SETTINGS.waitingMinutes > 0 && mins >= SETTINGS.waitingMinutes) {
+      reminded.set(s.id, key); alertUser(s, t('attend toujours une réponse'), `${Math.round(mins)} min`);
+    } else if (s.status === 'working' && SETTINGS.longRunMinutes > 0 && mins >= SETTINGS.longRunMinutes) {
+      reminded.set(s.id, key); alertUser(s, t('travaille depuis longtemps'), `${Math.round(mins)} min`);
+    }
+  }
+}, 30000);
+
 // ------------------------------------------------------------------ rendu
-function sorted() { return [...sessions.values()].sort((a, b) => (a.order || 0) - (b.order || 0)); }
+// Ordre d'affichage : épinglées d'abord, puis par groupe (ordre d'apparition), puis ordre manuel.
+function sorted() {
+  const all = [...sessions.values()].sort((a, b) => (a.order || 0) - (b.order || 0));
+  const groups = [...new Set(all.map(s => s.group || ''))];
+  return all.sort((a, b) => (!!b.pinned - !!a.pinned) || (a.pinned && b.pinned ? 0 : groups.indexOf(a.group || '') - groups.indexOf(b.group || '')) || (a.order || 0) - (b.order || 0));
+}
+const collapsed = new Set(LS.get('csm.collapsed', []));
 
 function ago(ts) {
   const s = Math.max(0, (Date.now() - ts) / 1000);
@@ -180,20 +337,39 @@ function ago(ts) {
 function render() {
   const ul = $('#list');
   ul.innerHTML = '';
+  let lastGroup = null;
   sorted().forEach((s, i) => {
+    const g = s.pinned ? '📌' : (s.group || '');
+    if (g !== lastGroup && (g || lastGroup !== null)) {
+      lastGroup = g;
+      if (g || [...sessions.values()].some(x => x.group || x.pinned)) {
+        const h = document.createElement('li');
+        h.className = 'ghead' + (collapsed.has(g) ? ' closed' : '');
+        h.innerHTML = '<span class="gcar">▾</span><span class="gname"></span><span class="gcount"></span>';
+        h.querySelector('.gname').textContent = g === '📌' ? t('Épinglées') : g || t('Sans groupe');
+        h.querySelector('.gcount').textContent = [...sessions.values()].filter(x => (x.pinned ? '📌' : (x.group || '')) === g).length;
+        h.onclick = () => { collapsed.has(g) ? collapsed.delete(g) : collapsed.add(g); LS.set('csm.collapsed', [...collapsed]); render(); };
+        ul.appendChild(h);
+      }
+    }
+    lastGroup = g;
+    if (collapsed.has(g) && s.id !== active) return;
     const li = document.createElement('li');
-    li.className = `${s.id === active ? 'active' : ''} ${s.status}`;
+    li.className = `${s.id === active ? 'active' : ''} ${visibleIds().includes(s.id) ? 'shown' : ''} ${s.status}`;
+    if (s.color) li.style.setProperty('--sc', s.color);
     li.draggable = true;
     li.dataset.id = s.id;
-    li.title = `${s.cwd}\n${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + s.message : ''}`;
+    li.title = `${s.name}\n${s.cwd}${s.worktree ? `\n⎇ ${s.worktree.branch}` : ''}\n${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + t(s.message) : ''}`;
     li.innerHTML = `<span class="dot ${s.status}"></span><span class="n"></span><span class="acts"><button class="ren" title="Renommer">✎</button><span class="k">${i < 9 ? i + 1 : ''}${unread.has(s.id) && s.id !== active ? ' •' : ''}</span></span><span class="sub"></span>`;
     li.querySelector('.n').textContent = s.name;
-    li.querySelector('.sub').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + s.message : ''} · ${ago(s.statusSince)}`;
+    li.querySelector('.dot').textContent = '';
+    li.querySelector('.dot').dataset.initial = (s.name || '?').trim().charAt(0).toUpperCase();
+    li.querySelector('.sub').textContent = (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
     li.onclick = () => select(s.id);
     li.ondblclick = () => renameSession(s.id);
     li.querySelector('.ren').onclick = e => { e.stopPropagation(); renameSession(s.id); };
     li.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); sessionMenu(s.id, e.clientX, e.clientY); };
-    li.ondragstart = e => e.dataTransfer.setData('text/plain', s.id);
+    li.ondragstart = e => { e.dataTransfer.setData('text/plain', s.id); e.dataTransfer.setData('text/csm-session', s.id); };
     li.ondragover = e => { e.preventDefault(); li.classList.add('dragover'); };
     li.ondragleave = () => li.classList.remove('dragover');
     li.ondrop = e => {
@@ -207,6 +383,7 @@ function render() {
   });
   const attn = [...sessions.values()].filter(s => s.status === 'attention').length;
   document.title = attn ? `(${attn}) Claude Sessions` : 'Claude Sessions';
+  $('#groups').innerHTML = [...new Set([...sessions.values()].map(x => x.group).filter(Boolean))].map(x => `<option value="${x.replace(/"/g, '&quot;')}">`).join('');
   window.csmNative?.setAttention(attn); // pastille Dock / barre des tâches
   document.body.classList.toggle('nosession', sessions.size === 0);
   renderBar();
@@ -220,35 +397,46 @@ function renderBar() {
   $('#curName').textContent = s.name;
   $('#curCwd').textContent = s.cwd;
   $('#curCwd').title = s.cwd + (s.claudeSessionId ? `\nsession ${s.claudeSessionId}` : '');
-  $('#curMsg').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + s.message : ''}`;
+  $('#curMsg').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + t(s.message) : ''}`;
   $('#curMsg').className = `msg ${s.status}`;
   $('#btnKill').disabled = !s.alive;
-  $('#btnRestart').textContent = s.alive ? 'Relancer' : (s.claudeSessionId ? 'Reprendre' : 'Relancer');
+  $('#btnRestart').textContent = s.alive ? t('Relancer') : (s.claudeSessionId ? t('Reprendre') : t('Relancer'));
+  $('#curBranch').hidden = !s.worktree;
+  $('#curBranch').textContent = s.worktree ? `⎇ ${s.worktree.branch}` : '';
+  $('#curBranch').title = s.worktree ? `${t('Worktree')} : ${s.worktree.path}\n${t('base')} : ${s.worktree.base}` : '';
+  $('#curQueue').hidden = !s.queue?.length;
+  $('#curQueue').textContent = s.queue?.length ? `⏳ ${s.queue.length}` : '';
+  window.dispatchEvent(new CustomEvent('csm:active', { detail: s }));
 }
 
 function select(id) {
   if (!id || !sessions.has(id)) { active = null; LS.set('csm.active', null); render(); return; }
   active = id; LS.set('csm.active', id);
   unread.delete(id);
-  for (const [k, t] of terms) { t.el.classList.toggle('show', k === id); gpu(t, k === id); }
+  const n = LAYOUTS[layout] || 1;
+  const at = panes.indexOf(id);
+  if (at >= 0 && at < n) focusedPane = at;
+  else { focusedPane = Math.min(focusedPane, n - 1); panes[focusedPane] = id; }
+  renderPanes();
   render();
-  requestAnimationFrame(() => { fitActive(true); terms.get(id)?.term.focus(); });
+  requestAnimationFrame(() => terms.get(id)?.term.focus());
   const s = sessions.get(id);
   if (s && (s.status === 'attention' || (s.status === 'idle' && s.message === 'terminé'))) api('POST', `/api/sessions/${id}/seen`).catch(() => { });
 }
 
 // ------------------------------------------------------------------ actions
 // Boîte « Renommer » commune (barre, liste, menu clic droit, historique, Ctrl+Alt+R).
-function askName(title, current) {
+function askName(title, current, hint, allowSame) {
   const dlg = $('#dlgRename'), input = $('#renInput');
   $('#renTitle').textContent = title;
+  $('#renHint').textContent = hint ?? t('Le nom est aussi enregistré dans la conversation Claude (historique, claude --resume).');
   input.value = current || '';
   dlg.returnValue = '';
   dlg.showModal();
   input.select();
   return new Promise(resolve => dlg.addEventListener('close', () => {
     const v = input.value.trim();
-    resolve(dlg.returnValue === 'ok' && v && v !== current ? v : null);
+    resolve(dlg.returnValue === 'ok' && v && (allowSame || v !== current) ? v : null);
     terms.get(active)?.term.focus();
   }, { once: true }));
 }
@@ -269,7 +457,9 @@ $('#btnRename').onclick = startRename;
 // Entrée = [libellé, action, { kbd, danger, disabled }] ; '-' = séparateur.
 // popover : passe au-dessus des boîtes de dialogue modales (top layer).
 const MOD = IS_MAC ? '⌘' : 'Ctrl';
+let lastMenuPos = [100, 100];
 function showMenu(items, x, y) {
+  lastMenuPos = [x, y];
   const menu = $('#ctx');
   // Une boîte modale rend inerte tout ce qui est hors d'elle : le menu doit vivre dedans pour être cliquable.
   const host = document.querySelector('dialog[open]') || document.body;
@@ -280,7 +470,7 @@ function showMenu(items, x, y) {
     const [label, fn, o = {}] = it;
     const b = document.createElement('button');
     b.innerHTML = '<span></span><kbd></kbd>';
-    b.firstChild.textContent = label;
+    b.firstChild.textContent = t(label);
     b.lastChild.textContent = o.kbd || '';
     if (o.danger) b.className = 'danger';
     b.disabled = !!o.disabled;
@@ -369,10 +559,13 @@ function sessionItems(id) {
     ['Renommer', () => renameSession(id), { kbd: id === active ? `${MOD}+Alt+R` : '' }],
     [s.alive ? 'Relancer' : 'Reprendre', () => api('POST', `/api/sessions/${id}/restart`)],
     ['Arrêter', () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
+    [t('Ouvrir dans…'), () => showMenu(openItems(id), ...lastMenuPos)],
     ['Copier le chemin', () => clip.copy(s.cwd)],
+    '-',
+    ...moreItems(id).slice(0, -1),
     ...(s.claudeSessionId ? [['Copier l’identifiant de session', () => clip.copy(s.claudeSessionId)]] : []),
     '-',
-    ['Fermer', () => { select(id); $('#btnClose').click(); }, { danger: true, kbd: id === active ? `${MOD}+Alt+W` : '' }],
+    ['Fermer', () => closeSession(id), { danger: true, kbd: id === active ? `${MOD}+Alt+W` : '' }],
   ];
 }
 // Menu clic droit sur une session de la liste.
@@ -454,12 +647,64 @@ window.addEventListener('resize', hideMenu);
 for (const d of document.querySelectorAll('dialog')) d.addEventListener('close', hideMenu);
 
 $('#btnRestart').onclick = () => active && api('POST', `/api/sessions/${active}/restart`);
+function openItems(id) {
+  return [
+    [t('Dans l’éditeur'), () => openIn(id, 'editor'), { kbd: `${MOD}+Alt+E` }],
+    [IS_MAC ? t('Dans le Finder') : t('Dans l’Explorateur'), () => openIn(id, 'folder')],
+    [t('Dans un terminal'), () => openIn(id, 'terminal')],
+  ];
+}
+async function openIn(id, target) { try { await api('POST', `/api/sessions/${id}/open`, { target }); } catch (e) { toast(e.message, true); } }
+const at = el => { const r = el.getBoundingClientRect(); return [r.left, r.bottom + 4]; };
+$('#btnOpen').onclick = e => active && showMenu(openItems(active), ...at(e.currentTarget));
+$('#btnMore').onclick = e => active && showMenu(moreItems(active), ...at(e.currentTarget));
+$('#emptyNew').onclick = () => openNew();
+$('#btnCompact').onclick = () => saveSettings({ compactSidebar: !SETTINGS.compactSidebar });
+document.querySelectorAll('[data-layout]').forEach(b => { b.onclick = () => setLayout(b.dataset.layout); });
+function moreItems(id) {
+  const s = sessions.get(id); if (!s) return [];
+  return [
+    [t('File d’attente…'), () => window.csmFeatures.openQueue(id), { kbd: `${MOD}+Alt+Q` }],
+    [t('Insérer un prompt…'), () => window.csmFeatures.openPrompts(id)],
+    [t('Envoyer à plusieurs sessions…'), () => window.csmFeatures.openBroadcast(), { kbd: `${MOD}+Alt+B` }],
+    '-',
+    [t('Modifications'), () => window.csmFeatures.showPanel('changes'), { kbd: `${MOD}+Alt+G` }],
+    [t('Chronologie'), () => window.csmFeatures.showPanel('timeline')],
+    [t('Consommation'), () => window.csmFeatures.showPanel('usage')],
+    [t('Exporter la conversation…'), () => window.csmFeatures.exportConversation(s), { disabled: !s.claudeSessionId }],
+    '-',
+    [t('Groupe…'), () => window.csmFeatures.setGroup(id)],
+    [s.pinned ? t('Désépingler') : t('Épingler en haut'), () => api('POST', `/api/sessions/${id}/meta`, { pinned: !s.pinned })],
+    [s.alerts?.mute ? t('Réactiver les alertes') : t('Couper les alertes de cette session'), () => api('POST', `/api/sessions/${id}/meta`, { alerts: { mute: !s.alerts?.mute } })],
+    '-',
+    [t('Arrêter'), () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
+  ];
+}
 $('#btnKill').onclick = () => active && api('POST', `/api/sessions/${active}/kill`);
-$('#btnClose').onclick = () => {
-  const s = sessions.get(active); if (!s) return;
-  if (s.alive && !confirm(`Fermer « ${s.name} » ? Le processus Claude sera arrêté (la conversation reste reprenable depuis l'historique).`)) return;
-  api('DELETE', `/api/sessions/${active}`);
-};
+$('#btnClose').onclick = () => closeSession(active);
+async function closeSession(id) {
+  const s = sessions.get(id); if (!s) return;
+  if (s.worktree) {
+    $('#cwTitle').textContent = `${t('Fermer')} « ${s.name} »`;
+    $('#cwInfo').textContent = `${t('Cette session travaille dans le worktree')} ${s.worktree.path} (${t('branche')} ${s.worktree.branch}, ${t('base')} ${s.worktree.base}).`;
+    const dlg = $('#dlgCloseWt'); dlg.returnValue = ''; dlg.showModal();
+    const choice = await new Promise(r => dlg.addEventListener('close', () => r(dlg.returnValue), { once: true }));
+    try {
+      if (choice === 'keep') await api('DELETE', `/api/sessions/${id}`);
+      else if (choice === 'merge') {
+        await api('POST', `/api/sessions/${id}/worktree/merge`);
+        await api('POST', `/api/sessions/${id}/worktree/remove`, { deleteBranch: true });
+        toast(`${t('Fusionné dans')} ${s.worktree.base}`);
+      } else if (choice === 'remove') {
+        if (!confirm(`${t('Supprimer définitivement le worktree et la branche')} ${s.worktree.branch} ?`)) return;
+        await api('POST', `/api/sessions/${id}/worktree/remove`, { deleteBranch: true, force: true });
+      }
+    } catch (e) { alert(e.message); }
+    return;
+  }
+  if (s.alive && !confirm(`${t('Fermer')} « ${s.name} » ? ${t("Le processus Claude sera arrêté (la conversation reste reprenable depuis l'historique).")}`)) return;
+  api('DELETE', `/api/sessions/${id}`);
+}
 
 async function loadHistory() {
   try { historyCache = await api('GET', '/api/history'); } catch { historyCache = []; }
@@ -468,14 +713,70 @@ async function loadHistory() {
   for (const d of dirs.slice(0, 60)) { const o = document.createElement('option'); o.value = d; $('#dirs').appendChild(o); }
 }
 
-function openNew() {
+let templates = [];
+async function loadTemplates() { try { templates = await api('GET', '/api/templates'); } catch { templates = []; } return templates; }
+window.addEventListener('csm:templates', e => { templates = e.detail; });
+function openNew(tpl) {
   const f = $('#formNew');
   f.reset();
-  f.cwd.value = LS.get('csm.lastCwd', '') || sessions.get(active)?.cwd || '';
+  f.model.value = SETTINGS.defaultModel ?? 'opus';
+  f.mode.value = SETTINGS.defaultMode || '';
+  const cur = sessions.get(active);
+  f.cwd.value = LS.get('csm.lastCwd', '') || (cur?.worktree ? cur.worktree.repo : cur?.cwd) || '';
+  f.group.value = cur?.group || '';
+  f.worktree.checked = !!SETTINGS.worktreeDefault;
   loadHistory();
+  loadTemplates().then(list => {
+    $('#tplRow').hidden = !list.length;
+    f.template.innerHTML = `<option value="">${t('— aucun —')}</option>` + list.map(x => `<option value="${x.id}"></option>`).join('');
+    list.forEach((x, i) => { f.template.options[i + 1].textContent = x.name; });
+    if (tpl) { f.template.value = tpl.id; applyTemplate(tpl); }
+  });
   $('#dlgNew').showModal();
+  checkRepo();
   f.cwd.select();
 }
+function applyTemplate(x) {
+  const f = $('#formNew');
+  if (!x) return;
+  if (x.cwd) f.cwd.value = x.cwd;
+  f.name.value = x.name || '';
+  f.model.value = x.model ?? f.model.value; f.mode.value = x.mode || '';
+  f.extra.value = x.extra || ''; f.prompt.value = x.prompt || ''; f.group.value = x.group || '';
+  f.worktree.checked = !!x.worktree;
+  if (x.prompt) f.querySelector('details').open = true;
+  checkRepo();
+}
+$('#formNew').template.onchange = e => applyTemplate(templates.find(x => x.id === e.target.value));
+// Worktree : proposé seulement dans un dépôt git ; nom de branche suggéré depuis le nom de la session.
+let repoTimer = null;
+function checkRepo() {
+  clearTimeout(repoTimer);
+  repoTimer = setTimeout(async () => {
+    const f = $('#formNew');
+    const cwd = f.cwd.value.trim(); if (!cwd) { $('#wtBox').hidden = true; return; }
+    try {
+      const r = await api('GET', `/api/git/suggest-branch?cwd=${encodeURIComponent(cwd)}&name=${encodeURIComponent(f.name.value || cwd.split(/[\\/]/).filter(Boolean).pop() || 'session')}`);
+      $('#wtBox').hidden = !r.repo;
+      if (!r.repo) { f.worktree.checked = false; return; }
+      if (!f.branch.dataset.touched) f.branch.value = r.branch;
+      $('#wtHint').textContent = f.worktree.checked ? `${t('Dossier')} : ${r.root}.worktrees/… · ${t('base')} : ${r.base}` : '';
+    } catch { $('#wtBox').hidden = true; }
+    $('#wtBranchRow').hidden = !f.worktree.checked;
+  }, 250);
+}
+for (const n of ['cwd', 'name']) $('#formNew')[n].addEventListener('input', checkRepo);
+$('#formNew').worktree.addEventListener('change', checkRepo);
+$('#formNew').branch.addEventListener('input', e => { e.target.dataset.touched = '1'; });
+$('#btnSaveTpl').onclick = async () => {
+  const f = $('#formNew');
+  const name = await askName(t('Nom du modèle'), f.name.value || f.cwd.value.split(/[\\/]/).filter(Boolean).pop() || t('Modèle'), t('Retrouvable dans « Modèle de session » et la palette (Ctrl+K).'), true);
+  if (!name) return $('#dlgNew').showModal();
+  const list = await loadTemplates();
+  list.push({ name, cwd: f.cwd.value.trim(), model: f.model.value, mode: f.mode.value, extra: f.extra.value.trim(), worktree: f.worktree.checked, prompt: f.prompt.value, group: f.group.value.trim() });
+  try { await api('PUT', '/api/templates', list); toast(`${t('Modèle enregistré')} : ${name}`); } catch (e) { toast(e.message, true); }
+  if (!$('#dlgNew').open) $('#dlgNew').showModal();
+};
 $('#btnNew').onclick = openNew;
 $('#btnBrowse').onclick = async () => {
   const f = $('#formNew'), btn = $('#btnBrowse');
@@ -497,8 +798,14 @@ $('#dlgNew').addEventListener('close', async () => {
   const args = [f.model.value && `--model ${f.model.value}`, f.mode.value && `--permission-mode ${f.mode.value}`, f.extra.value.trim()].filter(Boolean).join(' ');
   const cwd = f.cwd.value.trim().replace(/^"|"$/g, '');
   LS.set('csm.lastCwd', cwd);
-  const s = await api('POST', '/api/sessions', { cwd, name: f.name.value.trim() || undefined, args });
-  sessions.set(s.id, s); ensureTerm(s.id); select(s.id);
+  const body = { cwd, name: f.name.value.trim() || undefined, args, group: f.group.value.trim() || undefined, initialPrompt: f.prompt.value.trim() || undefined };
+  try {
+    const s = f.worktree.checked && !$('#wtBox').hidden
+      ? await api('POST', '/api/worktree/session', { ...body, branch: f.branch.value.trim() })
+      : await api('POST', '/api/sessions', body);
+    sessions.set(s.id, s); ensureTerm(s.id); select(s.id);
+  } catch (e) { alert(`${t('Création impossible')} : ${e.message}`); return; }
+  delete f.branch.dataset.touched;
   askNotify();
 });
 
@@ -636,9 +943,28 @@ function globalShortcut(e) {
   if (e.key === 'ArrowDown' && list.length) { select(list[(idx + 1) % list.length].id); return true; }
   if (e.key === 'ArrowUp' && list.length) { select(list[(idx - 1 + list.length) % list.length].id); return true; }
   if (k === 'a') { const a = list.find(s => s.status === 'attention' && s.id !== active); if (a) select(a.id); return true; }
+  if (k === 'g') { window.csmFeatures.togglePanel('changes'); return true; }
+  if (k === 'e' && active) { openIn(active, 'editor'); return true; }
+  if (k === 'q' && active) { window.csmFeatures.openQueue(active); return true; }
+  if (k === 'b') { window.csmFeatures.openBroadcast(); return true; }
+  if (k === 'f') { document.body.classList.toggle('focusmode'); requestAnimationFrame(() => fitAll(true)); return true; }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    const vis = panes.slice(0, LAYOUTS[layout] || 1);
+    if (vis.length > 1) { let i = focusedPane; do { i = (i + (e.key === 'ArrowRight' ? 1 : vis.length - 1)) % vis.length; } while (!vis[i] && i !== focusedPane); if (vis[i]) select(vis[i]); }
+    return true;
+  }
   return false;
 }
 document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && globalShortcut(e)) e.preventDefault(); });
+// Ctrl+K / Cmd+K : palette ; Ctrl+, : réglages ; Ctrl+Maj+F : recherche dans les sessions.
+document.addEventListener('keydown', e => {
+  const mod = IS_MAC ? e.metaKey : e.ctrlKey;
+  if (!mod || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === 'k' && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); window.csmFeatures.openPalette(); }
+  else if (e.key === ',') { e.preventDefault(); window.csmFeatures.openSettings(); }
+  else if (k === 'f' && e.shiftKey) { e.preventDefault(); window.csmFeatures.openSearch(); }
+}, true);
 
 function askNotify() {
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
@@ -646,9 +972,10 @@ function askNotify() {
 document.addEventListener('click', askNotify, { once: true });
 
 // Actions venant du menu de l'application (barre des tâches / de menus).
-window.csmNative?.onAction(a => { if (a === 'new') openNew(); else if (a === 'history') openHistory(); });
+window.csmNative?.onAction(a => { if (a === 'new') openNew(); else if (a === 'history') openHistory(); else if (a === 'settings') window.csmFeatures.openSettings(); });
 
-connect();
+window.csmFeatures = {}; // rempli par panel.js, settings.js, palette.js
+loadSettings().finally(() => { connect(); setLayout(layout); window.dispatchEvent(new Event('csm:ready')); });
 
 // ------------------------------------------------------------------ version du serveur
 // Le serveur survit aux mises à jour de l'app : s'il tourne un ancien code, les nouvelles routes manquent.
