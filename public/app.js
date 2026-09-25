@@ -367,7 +367,7 @@ function render() {
     li.querySelector('.n').textContent = (s.locked ? (window.csmFeatures.isLockedHere?.(s.id) ? '🔒 ' : '🔓 ') : '') + s.name;
     li.querySelector('.dot').textContent = '';
     li.querySelector('.dot').dataset.initial = (s.name || '?').trim().charAt(0).toUpperCase();
-    li.querySelector('.sub').textContent = (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
+    li.querySelector('.sub').textContent = (isRemote(s) ? '📱 ' : '') + (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
     li.onclick = () => select(s.id);
     li.ondblclick = () => renameSession(s.id);
     li.querySelector('.ren').onclick = e => { e.stopPropagation(); renameSession(s.id); };
@@ -674,6 +674,7 @@ function moreItems(id) {
     [t('Modifications'), () => window.csmFeatures.showPanel('changes'), { kbd: `${MOD}+Alt+G` }],
     [t('Chronologie'), () => window.csmFeatures.showPanel('timeline')],
     [t('Consommation'), () => window.csmFeatures.showPanel('usage')],
+    [isRemote(s) ? t('Désactiver l’accès depuis l’app Claude') : t('📱 Accès depuis l’app Claude (téléphone)'), () => setRemote(id, !isRemote(s))],
     [t('Exporter la conversation…'), () => window.csmFeatures.exportConversation(s), { disabled: !s.claudeSessionId }],
     [t('Enregistrer comme modèle…'), () => saveSessionAsTemplate(id)],
     '-',
@@ -718,6 +719,11 @@ async function loadHistory() {
   for (const d of dirs.slice(0, 60)) { const o = document.createElement('option'); o.value = d; $('#dirs').appendChild(o); }
 }
 
+const isRemote = s => !!(s && (s.remote || (SETTINGS.remoteAll && s.remote !== false)));
+async function setRemote(id, on) {
+  try { const v = await api('POST', `/api/sessions/${id}/remote`, { on }); sessions.set(id, v); render(); toast(on ? t('Session accessible depuis l’app Claude (onglet Code)') : t('Accès depuis l’app Claude désactivé')); }
+  catch (e) { toast(e.message, true); }
+}
 let templates = [];
 async function saveSessionAsTemplate(id) {
   const s = sessions.get(id); if (!s) return;
@@ -737,6 +743,7 @@ async function saveSessionAsTemplate(id) {
 async function loadTemplates() { try { templates = await api('GET', '/api/templates'); } catch { templates = []; } return templates; }
 window.addEventListener('csm:templates', e => { templates = e.detail; });
 function openNew(tpl) {
+  if (tpl && !tpl.id) tpl = null; // seul un vrai modèle (avec id) préremplit le formulaire
   const f = $('#formNew');
   f.reset();
   f.model.value = SETTINGS.defaultModel ?? 'opus';
@@ -745,6 +752,7 @@ function openNew(tpl) {
   f.cwd.value = LS.get('csm.lastCwd', '') || (cur?.worktree ? cur.worktree.repo : cur?.cwd) || '';
   f.group.value = cur?.group || '';
   f.worktree.checked = !!SETTINGS.worktreeDefault;
+  f.remote.checked = !!SETTINGS.remoteAll;
   loadHistory();
   loadTemplates().then(list => {
     $('#tplRow').hidden = false;
@@ -797,7 +805,7 @@ $('#btnSaveTpl').onclick = async () => {
   try { await api('PUT', '/api/templates', list); toast(`${t('Modèle enregistré')} : ${name}`); } catch (e) { toast(e.message, true); }
   if (!$('#dlgNew').open) $('#dlgNew').showModal();
 };
-$('#btnNew').onclick = openNew;
+$('#btnNew').onclick = () => openNew(); // (pas openNew directement : l'événement de clic serait pris pour un modèle)
 $('#btnBrowse').onclick = async () => {
   const f = $('#formNew'), btn = $('#btnBrowse');
   btn.disabled = true; btn.textContent = 'Ouverture…';
@@ -818,7 +826,7 @@ $('#dlgNew').addEventListener('close', async () => {
   const args = [f.model.value && `--model ${f.model.value}`, f.mode.value && `--permission-mode ${f.mode.value}`, f.extra.value.trim()].filter(Boolean).join(' ');
   const cwd = f.cwd.value.trim().replace(/^"|"$/g, '');
   LS.set('csm.lastCwd', cwd);
-  const body = { cwd, name: f.name.value.trim() || undefined, args, group: f.group.value.trim() || undefined, initialPrompt: f.prompt.value.trim() || undefined };
+  const body = { cwd, name: f.name.value.trim() || undefined, args, group: f.group.value.trim() || undefined, initialPrompt: f.prompt.value.trim() || undefined, remote: f.remote.checked };
   try {
     const s = f.worktree.checked && !$('#wtBox').hidden
       ? await api('POST', '/api/worktree/session', { ...body, branch: f.branch.value.trim() })

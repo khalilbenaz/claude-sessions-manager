@@ -137,6 +137,18 @@ test('prompts de départ au premier lancement', async () => {
   assert.equal((await api('GET', '/api/prompts')).length, 0);
 });
 
+test('accès depuis l’app Claude (Remote Control)', async () => {
+  const c = await wsClient();
+  const R = await api('POST', '/api/sessions', { cwd: WORK, name: 'mobile', remote: true });
+  await waitFor(() => (c.out[R.id] || '').includes('REMOTE:mobile'), 10000, '--remote-control transmis');
+  await idle(R.id);
+  const v = await api('POST', `/api/sessions/${R.id}/remote`, { on: false });
+  assert.equal(v.remote, false);
+  await waitFor(() => (c.out[R.id] || '').includes('echo: /remote-control'), 10000, '/remote-control envoyé');
+  await api('DELETE', `/api/sessions/${R.id}`);
+  c.ws.close();
+});
+
 test('groupes et épinglage', async () => {
   const v = await api('POST', `/api/sessions/${S.id}/meta`, { group: 'Projet A', pinned: true, color: '#ff8800' });
   assert.equal(v.group, 'Projet A'); assert.equal(v.pinned, true);

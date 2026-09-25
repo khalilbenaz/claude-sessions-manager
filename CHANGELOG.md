@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.3.0] — 2026-09-25
+
+### Ajouté
+- **Accès depuis l'app Claude (téléphone) et claude.ai/code** grâce à la fonction Remote Control de Claude Code : case dans « Nouvelle session », bascule pour une session ouverte (⋯, palette, sans relancer), réglage pour toutes les nouvelles sessions, badge 📱 ; la session garde son nom dans l'app Claude et se reconnecte après un redémarrage (#28).
+
+### Corrigé
+- « + Nouvelle » : un nom, un groupe, un mode, un premier prompt ou des arguments saisis juste après l'ouverture de la fenêtre pouvaient être effacés (le clic était pris pour un modèle de session).
+
 ## [3.2.2] — 2026-09-25
 
 ### Ajouté
