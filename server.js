@@ -71,7 +71,7 @@ function hookRunner() {
   return `"${fwd(file)}"`;
 }
 const HOOK_RUNNER = hookRunner();
-const hookCmd = (ev) => [{ hooks: [{ type: 'command', command: `${HOOK_RUNNER} ${ev}`, timeout: 5 }] }];
+const hookCmd = (ev) => [{ hooks: [{ type: 'command', command: `${HOOK_RUNNER} ${ev}`, timeout: 15 }] }];
 const HOOK_SETTINGS = path.join(DATA, 'hooks-settings.json');
 fs.writeFileSync(HOOK_SETTINGS, JSON.stringify({
   hooks: {

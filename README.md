@@ -209,7 +209,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 
 ## 15. Thème clair / sombre, langue
 
-- **Thème** : **Système** (par défaut) suit automatiquement le mode clair ou sombre de Windows / macOS, y compris quand il change en cours de journée ; ou forcer **Clair** / **Sombre** (Réglages › Général, ou palette › « Thème »). Le terminal suit le thème.
+- **Thème** : **Système** (par défaut) suit automatiquement le mode clair ou sombre de Windows / macOS, y compris quand il change en cours de journée ; ou forcer **Clair** / **Sombre** (Réglages › Général, ou palette › « Thème »). Le terminal suit le thème. Astuce : Claude Code a ses propres couleurs (sombres par défaut) ; en thème clair, tape `/theme` dans une session et choisis un thème clair de Claude Code.
 - **Langue** : français ou anglais, automatiquement selon la langue du système, ou forcée dans Réglages › Général.
 
 ## 16. Réglages

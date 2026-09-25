@@ -9,7 +9,7 @@ let input = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', c => { input += c; });
 process.stdin.on('end', send);
-setTimeout(send, 1500);
+setTimeout(send, 4000); // Claude envoie normalement tout de suite ; filet si stdin ne se ferme pas
 
 let sent = false;
 function send() {
@@ -21,7 +21,7 @@ function send() {
     data: { session_id: data.session_id, message: data.message, tool_name: data.tool_name },
   });
   const req = http.request({
-    host: '127.0.0.1', port: Number(CSM_PORT), path: '/api/hook', method: 'POST', timeout: 2000,
+    host: '127.0.0.1', port: Number(CSM_PORT), path: '/api/hook', method: 'POST', timeout: 8000,
     headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-CSM-Token': CSM_TOKEN, Host: `127.0.0.1:${CSM_PORT}` },
   }, res => { res.resume(); res.on('end', () => process.exit(0)); });
   req.on('error', () => process.exit(0));

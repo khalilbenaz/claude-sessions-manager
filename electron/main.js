@@ -66,7 +66,7 @@ async function ensureServer() {
   // Electron lui-même en mode Node : aucune installation de Node.js requise. Détaché = survit à l'app.
   const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1', PATH: loginShellPath() };
   spawn(process.execPath, [SERVER, `--port=${PORT}`], { cwd: ROOT, env, detached: true, stdio: 'ignore', windowsHide: true }).unref();
-  for (let i = 0; i < 60; i++) { if (await isUp()) return true; await new Promise(r => setTimeout(r, 200)); }
+  for (let i = 0; i < 150; i++) { if (await isUp()) return true; await new Promise(r => setTimeout(r, 200)); }
   return false;
 }
 
@@ -207,7 +207,7 @@ function registerIpc() {
   ipcMain.handle('csm:restart-server', async e => {
     if (!trusted(e)) return false;
     stopServer();
-    for (let i = 0; i < 30 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200));
+    for (let i = 0; i < 75 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200));
     const ok = await ensureServer();
     if (ok && win && !win.isDestroyed()) win.loadURL(URL_);
     return ok;
@@ -356,7 +356,7 @@ app.whenReady().then(async () => {
   createWindow();
   updates = require('./updater')({
     enabled: async () => ((await serverGet('/api/settings')) || {}).autoUpdate !== false,
-    beforeInstall: async () => { stopServer(); for (let i = 0; i < 30 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200)); },
+    beforeInstall: async () => { stopServer(); for (let i = 0; i < 75 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200)); },
     onState: st => { refreshTray(); if (win && !win.isDestroyed()) win.webContents.send('csm:update-state', st); },
     log: m => console.log(m),
   });

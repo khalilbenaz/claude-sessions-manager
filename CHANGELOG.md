@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.3.2] — 2026-09-25
+
+### Modifié
+- Délais plus larges : hooks de Claude (15 s), démarrage du serveur par l'app (30 s), arrêt du serveur avant redémarrage / mise à jour (15 s) — évite une session bloquée sur « démarrage » ou un faux « le serveur ne démarre pas » sur une machine chargée.
+- Guide : astuce `/theme` pour les couleurs de Claude Code en thème clair ; fiche et captures du Microsoft Store (`store-assets/`).
+
 ## [3.3.1] — 2026-09-25
 
 ### Corrigé (retours des tests sur Mac, #1)
