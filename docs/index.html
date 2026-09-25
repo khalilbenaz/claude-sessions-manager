@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Sessions — plusieurs sessions Claude Code, une seule fenêtre</title>
+<meta name="description" content="Application libre pour Windows et macOS : pilotez plusieurs sessions Claude Code dans une seule fenêtre. Sessions persistantes, état en direct, historique, reprise automatique.">
+<link rel="icon" href="icon.svg">
+<meta property="og:title" content="Claude Sessions">
+<meta property="og:description" content="Plusieurs sessions Claude Code, une seule fenêtre. Windows & macOS, libre (MIT).">
+<meta property="og:image" content="https://khalilbenaz.github.io/claude-sessions-manager/og.png">
+<meta name="theme-color" content="#16181c">
+<style>
+:root {
+  --bg: #16181c; --panel: #1d2026; --panel2: #252932; --line: #2f343e; --fg: #e6e6e6; --dim: #8b93a1;
+  --accent: #d97757; --accent2: #e8c3a6; --ok: #4fbf7a; --work: #e3b341; --warn: #f0564a;
+  --mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: light) {
+  :root { --bg: #faf8f5; --panel: #ffffff; --panel2: #f1ede7; --line: #e3ddd4; --fg: #1f1b18; --dim: #6b6560; }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif; }
+a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+code, kbd { font-family: var(--mono); font-size: .88em; background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+
+/* en-tête */
+header { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; gap: 16px; height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--fg); }
+.brand img { width: 28px; height: 28px; }
+header nav { margin-left: auto; display: flex; gap: 18px; font-size: 14px; }
+header nav a { color: var(--dim); } header nav a:hover { color: var(--fg); text-decoration: none; }
+
+/* héros */
+.hero { padding: 72px 0 40px; text-align: center; }
+.hero h1 { font-size: clamp(32px, 5.5vw, 54px); line-height: 1.1; margin: 0 0 16px; letter-spacing: -.02em; }
+.hero h1 span { color: var(--accent); }
+.hero p.lead { font-size: clamp(17px, 2.2vw, 20px); color: var(--dim); max-width: 680px; margin: 0 auto 30px; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 12px 20px; border-radius: 10px; font-weight: 600; border: 1px solid var(--line); background: var(--panel); color: var(--fg); }
+.btn:hover { text-decoration: none; border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #1a120e; }
+.btn small { font-weight: 400; opacity: .75; }
+.meta { margin-top: 14px; font-size: 13px; color: var(--dim); }
+
+/* maquette de l'application */
+.shot { margin: 48px auto 0; max-width: 980px; border: 1px solid #2f343e; border-radius: 12px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.35); background: #16181c; color: #e6e6e6; text-align: left; font-size: 13px; }
+.shot .titlebar { height: 34px; display: flex; align-items: center; gap: 7px; padding: 0 12px; background: #1d2026; border-bottom: 1px solid #2f343e; }
+.shot .titlebar i { width: 11px; height: 11px; border-radius: 50%; background: #3a3f4a; }
+.shot .titlebar span { margin-left: 8px; color: #8b93a1; font-size: 12px; }
+.shot .body { display: grid; grid-template-columns: 230px 1fr; min-height: 380px; }
+.shot aside { background: #1d2026; border-right: 1px solid #2f343e; padding: 8px; }
+.shot .s { display: grid; grid-template-columns: 12px 1fr; gap: 1px 8px; align-items: center; padding: 7px 8px; border-radius: 7px; }
+.shot .s.on { background: #252932; border: 1px solid #2f343e; }
+.shot .s b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shot .s em { grid-column: 2; font-style: normal; color: #8b93a1; font-size: 11px; }
+.shot .s em.w { color: #f0564a; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.dot.ok { background: #4fbf7a; } .dot.work { background: #e3b341; animation: pulse 1s infinite; } .dot.warn { background: #f0564a; animation: ring 1.4s infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+@keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(240,86,74,.7); } 70% { box-shadow: 0 0 0 6px rgba(240,86,74,0); } 100% { box-shadow: 0 0 0 0 rgba(240,86,74,0); } }
+.shot main { display: flex; flex-direction: column; min-width: 0; }
+.shot .bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #2f343e; background: #1d2026; }
+.shot .bar .p { color: #8b93a1; font-family: var(--mono); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shot .bar .x { margin-left: auto; display: flex; gap: 6px; }
+.shot .bar .x u { text-decoration: none; border: 1px solid #2f343e; border-radius: 6px; padding: 2px 9px; font-size: 11.5px; background: #252932; }
+.shot pre { margin: 0; flex: 1; padding: 14px 16px; background: #101114; font: 12.5px/1.55 var(--mono); white-space: pre-wrap; color: #cfd3da; }
+.shot pre .u { color: #fff; background: #2a2e36; display: block; padding: 0 4px; margin: 0 -4px; }
+.shot pre .a { color: #e3b341; } .shot pre .g { color: #4fbf7a; } .shot pre .d { color: #7d8594; } .shot pre .c { color: #d97757; }
+
+/* sections */
+section { padding: 72px 0 24px; }
+h2 { font-size: clamp(24px, 3.4vw, 32px); margin: 0 0 8px; letter-spacing: -.01em; }
+.sub { color: var(--dim); margin: 0 0 32px; max-width: 700px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.card h3 { margin: 0 0 6px; font-size: 17px; display: flex; align-items: center; gap: 10px; }
+.card h3 .ic { font-size: 20px; }
+.card p { margin: 0; color: var(--dim); font-size: 15px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--dim); font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+.tablebox { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+
+.steps { counter-reset: s; display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.steps li { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 14px 56px; position: relative; }
+.steps li::before { content: counter(s); position: absolute; left: 16px; top: 13px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #1a120e; font-weight: 700; display: grid; place-items: center; font-size: 14px; }
+.note { font-size: 14px; color: var(--dim); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 16px; }
+pre.cli { background: #101114; color: #d6d9df; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font: 13.5px/1.6 var(--mono); }
+
+footer { margin-top: 72px; border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--dim); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; }
+
+@media (max-width: 720px) {
+  header nav { display: none; }
+  .shot .body { grid-template-columns: 1fr; }
+  .shot aside { display: none; }
+  .shot .bar .x { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="icon.svg" alt=""> Claude Sessions</a>
+    <nav>
+      <a href="#fonctions">Fonctions</a>
+      <a href="#telecharger">Télécharger</a>
+      <a href="#securite">Sécurité</a>
+      <a href="https://github.com/khalilbenaz/claude-sessions-manager">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Plusieurs sessions Claude Code,<br><span>une seule fenêtre.</span></h1>
+    <p class="lead">Fini la pile d'onglets de terminal. Claude Sessions garde toutes vos sessions Claude Code dans une application, montre en direct celles qui travaillent ou attendent une réponse, et les relance toutes seules après un redémarrage.</p>
+    <div class="cta" id="cta">
+      <a class="btn primary" id="dl-main" href="https://github.com/khalilbenaz/claude-sessions-manager/releases/latest">Télécharger <small id="dl-main-os"></small></a>
+      <a class="btn" href="https://github.com/khalilbenaz/claude-sessions-manager">Code source</a>
+    </div>
+    <div class="meta"><span id="ver">Windows 10/11 · macOS (Apple Silicon et Intel)</span> · libre, licence MIT</div>
+
+    <div class="shot" aria-label="Aperçu de l'application">
+      <div class="titlebar"><i></i><i></i><i></i><span>Claude Sessions</span></div>
+      <div class="body">
+        <aside>
+          <div class="s on"><span class="dot work"></span><b>api-paiements</b><em>travaille · Edit</em></div>
+          <div class="s"><span class="dot warn"></span><b>refonte-front</b><em class="w">attend une réponse · 2min</em></div>
+          <div class="s"><span class="dot ok"></span><b>migration-sql</b><em>prêt · terminé · 5min</em></div>
+          <div class="s"><span class="dot ok"></span><b>docs</b><em>prêt · 1h</em></div>
+        </aside>
+        <main>
+          <div class="bar"><span class="dot work"></span><b>api-paiements</b><span class="p">~/projets/api-paiements</span><span class="x"><u>📎 Joindre</u><u>Relancer</u><u>Fermer</u></span></div>
+<pre><span class="u">❯ Ajoute la validation des montants négatifs et les tests</span>
+<span class="g">●</span> Je regarde d'abord le service de paiement.
+
+<span class="g">●</span> <b>Read</b>(src/payments/service.ts)
+  <span class="d">⎿  Read 184 lines</span>
+
+<span class="g">●</span> <b>Edit</b>(src/payments/service.ts)
+  <span class="d">⎿  Updated with 6 additions</span>
+
+<span class="a">✻ Writing tests… (12s · esc to interrupt)</span>
+
+<span class="c">❯</span> █</pre>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <section id="fonctions">
+    <h2>Tout ce qu'il faut pour travailler en parallèle</h2>
+    <p class="sub">Chaque session est un vrai Claude Code, avec vos réglages, vos hooks et vos commandes. Claude Sessions ne fait que les réunir et les garder en vie.</p>
+    <div class="grid">
+      <div class="card"><h3><span class="ic">🟢</span>État en direct</h3><p>Orange quand Claude travaille, rouge quand il attend votre réponse, vert quand c'est fini. Notification système et pastille sur l'icône.</p></div>
+      <div class="card"><h3><span class="ic">♻️</span>Sessions persistantes</h3><p>Fermer la fenêtre ne coupe rien. Après un redémarrage de l'ordinateur, chaque session revient avec sa conversation.</p></div>
+      <div class="card"><h3><span class="ic">🕘</span>Historique</h3><p>Toutes vos conversations Claude Code, filtrables par titre, dossier ou dernier message. Reprise en un clic, dans le bon dossier.</p></div>
+      <div class="card"><h3><span class="ic">↪️</span>Ramener vos terminaux</h3><p>Les sessions Claude ouvertes dans des terminaux apparaissent dans l'app : déplacez-les ou copiez-les, sans perdre la conversation.</p></div>
+      <div class="card"><h3><span class="ic">🖼️</span>Images et fichiers</h3><p>Glissez-déposez ou collez une capture : elle est jointe à votre message comme dans un terminal.</p></div>
+      <div class="card"><h3><span class="ic">⌨️</span>Au clavier</h3><p><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> nouvelle session, <kbd>1</kbd>…<kbd>9</kbd> pour changer, <kbd>A</kbd> pour la prochaine qui attend. Renommer, réordonner, clic droit partout.</p></div>
+    </div>
+  </section>
+
+  <section id="telecharger">
+    <h2>Télécharger</h2>
+    <p class="sub">Seul prérequis : <a href="https://docs.claude.com/claude-code">Claude Code</a> installé (la commande <code>claude</code>). Node.js n'est pas nécessaire.</p>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Système</th><th>Fichier</th><th>Installation</th></tr></thead>
+        <tbody>
+          <tr><td>Windows 10 / 11</td><td><a data-asset="Setup" href="https://github.com/khalilbenaz/claude-sessions-manager/releases/latest">Claude-Sessions-Setup.exe</a></td><td>Double-clic. Installation en un clic, sans droits administrateur.</td></tr>
+          <tr><td>Mac Apple Silicon (M1…M4)</td><td><a data-asset="arm64.dmg" href="https://github.com/khalilbenaz/claude-sessions-manager/releases/latest">Claude-Sessions-arm64.dmg</a></td><td>Ouvrir, glisser dans Applications.</td></tr>
+          <tr><td>Mac Intel</td><td><a data-asset="x64.dmg" href="https://github.com/khalilbenaz/claude-sessions-manager/releases/latest">Claude-Sessions-x64.dmg</a></td><td>Ouvrir, glisser dans Applications.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <b>Premier lancement.</b> L'application n'est pas encore signée par un certificat éditeur :<br>
+      Windows : « Windows a protégé votre ordinateur » → <i>Informations complémentaires</i> → <i>Exécuter quand même</i>.<br>
+      macOS : clic droit sur l'app → <i>Ouvrir</i> → <i>Ouvrir</i> (ou <code>xattr -cr "/Applications/Claude Sessions.app"</code>).
+    </div>
+
+    <h3 style="margin:36px 0 10px">Ou en ligne de commande</h3>
+<pre class="cli">git clone https://github.com/khalilbenaz/claude-sessions-manager.git
+cd claude-sessions-manager
+npm ci && npm install -g .
+csm install        # démarrage automatique + raccourci
+csm                # ouvre la fenêtre</pre>
+  </section>
+
+  <section id="securite">
+    <h2>Local, isolé, sans télémétrie</h2>
+    <p class="sub">Vos sessions ne quittent pas votre machine : seul Claude Code lui-même parle à l'API d'Anthropic, comme d'habitude.</p>
+    <div class="grid">
+      <div class="card"><h3><span class="ic">🔒</span>Serveur local uniquement</h3><p>Écoute sur <code>127.0.0.1</code>, jeton aléatoire exigé, contrôle de l'en-tête Host contre le DNS rebinding.</p></div>
+      <div class="card"><h3><span class="ic">🧱</span>Fenêtre isolée</h3><p>Isolation de contexte et bac à sable, aucun accès Node côté page, navigation verrouillée, permissions limitées aux notifications et au presse-papiers.</p></div>
+      <div class="card"><h3><span class="ic">🛡️</span>CSP stricte</h3><p>Aucun script inline ni ressource externe ; les liens externes s'ouvrent dans votre navigateur.</p></div>
+      <div class="card"><h3><span class="ic">📦</span>Builds publics</h3><p>Les installeurs sont construits par GitHub Actions à partir du code publié, jamais sur un poste.</p></div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <h2>Questions</h2>
+    <div class="grid">
+      <div class="card"><h3>Que devient une session quand je quitte l'app ?</h3><p>Elle continue de tourner. « Quitter et arrêter toutes les sessions » les arrête ; elles reviendront au prochain lancement.</p></div>
+      <div class="card"><h3>Mes réglages Claude Code sont-ils conservés ?</h3><p>Oui : chaque session lance votre <code>claude</code> habituel, avec votre configuration, vos hooks et vos serveurs MCP.</p></div>
+      <div class="card"><h3>Est-ce un produit Anthropic ?</h3><p>Non. Projet libre et indépendant. « Claude » et « Claude Code » sont des marques d'Anthropic.</p></div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Khalil Benazzouz · <a href="https://github.com/khalilbenaz/claude-sessions-manager/blob/main/LICENSE">Licence MIT</a></span>
+    <span><a href="https://github.com/khalilbenaz/claude-sessions-manager">GitHub</a> · <a href="https://github.com/khalilbenaz/claude-sessions-manager/releases">Versions</a> · <a href="https://github.com/khalilbenaz/claude-sessions-manager/issues">Signaler un problème</a> · <a href="privacy.html">Confidentialité</a></span>
+  </div>
+</footer>
+
+<script>
+// Liens directs vers les fichiers de la dernière version (repli : page des versions).
+(async () => {
+  const mac = /Mac/i.test(navigator.platform || navigator.userAgent);
+  const win = /Win/i.test(navigator.platform || navigator.userAgent);
+  let arm = false;
+  try { const h = await navigator.userAgentData?.getHighEntropyValues?.(['architecture']); arm = h?.architecture === 'arm'; } catch { }
+  if (mac && !navigator.userAgentData) arm = true; // Safari ne l'indique pas : la plupart des Mac récents sont Apple Silicon
+  document.getElementById('dl-main-os').textContent = win ? 'pour Windows' : mac ? 'pour macOS' : '';
+  try {
+    const r = await fetch('https://api.github.com/repos/khalilbenaz/claude-sessions-manager/releases/latest');
+    if (!r.ok) return;
+    const rel = await r.json();
+    const find = key => rel.assets.find(a => a.name.includes(key));
+    document.querySelectorAll('[data-asset]').forEach(a => {
+      const f = find(a.dataset.asset); if (f) { a.href = f.browser_download_url; a.textContent = f.name; }
+    });
+    const main = win ? find('Setup') : mac ? find(arm ? 'arm64.dmg' : 'x64.dmg') : null;
+    if (main) document.getElementById('dl-main').href = main.browser_download_url;
+    document.getElementById('ver').textContent = `Version ${rel.tag_name.replace(/^v/, '')} · Windows 10/11 · macOS (Apple Silicon et Intel)`;
+  } catch { }
+})();
+</script>
+</body>
+</html>

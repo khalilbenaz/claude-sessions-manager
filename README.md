@@ -2,6 +2,8 @@
 
 Une seule fenêtre pour piloter plusieurs sessions Claude Code au lieu d'une pile d'onglets de terminal. **Windows et macOS.**
 
+**Site : https://khalilbenaz.github.io/claude-sessions-manager/**
+
 ## Application (recommandé)
 
 Télécharger depuis les [Releases](https://github.com/khalilbenaz/claude-sessions-manager/releases) :
@@ -103,6 +105,6 @@ Windows builds are intended to be signed through the [SignPath Foundation](https
 
 ## Privacy policy
 
-This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. Full policy: https://khalilbenaz.github.io/claude-sessions-manager/privacy.html
 
 Claude Sessions runs a server bound to `127.0.0.1` only (not reachable from the network) and stores its data locally (`%APPDATA%\claude-sessions`, `~/Library/Application Support/claude-sessions`). It collects no telemetry. Network traffic comes only from the Claude Code sessions the user starts, which talk to Anthropic's API as Claude Code normally does.
