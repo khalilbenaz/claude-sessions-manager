@@ -292,7 +292,7 @@ function buildTray() {
     { label: 'Réglages…', click: () => send('settings') },
     { type: 'separator' },
     { label: 'Rechercher des mises à jour', click: () => updates?.check(), visible: !!updates && app.isPackaged },
-    { label: 'Lancer au démarrage de l’ordinateur', type: 'checkbox', checked: loginItem(), click: i => setLoginItem(i.checked) },
+    { label: 'Lancer au démarrage de l’ordinateur', type: 'checkbox', checked: loginItem(), click: i => setLoginItem(i.checked), visible: !process.windowsStore }, // version Store : non géré par l'app
     { label: 'Redémarrer le serveur (les sessions reviennent)', click: async () => { stopServer(); await new Promise(r => setTimeout(r, 800)); await ensureServer(); win?.loadURL(URL_); } },
     { type: 'separator' },
     { label: 'Quitter (les sessions continuent)', click: () => { quitting = true; app.quit(); } },
@@ -340,7 +340,7 @@ app.whenReady().then(async () => {
   if (!process.env.CSM_HIDE_WINDOW) buildTray();
   // Premier lancement : démarrage automatique activé (désactivable dans le menu de l'icône).
   const firstRun = path.join(DATA, 'app-first-run');
-  if (app.isPackaged && PORT === 7890 && !fs.existsSync(firstRun)) { fs.mkdirSync(DATA, { recursive: true }); fs.writeFileSync(firstRun, new Date().toISOString()); setLoginItem(true); }
+  if (app.isPackaged && !process.windowsStore && PORT === 7890 && !fs.existsSync(firstRun)) { fs.mkdirSync(DATA, { recursive: true }); fs.writeFileSync(firstRun, new Date().toISOString()); setLoginItem(true); }
   if (!(await ensureServer())) {
     (process.env.CSM_HIDE_WINDOW ? (t, m) => console.error(m) : dialog.showErrorBox)('Claude Sessions', `Le serveur local ne démarre pas.\n\nJournal : ${path.join(DATA, 'server.log')}`);
   }

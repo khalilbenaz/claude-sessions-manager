@@ -117,7 +117,7 @@
   // ---------------------------------------------------------------- à propos / mises à jour
   let upd = null;
   const UPD_LABEL = {
-    dev: 'Version de développement : mises à jour automatiques désactivées.', idle: '', checking: 'Recherche de mises à jour…',
+    dev: 'Version de développement : mises à jour automatiques désactivées.', store: 'Version Microsoft Store : les mises à jour sont installées par le Store.', idle: '', checking: 'Recherche de mises à jour…',
     uptodate: 'Claude Sessions est à jour.', disabled: 'Mises à jour automatiques désactivées dans les réglages.',
     downloading: 'Téléchargement de la version {v}… {p}', ready: 'Version {v} prête : redémarre pour l’installer.',
     available: 'Version {v} disponible au téléchargement.', error: 'Échec de la vérification : {e}',
