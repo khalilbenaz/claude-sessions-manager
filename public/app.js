@@ -675,6 +675,7 @@ function moreItems(id) {
     [t('Chronologie'), () => window.csmFeatures.showPanel('timeline')],
     [t('Consommation'), () => window.csmFeatures.showPanel('usage')],
     [t('Exporter la conversation…'), () => window.csmFeatures.exportConversation(s), { disabled: !s.claudeSessionId }],
+    [t('Enregistrer comme modèle…'), () => saveSessionAsTemplate(id)],
     '-',
     [t('Groupe…'), () => window.csmFeatures.setGroup(id)],
     [s.pinned ? t('Désépingler') : t('Épingler en haut'), () => api('POST', `/api/sessions/${id}/meta`, { pinned: !s.pinned })],
@@ -718,6 +719,21 @@ async function loadHistory() {
 }
 
 let templates = [];
+async function saveSessionAsTemplate(id) {
+  const s = sessions.get(id); if (!s) return;
+  const parts = (s.args || '').match(/"[^"]*"|\S+/g) || [];
+  let model = '', mode = ''; const extra = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] === '--model') model = parts[++i] || '';
+    else if (parts[i] === '--permission-mode') mode = parts[++i] || '';
+    else extra.push(parts[i]);
+  }
+  const name = await askName(t('Nom du modèle'), s.name, t('Reprend le dossier, le groupe, le modèle et le mode de cette session. Retrouvable dans « Nouvelle session » et la palette (Ctrl+K).'), true);
+  if (!name) return;
+  const list = await loadTemplates();
+  list.push({ name, cwd: s.worktree ? s.worktree.repo : s.cwd, model, mode, extra: extra.join(' '), worktree: !!s.worktree, prompt: '', group: s.group || '' });
+  try { await api('PUT', '/api/templates', list); toast(`${t('Modèle enregistré')} : ${name}`); } catch (e) { toast(e.message, true); }
+}
 async function loadTemplates() { try { templates = await api('GET', '/api/templates'); } catch { templates = []; } return templates; }
 window.addEventListener('csm:templates', e => { templates = e.detail; });
 function openNew(tpl) {
@@ -731,8 +747,8 @@ function openNew(tpl) {
   f.worktree.checked = !!SETTINGS.worktreeDefault;
   loadHistory();
   loadTemplates().then(list => {
-    $('#tplRow').hidden = !list.length;
-    f.template.innerHTML = `<option value="">${t('— aucun —')}</option>` + list.map(x => `<option value="${x.id}"></option>`).join('');
+    $('#tplRow').hidden = false;
+    f.template.innerHTML = `<option value="">${list.length ? t('— aucun —') : t('— aucun modèle : « Enregistrer comme modèle » en bas —')}</option>` + list.map(x => `<option value="${x.id}"></option>`).join('');
     list.forEach((x, i) => { f.template.options[i + 1].textContent = x.name; });
     if (tpl) { f.template.value = tpl.id; applyTemplate(tpl); }
   });

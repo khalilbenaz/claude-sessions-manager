@@ -130,6 +130,13 @@ test('réglages : validation des valeurs', async () => {
   assert.equal((await api('GET', '/api/templates'))[0].name, 'Mon modèle');
 });
 
+test('prompts de départ au premier lancement', async () => {
+  const p = await api('GET', '/api/prompts');
+  assert.ok(p.length >= 5 && p.some(x => x.title === 'Relire les modifications'));
+  await api('PUT', '/api/prompts', []); // vidée volontairement : reste vide
+  assert.equal((await api('GET', '/api/prompts')).length, 0);
+});
+
 test('groupes et épinglage', async () => {
   const v = await api('POST', `/api/sessions/${S.id}/meta`, { group: 'Projet A', pinned: true, color: '#ff8800' });
   assert.equal(v.group, 'Projet A'); assert.equal(v.pinned, true);

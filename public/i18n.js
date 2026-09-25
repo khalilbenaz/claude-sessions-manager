@@ -80,6 +80,11 @@ const EN = {
   'Mises à jour automatiques désactivées dans les réglages.': 'Automatic updates are disabled in Settings.', 'Téléchargement de la version {v}… {p}': 'Downloading version {v}… {p}',
   'Version {v} prête : redémarre pour l’installer.': 'Version {v} is ready: restart to install it.', 'Version {v} disponible au téléchargement.': 'Version {v} is available for download.',
   'Échec de la vérification : {e}': 'Update check failed: {e}', 'Réglage non enregistré : ': 'Setting not saved: ',
+  // modèles / prompts
+  'Enregistrer comme modèle…': 'Save as template…', 'Enregistrer la session comme modèle': 'Save session as template',
+  'Reprend le dossier, le groupe, le modèle et le mode de cette session. Retrouvable dans « Nouvelle session » et la palette (Ctrl+K).': 'Uses this session\u2019s folder, group, model and mode. Available in “New session” and the palette (Ctrl+K).',
+  'Un modèle relance en un clic une session type : même dossier, groupe, modèle Claude, mode, worktree et premier prompt.': 'A template relaunches a typical session in one click: same folder, group, Claude model, mode, worktree and first prompt.',
+  'Créer depuis la session active': 'Create from active session', 'Nouvelle session…': 'New session…', '— aucun modèle : « Enregistrer comme modèle » en bas —': '— no templates: use “Save as template” below —',
   // verrouillage
   'Session verrouillée. Elle continue de tourner ; son contenu est masqué.': 'Session locked. It keeps running; its content is hidden.',
   'Mot de passe': 'Password', 'Déverrouiller': 'Unlock', 'Indice': 'Hint', 'Mot de passe incorrect': 'Wrong password', 'Session verrouillée': 'Session locked',

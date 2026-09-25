@@ -57,7 +57,13 @@
   async function renderTemplates() {
     const list = await loadTemplates();
     const ul = $('#tplList');
-    if (!list.length) { ul.innerHTML = `<li class="hint">${t('Aucun modèle pour l’instant.')}</li>`; return; }
+    if (!list.length) {
+      ul.innerHTML = `<li class="empty"><div><b>${t('Aucun modèle pour l’instant.')}</b><small>${t('Un modèle relance en un clic une session type : même dossier, groupe, modèle Claude, mode, worktree et premier prompt.')}</small></div>
+        <span class="acts">${active ? `<button data-a="from" class="primary">${t('Créer depuis la session active')}</button>` : ''}<button data-a="new">${t('Nouvelle session…')}</button></span></li>`;
+      ul.querySelector('[data-a=from]')?.addEventListener('click', async () => { await saveSessionAsTemplate(active); renderTemplates(); });
+      ul.querySelector('[data-a=new]').onclick = () => { dlg.close(); openNew(); };
+      return;
+    }
     ul.innerHTML = list.map((x, i) => `<li data-i="${i}"><div><b>${esc(x.name)}</b><small>${esc(x.cwd)}${x.worktree ? ' · ⎇ worktree' : ''}${x.model ? ' · ' + esc(x.model) : ''}${x.group ? ' · ' + esc(x.group) : ''}</small></div>
       <span class="acts"><button data-a="run">${t('Lancer')}</button><button data-a="ren">${t('Renommer')}</button><button data-a="del" class="danger">${t('Supprimer')}</button></span></li>`).join('');
     ul.querySelectorAll('li[data-i]').forEach(li => {

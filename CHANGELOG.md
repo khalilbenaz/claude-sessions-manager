@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.2.2] — 2026-09-25
+
+### Ajouté
+- **Bibliothèque de prompts pré-remplie** au premier lancement : 8 prompts prêts à l'emploi (relire, tests, expliquer, commit, bug, plan, documenter, résumer), modifiables.
+- **Enregistrer une session comme modèle** (⋯, clic droit, palette) : reprend son dossier, son groupe, son modèle et son mode.
+- Écrans vides explicatifs (modèles) avec bouton pour créer directement ; la liste « Modèle de session » est toujours visible dans « Nouvelle session ».
+
 ## [3.2.1] — 2026-09-25
 
 ### Modifié
