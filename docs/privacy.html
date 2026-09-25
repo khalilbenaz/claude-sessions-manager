@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Claude Sessions</title>
+<meta name="description" content="Privacy policy of Claude Sessions: no telemetry, no data collection, everything stays on your computer.">
+<link rel="icon" href="icon.svg">
+<meta name="theme-color" content="#16181c">
+<style>
+:root { --bg: #16181c; --panel: #1d2026; --line: #2f343e; --fg: #e6e6e6; --dim: #8b93a1; --accent: #d97757; }
+@media (prefers-color-scheme: light) { :root { --bg: #faf8f5; --panel: #ffffff; --line: #e3ddd4; --fg: #1f1b18; --dim: #6b6560; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.65 -apple-system, "Segoe UI", system-ui, sans-serif; }
+a { color: var(--accent); }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 20px 64px; }
+header { border-bottom: 1px solid var(--line); margin-bottom: 36px; }
+header .wrap { display: flex; align-items: center; gap: 10px; height: 60px; padding-bottom: 0; }
+header a { display: flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; font-weight: 650; }
+header img { width: 28px; height: 28px; }
+h1 { font-size: 32px; margin: 0 0 4px; }
+h2 { font-size: 21px; margin: 32px 0 8px; }
+.updated { color: var(--dim); font-size: 14px; margin: 0 0 24px; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+code { font-family: Consolas, Menlo, monospace; font-size: .9em; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 48px 0; }
+ul { padding-left: 22px; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="./"><img src="icon.svg" alt=""> Claude Sessions</a></div></header>
+<div class="wrap">
+
+<h1>Privacy Policy</h1>
+<p class="updated">Last updated: September 25, 2026</p>
+
+<div class="box"><b>This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.</b></div>
+
+<h2>What Claude Sessions does</h2>
+<p>Claude Sessions is a desktop application that runs several <a href="https://docs.claude.com/claude-code">Claude Code</a> sessions in one window. It starts a small server on your computer that is bound to <code>127.0.0.1</code> only: it cannot be reached from the network or from other computers.</p>
+
+<h2>Data collected</h2>
+<p><b>None.</b> Claude Sessions has no telemetry, no analytics, no crash reporting, no advertising and no user account. It does not send anything to its author or to any third party.</p>
+
+<h2>Data stored on your computer</h2>
+<ul>
+  <li>The list of open sessions (name, working folder, model, conversation identifier), a random access token and a log file, in <code>%APPDATA%\claude-sessions</code> (Windows) or <code>~/Library/Application Support/claude-sessions</code> (macOS).</li>
+  <li>Copies of images or files you drop or paste into a session, in your system temporary folder; they are deleted automatically after 7 days.</li>
+  <li>The conversation history shown in the app is read from Claude Code's own files (<code>~/.claude/projects</code>); Claude Sessions only reads it, except for writing the session name when you rename a session.</li>
+</ul>
+<p>Uninstalling the application does not delete these files; you can remove the folders above at any time.</p>
+
+<h2>Network traffic</h2>
+<p>The only network traffic comes from the Claude Code sessions you start: Claude Code communicates with Anthropic's API exactly as it does in a terminal, under <a href="https://www.anthropic.com/legal/privacy">Anthropic's privacy policy</a>. When you open a link from a session, it opens in your default web browser. The project website may query the public GitHub API to show the latest download links.</p>
+
+<h2>Contact</h2>
+<p>Questions or concerns: <a href="https://github.com/khalilbenaz/claude-sessions-manager/issues">open an issue on GitHub</a>.</p>
+
+<hr>
+
+<h1 lang="fr">Politique de confidentialité</h1>
+<div lang="fr">
+<p class="updated">Dernière mise à jour : 25 septembre 2026</p>
+<div class="box"><b>Ce programme ne transmet aucune information à d'autres systèmes en réseau, sauf à la demande expresse de l'utilisateur ou de la personne qui l'installe ou l'utilise.</b></div>
+<h2>Données collectées</h2>
+<p><b>Aucune.</b> Pas de télémétrie, pas de statistiques, pas de rapport de plantage, pas de publicité, pas de compte. Rien n'est envoyé à l'auteur ni à un tiers.</p>
+<h2>Données enregistrées sur votre ordinateur</h2>
+<ul>
+  <li>La liste des sessions ouvertes (nom, dossier, modèle, identifiant de conversation), un jeton d'accès aléatoire et un journal, dans <code>%APPDATA%\claude-sessions</code> (Windows) ou <code>~/Library/Application Support/claude-sessions</code> (macOS).</li>
+  <li>Les copies des images ou fichiers déposés dans une session, dans le dossier temporaire du système, effacées automatiquement après 7 jours.</li>
+  <li>L'historique affiché est lu dans les fichiers de Claude Code (<code>~/.claude/projects</code>) ; seul le nom d'une session renommée y est écrit.</li>
+</ul>
+<h2>Trafic réseau</h2>
+<p>Le serveur local n'écoute que sur <code>127.0.0.1</code>. Le seul trafic réseau est celui des sessions Claude Code que vous lancez, qui communiquent avec l'API d'Anthropic comme dans un terminal.</p>
+<h2>Contact</h2>
+<p><a href="https://github.com/khalilbenaz/claude-sessions-manager/issues">Ouvrir une issue sur GitHub</a>.</p>
+</div>
+
+</div>
+</body>
+</html>
