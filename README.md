@@ -88,6 +88,8 @@ Tu peux fermer la fenêtre à tout moment : les sessions continuent en arrière-
 | 🟢 vert | prêt | Claude a fini (« terminé » tant que tu n'as pas regardé la session) |
 | ⚪ cercle | arrêtée | le processus est arrêté ; « Reprendre » relance la conversation |
 
+Après <kbd>Ctrl</kbd>+<kbd>C</kbd> ou <kbd>Échap</kbd> pendant une réponse, la session repasse à « prêt (interrompu) ». Une session **rouge** le reste tant que Claude attend vraiment (permission, question) : l'afficher ne suffit pas, il faut lui répondre.
+
 L'état vient directement de Claude Code (des hooks sont ajoutés à chaque session) : il est exact même fenêtre fermée.
 
 <a id="fonctionnement"></a><a id="persistance"></a>
@@ -191,7 +193,7 @@ Pour masquer une session sensible (écran partagé, poste laissé ouvert) : ⋯ 
 
 - **Notifications système** quand une session attend ta réponse ou a fini (seulement si tu ne la regardes pas), avec un **son** au choix. **Ne pas déranger** coupe tout ; ⋯ › Couper les alertes le fait pour une seule session.
 - **Rappels** si une session attend depuis X minutes ou travaille depuis plus de Y minutes (Réglages › Notifications).
-- **Pastille** sur l'icône de l'app (Dock / barre des tâches) avec le nombre de sessions en attente.
+- **Pastille** sur l'icône de l'app (Dock / barre des tâches) avec le nombre de sessions en attente. Sur Mac, l'app n'étant pas signée par Apple, macOS refuse ses notifications natives : elle passe alors par une notification système simple (sans ouverture de la session au clic) et un point rouge sur l'icône du Dock.
 - **Zone de notification** (Windows, près de l'horloge) / **barre de menus** (macOS) : **réduire ou fermer la fenêtre l'y envoie**, les sessions continuent. Clic sur l'icône = afficher / masquer ; **clic droit** = la **liste des sessions et leur état** (🟠 travaille, 🔴 attend, 🟢 prête ; clic pour y aller), nouvelle session, historique, réglages, lancer au démarrage, redémarrer le serveur, quitter. Un **point rouge** sur l'icône signale une session qui t'attend. Windows 11 : si l'icône est cachée, elle est sous la flèche **^** (glisse-la dans la zone visible).
 - **Quitter** : « Quitter (les sessions continuent) » ferme l'app ; « Quitter et arrêter toutes les sessions » arrête aussi le serveur (elles reviendront au prochain lancement).
 - **Lancement au démarrage** de l'ordinateur : activé au premier lancement, réglable dans le menu de l'icône.

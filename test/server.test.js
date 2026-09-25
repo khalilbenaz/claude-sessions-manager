@@ -171,6 +171,27 @@ test('accès depuis l’app Claude (Remote Control)', async () => {
   c.ws.close();
 });
 
+test('ramener une session de terminal : le modèle de la conversation est conservé', async () => {
+  // conversation « sonnet » ouverte dans un terminal (registre ~/.claude/sessions/<pid>.json)
+  const id = '11111111-2222-4333-8444-555555555555';
+  const proj = path.join(HOME, '.claude', 'projects', 'terminal');
+  fs.mkdirSync(proj, { recursive: true });
+  fs.writeFileSync(path.join(proj, `${id}.jsonl`), [
+    { type: 'user', cwd: WORK, sessionId: id, message: { role: 'user', content: 'bonjour depuis le terminal' } },
+    { type: 'assistant', cwd: WORK, sessionId: id, message: { id: 'm1', model: 'claude-sonnet-4-5', role: 'assistant', content: [{ type: 'text', text: 'ok' }] } },
+  ].map(o => JSON.stringify(o)).join('\n') + '\n');
+  const reg = path.join(HOME, '.claude', 'sessions');
+  fs.mkdirSync(reg, { recursive: true });
+  fs.writeFileSync(path.join(reg, `${process.pid}.json`), JSON.stringify({ pid: process.pid, sessionId: id, cwd: WORK, kind: 'interactive', entrypoint: 'cli', status: 'idle', startedAt: Date.now() }));
+  const ext = (await api('GET', '/api/external')).find(x => x.sessionId === id);
+  assert.ok(ext, 'session de terminal détectée');
+  const r = await api('POST', '/api/import', { mode: 'copy', items: [ext] }); // « Copier » : le processus du terminal n'est pas arrêté
+  assert.equal(r.errors.length, 0);
+  assert.match(r.done[0].args, /--model claude-sonnet-4-5/);
+  fs.rmSync(path.join(reg, `${process.pid}.json`));
+  await api('DELETE', `/api/sessions/${r.done[0].id}`);
+});
+
 test('groupes et épinglage', async () => {
   const v = await api('POST', `/api/sessions/${S.id}/meta`, { group: 'Projet A', pinned: true, color: '#ff8800' });
   assert.equal(v.group, 'Projet A'); assert.equal(v.pinned, true);

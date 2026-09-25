@@ -395,19 +395,38 @@ function externalSessions() {
   return out.sort((a, b) => b.startedAt - a.startedAt);
 }
 
+// Modèle réellement utilisé par la conversation (dernier message de Claude dans le transcript),
+// pour que « Déplacer » / « Copier » ne change pas de modèle ; sinon le modèle par défaut des réglages.
+function conversationModelArgs(id) {
+  const f = transcriptPath(id);
+  if (f) {
+    try {
+      const size = fs.statSync(f).size, len = Math.min(size, 256 * 1024), buf = Buffer.alloc(len);
+      const fd = fs.openSync(f, 'r'); fs.readSync(fd, buf, 0, len, size - len); fs.closeSync(fd);
+      for (const l of buf.toString('utf8').split('\n').reverse()) {
+        let o; try { o = JSON.parse(l); } catch { continue; }
+        const m = o.type === 'assistant' && o.message && o.message.model;
+        if (m && /^[\w.-]+$/.test(m) && m !== '<synthetic>') return `--model ${m}`;
+      }
+    } catch { }
+  }
+  const def = ctx.getSettings?.().defaultModel;
+  return def ? `--model ${def}` : '';
+}
+
 // Déplace une session de terminal dans csm : arrête le processus du terminal puis reprend la conversation ici.
 // mode 'copy' : le terminal continue, csm reprend une copie de la conversation (--fork-session, nouvel id).
 async function importExternal(pid, sessionId, mode) {
   const ext = externalSessions().find(x => x.pid === pid && x.sessionId === sessionId);
   if (!ext) throw new Error('session introuvable (déjà fermée ou déjà dans csm)');
   if (mode === 'copy') {
-    return createSession({ cwd: ext.cwd, name: `${ext.title.slice(0, 34)} (copie)`, resume: sessionId, args: '--model opus', fork: true });
+    return createSession({ cwd: ext.cwd, name: `${ext.title.slice(0, 34)} (copie)`, resume: sessionId, args: conversationModelArgs(sessionId), fork: true });
   }
   try { process.kill(pid); } catch { }
   for (let i = 0; i < 50 && pidAlive(pid); i++) await new Promise(r => setTimeout(r, 100));
   if (pidAlive(pid)) throw new Error(`le processus ${pid} ne s'arrête pas`);
   await new Promise(r => setTimeout(r, 300)); // laisse le transcript se fermer
-  return createSession({ cwd: ext.cwd, name: ext.title.slice(0, 40), resume: sessionId, args: '--model opus' });
+  return createSession({ cwd: ext.cwd, name: ext.title.slice(0, 40), resume: sessionId, args: conversationModelArgs(sessionId) });
 }
 
 // ---------------------------------------------------------------- HTTP

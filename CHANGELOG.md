@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.3.3] — 2026-09-25
+
+### Corrigé (tests manuels sur Mac, #1)
+- **État après Ctrl+C / Échap** : la session repasse à « prêt (interrompu) » (Claude Code n'appelle aucun hook dans ce cas) (#32).
+- **Session en attente de permission** : l'afficher ne la marque plus « prête » ; le rouge reste tant que Claude attend (#32).
+- **macOS sans signature Apple** : notifications par AppleScript et point rouge sur l'icône du Dock (le centre de notifications refuse les apps non signées) ; un seul rebond du Dock par attente ; Cmd+W garde l'icône dans le Dock ; couleur du point rouge de la barre de menus (#33).
+- **Déplacer / Copier depuis un terminal** : la conversation garde son modèle (lu dans le transcript) au lieu de repasser en opus.
+- Palette : « Aucun résultat » n'est plus écrasé sur deux lignes.
+
 ## [3.3.2] — 2026-09-25
 
 ### Modifié
