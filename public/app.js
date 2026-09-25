@@ -1006,7 +1006,7 @@ window.csmNative?.onAction(a => {
 });
 
 window.csmFeatures = {}; // rempli par panel.js, settings.js, palette.js
-loadSettings().finally(() => { connect(); setLayout(layout); window.dispatchEvent(new Event('csm:ready')); });
+loadSettings().finally(() => { connect(); setLayout(layout); window.dispatchEvent(new Event('csm:ready')); document.documentElement.dataset.ready = '1'; }); // réglages et langue définitifs (repère pour les tests)
 
 // ------------------------------------------------------------------ version du serveur
 // Le serveur survit aux mises à jour de l'app : s'il tourne un ancien code, les nouvelles routes manquent.
