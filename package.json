@@ -129,9 +129,9 @@
     "appx": {
       "applicationId": "ClaudeSessions",
       "displayName": "Claude Sessions Manager",
-      "identityName": "KhalilBenazzouz.ClaudeSessions",
-      "publisher": "CN=00000000-0000-0000-0000-000000000000",
-      "publisherDisplayName": "Khalil Benazzouz",
+      "identityName": "KhalilBenaz.ClaudeSessionsManager",
+      "publisher": "CN=11B7C3B7-2E7A-48FC-B595-2C60E4E19DAF",
+      "publisherDisplayName": "Khalil Benaz",
       "backgroundColor": "#16181c",
       "languages": [
         "fr-FR",
