@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld('csmNative', {
   pickFolder: initial => ipcRenderer.invoke('csm:pick-folder', typeof initial === 'string' ? initial : ''),
   setAttention: n => ipcRenderer.send('csm:attention', Number(n) || 0),
   focus: () => ipcRenderer.send('csm:focus'),
+  appVersion: () => ipcRenderer.sendSync('csm:app-version'),
+  restartServer: () => ipcRenderer.invoke('csm:restart-server'),
+  update: action => ipcRenderer.invoke('csm:update', ['check', 'install', 'state'].includes(action) ? action : 'state'),
+  onUpdate: cb => { const h = (e, st) => cb(st); ipcRenderer.on('csm:update-state', h); return () => ipcRenderer.removeListener('csm:update-state', h); },
   onAction: cb => {
     const h = (e, action) => { if (typeof action === 'string') cb(action); };
     ipcRenderer.on('csm:action', h);

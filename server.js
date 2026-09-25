@@ -11,6 +11,7 @@ const { WebSocketServer } = require('ws');
 const { ROOT, PORT, IS_WIN, IS_MAC, DATA, LEGACY_DATA, which, resolveClaude } = require('./lib/config');
 
 const HOST = '127.0.0.1';
+const VERSION = require('./package.json').version;
 const PROJECTS = path.join(os.homedir(), '.claude', 'projects');
 // Fichiers déposés / images collées : le navigateur ne donne pas le chemin d'origine, on enregistre une copie
 // et on colle son chemin dans Claude (qui l'attache comme dans un vrai terminal). Dossier temporaire sans espace
@@ -85,10 +86,15 @@ const STORE = path.join(DATA, 'sessions.json');
 /** @type {Map<string, any>} */
 const sessions = new Map();
 
+// Champs ajoutés par les modules (lib/*) : mémorisés et envoyés à l'interface tels quels.
+const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'alerts'];
+const extra = s => Object.fromEntries(EXTRA_FIELDS.filter(k => s[k] !== undefined).map(k => [k, s[k]]));
+
 function persist() {
   const list = [...sessions.values()].map(s => ({
     id: s.id, name: s.name, cwd: s.cwd, args: s.args, claudeSessionId: s.claudeSessionId,
     createdAt: s.createdAt, order: s.order, wantRun: s.wantRun !== false, named: !!s.named, titleFor: s.titleFor || null,
+    ...extra(s),
   }));
   fs.writeFileSync(STORE, JSON.stringify(list, null, 2));
 }
@@ -97,7 +103,7 @@ function publicView(s) {
   return {
     id: s.id, name: s.name, cwd: s.cwd, args: s.args, status: s.status, message: s.message,
     claudeSessionId: s.claudeSessionId, createdAt: s.createdAt, lastActivity: s.lastActivity,
-    statusSince: s.statusSince, alive: !!s.pty, order: s.order,
+    statusSince: s.statusSince, alive: !!s.pty, order: s.order, ...extra(s),
   };
 }
 
@@ -143,7 +149,8 @@ function renameSession(s, name) {
 
 function spawnSession(s, { resume, fork } = {}) {
   if (resume && !transcriptExists(resume)) resume = undefined;
-  const args = ['--settings', HOOK_SETTINGS, ...splitArgs(s.args)];
+  // CSM_CLAUDE_ARGS : arguments placés avant ceux de claude (tests : CSM_CLAUDE=node, CSM_CLAUDE_ARGS=faux-claude.js)
+  const args = [...splitArgs(process.env.CSM_CLAUDE_ARGS || ''), '--settings', HOOK_SETTINGS, ...splitArgs(s.args)];
   if (resume) args.push('--resume', resume);
   if (resume && fork) args.push('--fork-session'); // ponctuel : jamais mémorisé dans s.args
   const env = { ...process.env, CSM_ID: s.id, CSM_PORT: String(PORT), CSM_TOKEN: TOKEN, COLORTERM: 'truecolor' };
@@ -189,7 +196,7 @@ function appendOut(s, d) {
   broadcast({ t: 'out', id: s.id, d });
 }
 
-function createSession({ name, cwd, args, resume, fork }) {
+function createSession({ name, cwd, args, resume, fork, ...more }) {
   cwd = cwd ? path.resolve(cwd.replace(/^~(?=$|[\\/])/, os.homedir())) : os.homedir();
   const id = crypto.randomBytes(6).toString('hex');
   const order = Math.max(0, ...[...sessions.values()].map(x => x.order || 0)) + 1;
@@ -197,7 +204,9 @@ function createSession({ name, cwd, args, resume, fork }) {
     id, name: name || path.basename(cwd || '') || 'session', cwd: cwd || os.homedir(), args: args || '',
     claudeSessionId: resume || null, createdAt: Date.now(), lastActivity: Date.now(),
     status: 'starting', message: '', statusSince: Date.now(), buf: '', pty: null, order,
+    ...Object.fromEntries(EXTRA_FIELDS.filter(k => more[k] !== undefined).map(k => [k, more[k]])),
   };
+  if (more.initialPrompt) s.initialPrompt = String(more.initialPrompt).slice(0, 20000); // envoyé au premier SessionStart (lib/queue)
   sessions.set(id, s);
   spawnSession(s, { resume, fork });
   persist();
@@ -441,13 +450,19 @@ function readBody(req) {
   });
 }
 
+// Routes des modules (lib/*.js) : route('GET', /^/api/x$/, async ({ req, res, m, url }) => …)
+const ROUTES = [];
+function route(method, re, fn) { ROUTES.push({ method, re, fn }); }
+
 const server = http.createServer(async (req, res) => {
   if (!hostOk(req)) { res.writeHead(403); return res.end('bad host'); }
   const url = new URL(req.url, `http://${req.headers.host}`);
   const p = url.pathname;
 
   if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
-    const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8').replace('__CSM_TOKEN__', TOKEN);
+    const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8').replace('__CSM_TOKEN__', TOKEN)
+      // version des fichiers sur disque (relue à chaque fois) : diffère de VERSION si le code a changé depuis le démarrage
+      .replace('__CSM_VERSION__', (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version; } catch { return ''; } })());
     res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
     return res.end(html);
   }
@@ -462,6 +477,7 @@ const server = http.createServer(async (req, res) => {
   if (req.headers['x-csm-token'] !== TOKEN) return json(res, 401, { error: 'token' });
 
   try {
+    if (p === '/api/version' && req.method === 'GET') return json(res, 200, { version: VERSION, pid: process.pid, runtime: process.versions.electron ? 'electron' : 'node' });
     if (p === '/api/upload' && req.method === 'POST') {
       const file = await saveUpload(req, String(req.headers['x-filename'] || ''));
       return json(res, 200, { path: file });
@@ -471,11 +487,12 @@ const server = http.createServer(async (req, res) => {
       const s = sessions.get(csm);
       if (!s) return json(res, 404, {});
       if (data && data.session_id && s.claudeSessionId !== data.session_id) { s.claudeSessionId = data.session_id; persist(); }
-      if (event === 'start') setStatus(s, 'idle');
+      if (event === 'start') { setStatus(s, 'idle'); emit('start', s); }
       else if (event === 'working') setStatus(s, 'working', data && data.tool_name ? data.tool_name : '');
       else if (event === 'attention') setStatus(s, 'attention', (data && data.message) || 'attend une réponse');
       else if (event === 'idle') {
         setStatus(s, 'idle', 'terminé');
+        emit('idle', s);
         // Nom donné avant que le transcript existe (ou nouvel id après /clear) : on l'écrit maintenant.
         if (s.named && s.claudeSessionId && s.titleFor !== s.claudeSessionId && writeCustomTitle(s.claudeSessionId, s.name)) {
           s.titleFor = s.claudeSessionId; persist();
@@ -548,6 +565,11 @@ const server = http.createServer(async (req, res) => {
       if (s.status === 'attention' || (s.status === 'idle' && s.message === 'terminé')) setStatus(s, 'idle', '');
       return json(res, 200, {});
     }
+    for (const r of ROUTES) {
+      if (r.method !== req.method) continue;
+      const mm = p.match(r.re);
+      if (mm) return await r.fn({ req, res, m: mm, url });
+    }
     return json(res, 404, { error: 'route' });
   } catch (e) {
     return json(res, 500, { error: e.message });
@@ -584,6 +606,18 @@ server.on('upgrade', (req, sock, head) => {
     ws.on('close', () => clients.delete(ws));
   });
 });
+
+// ---------------------------------------------------------------- modules
+const listeners = {};
+function on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); }
+function emit(ev, ...a) { for (const fn of listeners[ev] || []) { try { fn(...a); } catch (e) { console.error('module', ev, e); } } }
+const ctx = {
+  route, on, emit, json, readBody, sessions, publicView, persist, broadcast, createSession, killSession, spawnSession,
+  renameSession, history, transcriptPath, setStatus, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
+};
+for (const mod of ['git', 'settings', 'usage', 'tools', 'queue']) {
+  try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }
+}
 
 server.on('error', e => { console.error('écoute impossible', e.message); process.exit(1); }); // ex. déjà lancé
 server.listen(PORT, HOST, () => {
