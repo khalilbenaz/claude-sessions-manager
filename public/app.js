@@ -164,7 +164,7 @@ function render() {
     li.onclick = () => select(s.id);
     li.ondblclick = () => renameSession(s.id);
     li.querySelector('.ren').onclick = e => { e.stopPropagation(); renameSession(s.id); };
-    li.oncontextmenu = e => { e.preventDefault(); sessionMenu(s.id, e.clientX, e.clientY); };
+    li.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); sessionMenu(s.id, e.clientX, e.clientY); };
     li.ondragstart = e => e.dataTransfer.setData('text/plain', s.id);
     li.ondragover = e => { e.preventDefault(); li.classList.add('dragover'); };
     li.ondragleave = () => li.classList.remove('dragover');
@@ -235,30 +235,116 @@ function startRename() { if (active) renameSession(active); }
 $('#curName').ondblclick = startRename;
 $('#btnRename').onclick = startRename;
 
-// Menu clic droit sur une session de la liste.
-function sessionMenu(id, x, y) {
-  const s = sessions.get(id); if (!s) return;
+// ------------------------------------------------------------------ menu clic droit
+// Menu propre à l'application partout : le menu du navigateur n'apparaît jamais.
+// Entrée = [libellé, action, { kbd, danger, disabled }] ; '-' = séparateur.
+// popover : passe au-dessus des boîtes de dialogue modales (top layer).
+const MOD = IS_MAC ? '⌘' : 'Ctrl';
+function showMenu(items, x, y) {
   const menu = $('#ctx');
-  const items = [
-    ['Renommer', () => renameSession(id)],
-    [s.alive ? 'Relancer' : 'Reprendre', () => api('POST', `/api/sessions/${id}/restart`)],
-    ...(s.alive ? [['Arrêter', () => api('POST', `/api/sessions/${id}/kill`)]] : []),
-    ['Copier le chemin', () => navigator.clipboard.writeText(s.cwd)],
-    ['Fermer', () => { select(id); $('#btnClose').click(); }, 'danger'],
-  ];
+  // Une boîte modale rend inerte tout ce qui est hors d'elle : le menu doit vivre dedans pour être cliquable.
+  const host = document.querySelector('dialog[open]') || document.body;
+  if (menu.parentElement !== host) { hideMenu(); host.appendChild(menu); }
   menu.innerHTML = '';
-  for (const [label, fn, cls] of items) {
+  for (const it of items.filter((it, i, a) => it !== '-' || (i > 0 && a[i - 1] !== '-' && i < a.length - 1))) {
+    if (it === '-') { menu.appendChild(document.createElement('hr')); continue; }
+    const [label, fn, o = {}] = it;
     const b = document.createElement('button');
-    b.textContent = label; if (cls) b.className = cls;
+    b.innerHTML = '<span></span><kbd></kbd>';
+    b.firstChild.textContent = label;
+    b.lastChild.textContent = o.kbd || '';
+    if (o.danger) b.className = 'danger';
+    b.disabled = !!o.disabled;
     b.onclick = () => { hideMenu(); fn(); };
     menu.appendChild(b);
   }
-  menu.hidden = false;
+  if (!menu.matches(':popover-open')) menu.showPopover();
   const r = menu.getBoundingClientRect();
-  menu.style.left = `${Math.min(x, innerWidth - r.width - 6)}px`;
-  menu.style.top = `${Math.min(y, innerHeight - r.height - 6)}px`;
+  menu.style.left = `${Math.max(4, Math.min(x, innerWidth - r.width - 6))}px`;
+  menu.style.top = `${Math.max(4, Math.min(y, innerHeight - r.height - 6))}px`;
 }
-function hideMenu() { $('#ctx').hidden = true; }
+function hideMenu() { const m = $('#ctx'); if (m.matches(':popover-open')) m.hidePopover(); }
+$('#ctx').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  const bs = [...$('#ctx').querySelectorAll('button:not(:disabled)')]; if (!bs.length) return;
+  const i = bs.indexOf(document.activeElement);
+  bs[(i + (e.key === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length].focus();
+  e.preventDefault();
+});
+
+const clip = {
+  copy: t => navigator.clipboard.writeText(t).catch(() => { }),
+  read: () => navigator.clipboard.readText().catch(() => ''),
+};
+
+function sessionItems(id) {
+  const s = sessions.get(id); if (!s) return [];
+  return [
+    ['Renommer', () => renameSession(id), { kbd: id === active ? `${MOD}+Alt+R` : '' }],
+    [s.alive ? 'Relancer' : 'Reprendre', () => api('POST', `/api/sessions/${id}/restart`)],
+    ['Arrêter', () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
+    ['Copier le chemin', () => clip.copy(s.cwd)],
+    ...(s.claudeSessionId ? [['Copier l’identifiant de session', () => clip.copy(s.claudeSessionId)]] : []),
+    '-',
+    ['Fermer', () => { select(id); $('#btnClose').click(); }, { danger: true, kbd: id === active ? `${MOD}+Alt+W` : '' }],
+  ];
+}
+// Menu clic droit sur une session de la liste.
+function sessionMenu(id, x, y) { showMenu(sessionItems(id), x, y); }
+
+function terminalItems(id) {
+  const t = terms.get(id); if (!t) return [];
+  const { term } = t;
+  return [
+    ['Copier', () => { clip.copy(term.getSelection()); term.clearSelection(); term.focus(); }, { disabled: !term.hasSelection(), kbd: IS_MAC ? '⌘C' : 'Ctrl+C' }],
+    ['Coller', async () => { const txt = await clip.read(); if (txt) term.paste(txt); term.focus(); }, { kbd: IS_MAC ? '⌘V' : 'Ctrl+V' }],
+    ['Tout sélectionner', () => term.selectAll()],
+    ['Effacer l’écran', () => { term.clear(); term.focus(); }],
+    '-',
+    ['Zoom avant', () => zoom('+'), { kbd: `${MOD}+=` }],
+    ['Zoom arrière', () => zoom('-'), { kbd: `${MOD}+-` }],
+    ['Taille normale', () => zoom('0'), { kbd: `${MOD}+0` }],
+    '-',
+    ...sessionItems(id),
+  ];
+}
+
+function fieldItems(el) {
+  const ro = el.readOnly || el.disabled;
+  const a = el.selectionStart ?? el.value.length, b = el.selectionEnd ?? el.value.length;
+  const put = txt => { el.focus(); el.setRangeText(txt, a, b, 'end'); el.dispatchEvent(new Event('input', { bubbles: true })); };
+  return [
+    ['Couper', () => { clip.copy(el.value.slice(a, b)); put(''); }, { disabled: ro || b <= a, kbd: `${MOD}+X` }],
+    ['Copier', () => { clip.copy(el.value.slice(a, b)); el.focus(); }, { disabled: b <= a, kbd: `${MOD}+C` }],
+    ['Coller', async () => put(await clip.read()), { disabled: ro, kbd: `${MOD}+V` }],
+    '-',
+    ['Tout sélectionner', () => { el.focus(); el.select(); }, { kbd: `${MOD}+A` }],
+  ];
+}
+
+function appItems() {
+  return [
+    ['Nouvelle session', openNew, { kbd: `${MOD}+Alt+N` }],
+    ['Historique', openHistory, { kbd: `${MOD}+Alt+H` }],
+    '-',
+    ['Recharger la fenêtre', () => location.reload(), { kbd: 'F5' }],
+  ];
+}
+
+document.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (e.target.closest('#ctx')) return;
+  const x = e.clientX, y = e.clientY, tg = e.target;
+  const field = tg.closest('input, textarea');
+  if (field && !['checkbox', 'radio', 'button', 'submit'].includes(field.type)) return showMenu(fieldItems(field), x, y);
+  const termEl = tg.closest('.term');
+  if (termEl) { const id = [...terms].find(([, t]) => t.el === termEl)?.[0]; if (id) return showMenu(terminalItems(id), x, y); }
+  const sel = String(getSelection() || '');
+  const pageCopy = sel ? [['Copier', () => clip.copy(sel), { kbd: `${MOD}+C` }], '-'] : [];
+  if (tg.closest('dialog')) { if (sel) showMenu(pageCopy, x, y); else hideMenu(); return; }
+  if (tg.closest('#bar') && active) return showMenu([...pageCopy, ...sessionItems(active)], x, y);
+  showMenu([...pageCopy, ...appItems()], x, y);
+});
 
 // Entrée dans un champ = bouton principal (sinon le navigateur valide le 1er bouton du formulaire : « Annuler »).
 document.addEventListener('keydown', e => {
@@ -269,9 +355,12 @@ document.addEventListener('keydown', e => {
   e.preventDefault();
   form.requestSubmit(ok); // respecte la validation (ex. dossier obligatoire)
 }, true);
-document.addEventListener('mousedown', e => { if (!$('#ctx').contains(e.target)) hideMenu(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') hideMenu(); });
+document.addEventListener('mousedown', e => { if (!$('#ctx').contains(e.target)) hideMenu(); }, true);
+// Échap ferme le menu sans fermer la boîte de dialogue en dessous.
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#ctx').matches(':popover-open')) { hideMenu(); e.stopPropagation(); e.preventDefault(); } }, true);
 window.addEventListener('blur', hideMenu);
+window.addEventListener('resize', hideMenu);
+for (const d of document.querySelectorAll('dialog')) d.addEventListener('close', hideMenu);
 
 $('#btnRestart').onclick = () => active && api('POST', `/api/sessions/${active}/restart`);
 $('#btnKill').onclick = () => active && api('POST', `/api/sessions/${active}/kill`);
@@ -336,24 +425,35 @@ function renderHistory() {
     if (h.managed) t.insertAdjacentHTML('beforeend', '<span class="tag">ouverte</span>');
     const ren = document.createElement('button');
     ren.className = 'ren'; ren.textContent = '✎'; ren.title = 'Renommer';
-    ren.onclick = async e => {
-      e.stopPropagation();
-      const name = await askName('Renommer la conversation', h.title);
-      $('#histSearch').focus();
-      if (!name) return;
-      try { await api('POST', `/api/history/${h.id}/rename`, { name }); h.title = name; renderHistory(); }
-      catch (err) { alert(`Renommage impossible : ${err.message}`); }
-    };
+    ren.onclick = e => { e.stopPropagation(); renameHistory(h); };
     t.prepend(ren);
     d1.textContent = new Date(h.mtime).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
     c.textContent = h.cwd || '';
     d2.textContent = h.branch || '';
     p.textContent = h.lastPrompt;
     li.onclick = () => resumeHistory(h);
+    li.oncontextmenu = e => {
+      e.preventDefault(); e.stopPropagation();
+      histSel = i; [...ul.children].forEach((x, j) => x.classList.toggle('sel', j === i));
+      showMenu([
+        [h.managed ? 'Afficher' : 'Reprendre', () => resumeHistory(h), { kbd: 'Entrée' }],
+        ['Renommer', () => renameHistory(h)],
+        '-',
+        ['Copier le chemin', () => clip.copy(h.cwd || ''), { disabled: !h.cwd }],
+        ['Copier l’identifiant de session', () => clip.copy(h.id)],
+      ], e.clientX, e.clientY);
+    };
     ul.appendChild(li);
   });
   ul.children[histSel]?.scrollIntoView({ block: 'nearest' });
   return items;
+}
+async function renameHistory(h) {
+  const name = await askName('Renommer la conversation', h.title);
+  $('#histSearch').focus();
+  if (!name) return;
+  try { await api('POST', `/api/history/${h.id}/rename`, { name }); h.title = name; renderHistory(); }
+  catch (err) { alert(`Renommage impossible : ${err.message}`); }
 }
 async function openHistory() {
   $('#histSearch').value = ''; histSel = 0;
@@ -394,6 +494,13 @@ async function refreshExternal() {
     li.querySelector('.n').textContent = x.title;
     li.querySelector('.sub').textContent = x.cwd;
     li.onclick = () => importExternal([x]);
+    li.oncontextmenu = e => {
+      e.preventDefault(); e.stopPropagation();
+      showMenu([
+        ['Ramener dans csm…', () => importExternal([x])],
+        ['Copier le chemin', () => clip.copy(x.cwd)],
+      ], e.clientX, e.clientY);
+    };
     ul.appendChild(li);
   }
 }
