@@ -136,6 +136,32 @@ function transcriptPath(id) {
 }
 const transcriptExists = id => !!transcriptPath(id);
 
+// Ctrl+C / Échap n'appellent aucun hook (pas de Stop) : Claude écrit seulement « [Request interrupted by user…] »
+// dans le transcript. On le relit peu après la touche pour repasser la session à « prêt ».
+function lastTurnInterrupted(id) {
+  const f = transcriptPath(id);
+  if (!f) return false;
+  try {
+    const size = fs.statSync(f).size, len = Math.min(size, 64 * 1024), buf = Buffer.alloc(len);
+    const fd = fs.openSync(f, 'r'); fs.readSync(fd, buf, 0, len, size - len); fs.closeSync(fd);
+    const lines = buf.toString('utf8').split('\n').reverse();
+    for (const l of lines) {
+      let o; try { o = JSON.parse(l); } catch { continue; }
+      if (o.type !== 'user' && o.type !== 'assistant') continue;
+      if (o.type === 'assistant') return false;
+      const c = o.message && o.message.content;
+      const text = typeof c === 'string' ? c : Array.isArray(c) ? c.map(x => x && x.text || '').join('') : '';
+      return text.startsWith('[Request interrupted by user');
+    }
+  } catch { }
+  return false;
+}
+function watchInterrupt(s) {
+  for (const ms of [700, 2000]) setTimeout(() => {
+    if ((s.status === 'working' || s.status === 'attention') && lastTurnInterrupted(s.claudeSessionId)) setStatus(s, 'idle', 'interrompu');
+  }, ms);
+}
+
 // Même enregistrement que /rename de Claude Code : le nom suit la conversation (historique, claude --resume).
 function writeCustomTitle(id, title) {
   const f = transcriptPath(id);
@@ -588,7 +614,8 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, publicView(s));
     }
     if (s && m[2] === 'seen' && req.method === 'POST') {
-      if (s.status === 'attention' || (s.status === 'idle' && s.message === 'terminé')) setStatus(s, 'idle', '');
+      // « attention » reste tant que Claude attend (permission, question) : seul le hook suivant le lève.
+      if (s.status === 'idle' && s.message === 'terminé') setStatus(s, 'idle', '');
       return json(res, 200, {});
     }
     for (const r of ROUTES) {
@@ -625,7 +652,10 @@ server.on('upgrade', (req, sock, head) => {
       const s = sessions.get(m.id);
       if (!s) return;
       if (s.lock && !ctx.wsCan?.(s, ws)) return; // verrouillée : ni saisie ni redimensionnement
-      if (m.t === 'input' && s.pty) s.pty.write(m.d);
+      if (m.t === 'input' && s.pty) {
+        s.pty.write(m.d);
+        if ((m.d === '\x03' || m.d === '\x1b') && (s.status === 'working' || s.status === 'attention')) watchInterrupt(s);
+      }
       else if (m.t === 'resize' && m.cols > 10 && m.rows > 3) {
         s.cols = m.cols; s.rows = m.rows;
         if (s.pty) try { s.pty.resize(m.cols, m.rows); } catch { }

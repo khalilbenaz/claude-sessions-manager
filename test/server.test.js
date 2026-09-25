@@ -88,6 +88,28 @@ test('session : démarrage, hooks, échange, état', async () => {
   c.ws.close();
 });
 
+test('interruption (Ctrl+C) : la session repasse à « prêt » sans hook Stop', async () => {
+  const c = await wsClient();
+  c.input(S.id, 'réponse longue\r');
+  await waitFor(async () => (await session(S.id)).status === 'working', 10000, 'état « travaille »');
+  await waitFor(() => (c.out[S.id] || '').includes('réfléchit'), 10000, 'réponse en cours');
+  c.input(S.id, '\x03');
+  const s = await waitFor(async () => { const x = await session(S.id); return x.status === 'idle' ? x : null; }, 10000, 'état « prêt » après Ctrl+C');
+  assert.equal(s.message, 'interrompu');
+  c.ws.close();
+});
+
+test('attente de permission : consulter la session ne la marque pas « prête »', async () => {
+  const c = await wsClient();
+  c.input(S.id, 'demande une permission\r');
+  await waitFor(async () => (await session(S.id)).status === 'attention', 10000, 'état « attention »');
+  await api('POST', `/api/sessions/${S.id}/seen`);
+  assert.equal((await session(S.id)).status, 'attention');
+  c.input(S.id, '\r');
+  await waitFor(async () => (await session(S.id)).message === 'terminé', 10000, 'état « terminé » après réponse');
+  c.ws.close();
+});
+
 test('renommage : nom écrit dans le transcript et visible dans l’historique', async () => {
   await api('POST', `/api/sessions/${S.id}/rename`, { name: 'Été ✓' });
   const h = await api('GET', '/api/history');
