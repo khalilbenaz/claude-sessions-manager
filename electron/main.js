@@ -2,7 +2,7 @@
 // Claude Sessions — application de bureau (Windows / macOS).
 // La fenêtre n'est qu'une vue : les sessions vivent dans le serveur local (processus séparé), qui continue
 // de tourner quand on ferme ou quitte l'application.
-const { app, BrowserWindow, Tray, Menu, nativeImage, shell, dialog, ipcMain, session, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, shell, dialog, ipcMain, session, screen, Notification } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
@@ -25,6 +25,9 @@ if (!app.requestSingleInstanceLock()) { app.quit(); return; }
 let win = null;
 let tray = null;
 let quitting = false;
+// Préférences de fenêtre transmises par la page (réglages du serveur) ; valeurs par défaut en attendant.
+const prefs = { minimizeToTray: true, closeToTray: true };
+let attention = 0;
 let updates = null; // electron/updater.js
 
 // Lecture d'un réglage du serveur (le jeton est dans le dossier de données, lisible par l'utilisateur seul).
@@ -114,8 +117,12 @@ function createWindow() {
   win.once('ready-to-show', () => { if (process.env.CSM_HIDE_WINDOW) return; if (!START_HIDDEN || win.__forceShow) win.show(); }); // CSM_HIDE_WINDOW : tests automatiques, rien à l'écran
   win.on('close', e => {
     saveState();
-    if (!quitting) { e.preventDefault(); win.hide(); } // fermer = masquer (notifications, sessions continuent)
+    if (quitting) return;
+    if (prefs.closeToTray) { e.preventDefault(); toTray(); } // fermer = masquer (notifications, sessions continuent)
+    else { quitting = true; } // fermer = quitter l'app ; le serveur et les sessions continuent
   });
+  // Réduire : dans la zone de notification (Windows) / la barre de menus (macOS) plutôt que la barre des tâches.
+  win.on('minimize', () => { if (prefs.minimizeToTray && tray) toTray(); });
   for (const ev of ['resize', 'move']) win.on(ev, debounce(saveState, 500));
   win.on('focus', () => win.flashFrame(false));
 
@@ -128,7 +135,24 @@ function createWindow() {
   win.loadURL(URL_);
 }
 
+// Masque la fenêtre (plus d'entrée dans la barre des tâches) ; la 1re fois, explique où elle est passée.
+function toTray() {
+  if (!win || win.isDestroyed()) return;
+  win.hide();
+  if (IS_MAC && prefs.minimizeToTray) app.dock?.hide?.();
+  const flag = path.join(DATA, 'app-tray-hint');
+  if (tray && !fs.existsSync(flag)) {
+    try { fs.writeFileSync(flag, new Date().toISOString()); } catch { }
+    const msg = IS_WIN
+      ? 'Claude Sessions continue en arrière-plan, avec tes sessions. Clique sur son icône près de l’horloge pour la rouvrir (si elle n’est pas visible : flèche ^).'
+      : 'Claude Sessions continue en arrière-plan, avec tes sessions. Rouvre-la depuis son icône dans la barre des menus.';
+    if (IS_WIN && tray.displayBalloon) tray.displayBalloon({ title: 'Claude Sessions', content: msg, iconType: 'info' });
+    else if (Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: msg, silent: true }).show();
+  }
+}
+
 function showWindow() {
+  if (IS_MAC) app.dock?.show?.();
   if (!win || win.isDestroyed()) createWindow();
   win.__forceShow = true;
   if (win.isMinimized()) win.restore();
@@ -164,7 +188,12 @@ function registerIpc() {
     if (IS_MAC) app.setBadgeCount(n);
     if (IS_WIN && win) win.setOverlayIcon(n ? badgeIcon() : null, n ? `${n} en attente` : '');
     if (n && win && !win.isFocused()) win.flashFrame(true);
-    tray?.setToolTip(n ? `Claude Sessions — ${n} session(s) en attente` : 'Claude Sessions');
+    attention = n;
+    refreshTrayIcon();
+  });
+  ipcMain.on('csm:prefs', (e, p) => {
+    if (!trusted(e) || !p || typeof p !== 'object') return;
+    for (const k of Object.keys(prefs)) if (typeof p[k] === 'boolean') prefs[k] = p[k];
   });
   ipcMain.on('csm:focus', e => { if (trusted(e)) showWindow(); });
   ipcMain.handle('csm:update', async (e, action) => {
@@ -182,6 +211,34 @@ function registerIpc() {
     if (ok && win && !win.isDestroyed()) win.loadURL(URL_);
     return ok;
   });
+}
+
+let trayImg = null, trayImgAlert = null;
+function trayImages() {
+  if (trayImg) return;
+  const size = IS_MAC ? 18 : 16;
+  trayImg = nativeImage.createFromPath(path.join(ROOT, 'public', 'icon.png')).resize({ width: size, height: size, quality: 'best' });
+  // même icône + point rouge en bas à droite (pixels BGRA sous Windows, RGBA ailleurs)
+  const s = trayImg.getSize(), bmp = Buffer.from(trayImg.toBitmap());
+  const r = Math.round(s.width * 0.28), cx = s.width - r - 0.5, cy = s.height - r - 0.5;
+  for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) {
+    const d = Math.hypot(x - cx, y - cy), i = (y * s.width + x) * 4;
+    if (d <= r + 1) {
+      const edge = d > r; // liseré sombre pour détacher le point
+      const [R_, G, B] = edge ? [30, 27, 24] : [240, 86, 74];
+      if (IS_WIN) { bmp[i] = B; bmp[i + 1] = G; bmp[i + 2] = R_; } else { bmp[i] = R_; bmp[i + 1] = G; bmp[i + 2] = B; }
+      bmp[i + 3] = 255;
+    }
+  }
+  trayImgAlert = nativeImage.createFromBitmap(bmp, { width: s.width, height: s.height });
+}
+async function refreshTrayIcon() {
+  if (!tray) return;
+  trayImages();
+  tray.setImage(attention ? trayImgAlert : trayImg);
+  const list = (await serverGet('/api/sessions')) || [];
+  const alive = list.filter(s => s.alive).length;
+  tray.setToolTip(`Claude Sessions — ${alive} session${alive > 1 ? 's' : ''} active${alive > 1 ? 's' : ''}${attention ? ` · ${attention} en attente de réponse` : ''}`);
 }
 
 let badge = null;
@@ -212,7 +269,21 @@ function buildTray() {
   const img = nativeImage.createFromPath(path.join(ROOT, 'public', 'icon.png')).resize({ width: IS_MAC ? 18 : 16, height: IS_MAC ? 18 : 16 });
   tray = new Tray(img);
   tray.setToolTip('Claude Sessions');
+  const STATE = { working: '🟠', attention: '🔴', idle: '🟢', starting: '⚪', exited: '⚫' };
+  const LABEL = { working: 'travaille', attention: 'attend ta réponse', idle: 'prête', starting: 'démarre', exited: 'arrêtée' };
+  let lastSessions = [];
+  const sessionItems = () => {
+    const list = lastSessions.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+    if (!list.length) return [];
+    const items = list.slice(0, 12).map(s => ({
+      label: `${STATE[s.status] || '•'}  ${s.name.length > 40 ? s.name.slice(0, 39) + '…' : s.name}   —  ${LABEL[s.status] || s.status}`,
+      click: () => send(`select:${s.id}`),
+    }));
+    if (list.length > 12) items.push({ label: `… et ${list.length - 12} autre(s)`, click: showWindow });
+    return [{ label: 'Sessions', enabled: false }, ...items, { type: 'separator' }];
+  };
   const menu = () => Menu.buildFromTemplate([
+    ...sessionItems(),
     { label: 'Ouvrir Claude Sessions', click: showWindow },
     ...updateMenuItems(),
     { label: 'Nouvelle session…', click: () => send('new') },
@@ -226,10 +297,17 @@ function buildTray() {
     { label: 'Quitter (les sessions continuent)', click: () => { quitting = true; app.quit(); } },
     { label: 'Quitter et arrêter toutes les sessions', click: () => { quitting = true; stopServer(); app.quit(); } },
   ]);
-  tray.setContextMenu(menu());
-  refreshTray = () => tray.setContextMenu(menu());
-  tray.on('click', () => (IS_WIN ? showWindow() : null));
-  tray.on('right-click', () => tray.setContextMenu(menu()));
+  // Menu reconstruit à chaque ouverture (état des sessions à jour).
+  const popup = async () => { lastSessions = (await serverGet('/api/sessions')) || []; tray.popUpContextMenu(menu()); };
+  refreshTray = () => { if (IS_MAC) tray.setContextMenu(menu()); };
+  if (IS_MAC) { tray.setContextMenu(menu()); tray.on('mouse-enter', async () => { lastSessions = (await serverGet('/api/sessions')) || []; tray.setContextMenu(menu()); }); }
+  else {
+    tray.on('click', () => (win && win.isVisible() && win.isFocused() ? toTray() : showWindow())); // clic = afficher / masquer
+    tray.on('right-click', popup);
+  }
+  tray.on('double-click', showWindow);
+  refreshTrayIcon();
+  setInterval(refreshTrayIcon, 15000);
 }
 
 function buildAppMenu() {

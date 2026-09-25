@@ -245,6 +245,7 @@
       <button data-st="general" class="on">Général</button>
       <button data-st="terminal">Terminal</button>
       <button data-st="alerts">Notifications</button>
+      <button data-st="security">Sécurité</button>
       <button data-st="templates">Modèles de session</button>
       <button data-st="prompts">Prompts</button>
       <button data-st="diag">Diagnostic</button>
@@ -262,11 +263,18 @@
         <label id="editorCmdRow">Commande personnalisée <input data-set="editorCommand" placeholder="mon-editeur {path}" spellcheck="false"></label>
         <label class="check"><input type="checkbox" data-set="autoUpdate"> <span>Mises à jour automatiques</span></label>
         <label class="check"><input type="checkbox" data-set="compactSidebar"> <span>Barre latérale compacte</span></label>
+        <label class="check app-only"><input type="checkbox" data-set="minimizeToTray"> <span>Réduire dans la zone de notification (au lieu de la barre des tâches)</span></label>
+        <label class="check app-only"><input type="checkbox" data-set="closeToTray"> <span>Fermer la fenêtre la garde dans la zone de notification (sinon l'app se ferme ; les sessions continuent)</span></label>
       </section>
       <section data-st="terminal" hidden>
         <label>Taille du texte <input type="number" min="9" max="28" data-set="fontSize"></label>
         <label>Police <input data-set="fontFamily" placeholder="Cascadia Mono, Menlo…" spellcheck="false"></label>
         <p class="hint">Raccourcis : <kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>−</kbd>/<kbd>0</kbd> pour zoomer.</p>
+      </section>
+      <section data-st="security" hidden>
+        <p class="hint">Verrouiller une session : menu ⋯ ou clic droit › « Verrouiller par mot de passe… » (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd>).</p>
+        <label class="check"><input type="checkbox" data-set="lockOnHide"> <span>Reverrouiller les sessions quand la fenêtre est réduite ou masquée</span></label>
+        <label>Reverrouiller après une inactivité de (minutes, 0 = jamais) <input type="number" min="0" max="600" data-set="autoLockMinutes"></label>
       </section>
       <section data-st="alerts" hidden>
         <label class="check"><input type="checkbox" data-set="notifications"> <span>Notifications système</span></label>
@@ -322,6 +330,22 @@
   </form>
 </dialog>
 
+<dialog id="dlgLock">
+  <form method="dialog">
+    <h2 id="lkTitle">Verrouiller</h2>
+    <p class="hint">Le contenu de la session est masqué et sa saisie bloquée tant qu'elle n'est pas déverrouillée. Elle continue de tourner. Attention : le mot de passe ne peut pas être récupéré.</p>
+    <label id="lkCurRow">Mot de passe actuel <input type="password" id="lkCur" autocomplete="current-password"></label>
+    <label id="lkNewRow">Mot de passe <input type="password" id="lkNew" autocomplete="new-password"></label>
+    <label id="lkNew2Row">Confirmer le mot de passe <input type="password" id="lkNew2" autocomplete="new-password"></label>
+    <label id="lkHintRow">Indice (facultatif, visible sur l'écran de verrouillage) <input id="lkHint" maxlength="120" autocomplete="off"></label>
+    <p id="lkErr" class="err"></p>
+    <menu>
+      <button value="cancel" formnovalidate>Annuler</button>
+      <button value="ok" class="primary">Valider</button>
+    </menu>
+  </form>
+</dialog>
+
 <div id="ctx" class="ctx" popover="manual"></div>
 
 <dialog id="dlgImport">
@@ -361,5 +385,6 @@
 <script src="panel.js"></script>
 <script src="settings.js"></script>
 <script src="palette.js"></script>
+<script src="lock.js"></script>
 </body>
 </html>

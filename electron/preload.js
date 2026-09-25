@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('csmNative', {
   pickFolder: initial => ipcRenderer.invoke('csm:pick-folder', typeof initial === 'string' ? initial : ''),
   setAttention: n => ipcRenderer.send('csm:attention', Number(n) || 0),
   focus: () => ipcRenderer.send('csm:focus'),
+  setPrefs: p => ipcRenderer.send('csm:prefs', { minimizeToTray: !!p.minimizeToTray, closeToTray: !!p.closeToTray }),
   appVersion: () => ipcRenderer.sendSync('csm:app-version'),
   restartServer: () => ipcRenderer.invoke('csm:restart-server'),
   update: action => ipcRenderer.invoke('csm:update', ['check', 'install', 'state'].includes(action) ? action : 'state'),

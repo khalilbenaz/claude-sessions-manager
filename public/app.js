@@ -23,6 +23,7 @@ const termTheme = () => THEMES[themeName()] || THEMES.dark;
 function applySettings() {
   document.documentElement.dataset.theme = themeName();
   document.body.classList.toggle('compact', !!SETTINGS.compactSidebar);
+  window.csmNative?.setPrefs?.({ minimizeToTray: SETTINGS.minimizeToTray !== false, closeToTray: SETTINGS.closeToTray !== false });
   for (const tt of terms.values()) {
     tt.term.options.theme = termTheme();
     if (SETTINGS.fontFamily) tt.term.options.fontFamily = SETTINGS.fontFamily;
@@ -42,7 +43,7 @@ async function saveSettings(patch) {
 
 async function api(method, url, body) {
   const r = await fetch(url, {
-    method, headers: { 'Content-Type': 'application/json', 'X-CSM-Token': TOKEN },
+    method, headers: { 'Content-Type': 'application/json', 'X-CSM-Token': TOKEN, 'X-CSM-Unlock': window.csmUnlockHeader?.() || '' },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
@@ -173,6 +174,7 @@ function renderPaneFrames() {
     p.querySelector('.phead .pn').textContent = s ? s.name : t('(vide — glisser une session ici)');
     p.querySelector('.phead .pb').textContent = s?.worktree ? `⎇ ${s.worktree.branch}` : '';
   });
+  window.csmFeatures.lockOverlays?.();
 }
 
 function makePane() {
@@ -222,6 +224,7 @@ function connect() {
   ws.onclose = () => { $('#conn').classList.add('off'); setTimeout(connect, 1500); };
   ws.onmessage = ev => {
     const m = JSON.parse(ev.data);
+    window.dispatchEvent(new CustomEvent('csm:ws', { detail: m })); // modules (verrouillage…)
     if (m.t === 'sessions') {
       const ids = new Set(m.list.map(s => s.id));
       for (const id of [...sessions.keys()]) if (!ids.has(id)) removeLocal(id);
@@ -274,7 +277,7 @@ function notifyTransition(prev, s) {
   const focused = document.hasFocus() && visibleIds().includes(s.id);
   const important = s.status === 'attention' || (s.status === 'idle' && prev.status === 'working');
   if (!important || focused) return;
-  alertUser(s, s.status === 'attention' ? t('attend une réponse') : t('terminé'), s.message || s.cwd);
+  alertUser(s, s.status === 'attention' ? t('attend une réponse') : t('terminé'), s.locked ? t('Session verrouillée') : (s.message || s.cwd));
 }
 
 function alertUser(s, what, body) {
@@ -361,7 +364,7 @@ function render() {
     li.dataset.id = s.id;
     li.title = `${s.name}\n${s.cwd}${s.worktree ? `\n⎇ ${s.worktree.branch}` : ''}\n${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + t(s.message) : ''}`;
     li.innerHTML = `<span class="dot ${s.status}"></span><span class="n"></span><span class="acts"><button class="ren" title="Renommer">✎</button><span class="k">${i < 9 ? i + 1 : ''}${unread.has(s.id) && s.id !== active ? ' •' : ''}</span></span><span class="sub"></span>`;
-    li.querySelector('.n').textContent = s.name;
+    li.querySelector('.n').textContent = (s.locked ? (window.csmFeatures.isLockedHere?.(s.id) ? '🔒 ' : '🔓 ') : '') + s.name;
     li.querySelector('.dot').textContent = '';
     li.querySelector('.dot').dataset.initial = (s.name || '?').trim().charAt(0).toUpperCase();
     li.querySelector('.sub').textContent = (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
@@ -421,7 +424,7 @@ function select(id) {
   render();
   requestAnimationFrame(() => terms.get(id)?.term.focus());
   const s = sessions.get(id);
-  if (s && (s.status === 'attention' || (s.status === 'idle' && s.message === 'terminé'))) api('POST', `/api/sessions/${id}/seen`).catch(() => { });
+  if (s && !window.csmFeatures.isLockedHere?.(id) && (s.status === 'attention' || (s.status === 'idle' && s.message === 'terminé'))) api('POST', `/api/sessions/${id}/seen`).catch(() => { });
 }
 
 // ------------------------------------------------------------------ actions
@@ -675,6 +678,7 @@ function moreItems(id) {
     '-',
     [t('Groupe…'), () => window.csmFeatures.setGroup(id)],
     [s.pinned ? t('Désépingler') : t('Épingler en haut'), () => api('POST', `/api/sessions/${id}/meta`, { pinned: !s.pinned })],
+    ...(window.csmFeatures.lockItems?.(id) || []),
     [s.alerts?.mute ? t('Réactiver les alertes') : t('Couper les alertes de cette session'), () => api('POST', `/api/sessions/${id}/meta`, { alerts: { mute: !s.alerts?.mute } })],
     '-',
     [t('Arrêter'), () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
@@ -972,7 +976,10 @@ function askNotify() {
 document.addEventListener('click', askNotify, { once: true });
 
 // Actions venant du menu de l'application (barre des tâches / de menus).
-window.csmNative?.onAction(a => { if (a === 'new') openNew(); else if (a === 'history') openHistory(); else if (a === 'settings') window.csmFeatures.openSettings(); });
+window.csmNative?.onAction(a => {
+  if (a === 'new') openNew(); else if (a === 'history') openHistory(); else if (a === 'settings') window.csmFeatures.openSettings();
+  else if (a.startsWith('select:') && sessions.has(a.slice(7))) select(a.slice(7)); // depuis le menu de l'icône
+});
 
 window.csmFeatures = {}; // rempli par panel.js, settings.js, palette.js
 loadSettings().finally(() => { connect(); setLayout(layout); window.dispatchEvent(new Event('csm:ready')); });
