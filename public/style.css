@@ -298,3 +298,4 @@ ul.tips li { margin: 4px 0; }
 ul.results li.empty { flex-wrap: wrap; border: 1px dashed var(--line); background: var(--panel2); cursor: default; }
 ul.results li.empty small { white-space: normal; }
 ul.results li > div .tag { align-self: flex-start; margin-left: 0; }
+#palList li.hint { display: block; padding: 12px 14px; }
