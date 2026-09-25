@@ -25,7 +25,10 @@ let app, win;
 before(async () => {
   app = await electron.launch({ args: [ROOT], env, timeout: 60000 });
   win = await app.firstWindow();
-  await win.waitForSelector('#btnNew', { timeout: 30000 });
+  // au 1er lancement, la page peut se recharger une fois (langue du système ≠ réglage) : attendre qu'elle soit prête
+  await win.waitForFunction(() => document.documentElement.dataset.ready === '1', null, { timeout: 60000 });
+  await new Promise(r => setTimeout(r, 500));
+  await win.waitForFunction(() => document.documentElement.dataset.ready === '1', null, { timeout: 60000 });
 });
 after(async () => {
   // l'app reste dans la barre des tâches quand la fenêtre est fermée : on la quitte explicitement
