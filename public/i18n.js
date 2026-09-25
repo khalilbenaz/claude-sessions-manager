@@ -55,7 +55,7 @@ const EN = {
   'Enregistrer en Markdown (.md)': 'Save as Markdown (.md)', 'Copier le Markdown': 'Copy Markdown', 'Copié': 'Copied', 'Imprimer / PDF…': 'Print / PDF…',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
-  'Réglages': 'Settings', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
+  'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
   'Diagnostic': 'Diagnostics', 'Journaux': 'Logs', 'À propos': 'About', 'Thème': 'Theme', 'Sombre': 'Dark', 'Clair': 'Light', 'Système': 'System', 'Langue': 'Language',
   'Automatique': 'Automatic', 'Modèle par défaut': 'Default model', 'Mode par défaut': 'Default mode', 'Proposer un worktree git par défaut dans un dépôt': 'Offer a git worktree by default in a repository',
   'Éditeur pour « Ouvrir dans »': 'Editor for “Open in”', 'Commande personnalisée': 'Custom command', 'Commande personnalisée…': 'Custom command…',

@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.2.1] — 2026-09-25
+
+### Modifié
+- **Thème automatique par défaut** : « Système » suit le mode clair / sombre de Windows et macOS en direct (Clair et Sombre restent disponibles) ; la fenêtre s'ouvre directement dans la bonne couleur.
+- **Mises à jour** : vérification aussi au retour sur la fenêtre (au plus une fois par heure), en plus du lancement et des 6 h.
+- **Documentation** : le README devient un guide complet (22 sections : sessions, groupes, vue partagée, worktrees, verrouillage, notifications, réglages, raccourcis, dépannage…), publié aussi sur le site (`guide.html`, généré depuis le README par `npm run guide`). Les anciens liens du README restent valides (ancres de compatibilité).
+
 ## [3.2.0] — 2026-09-25
 
 ### Ajouté
