@@ -283,7 +283,10 @@ function notifyTransition(prev, s) {
 function alertUser(s, what, body) {
   if (SETTINGS.dnd || s.alerts?.mute) return;
   playSound();
-  if (!SETTINGS.notifications || !('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!SETTINGS.notifications) return;
+  // macOS : par l'app (repli si elle n'est pas signée par Apple — le centre de notifications la refuse)
+  if (window.csmNative?.platform === 'darwin' && window.csmNative.notify) return window.csmNative.notify(`${s.name} — ${what}`, body, s.id);
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const n = new Notification(`${s.name} — ${what}`, { body, tag: s.id, icon: 'icon.svg', silent: true });
   n.onclick = () => { window.csmNative ? window.csmNative.focus() : window.focus(); select(s.id); n.close(); };
 }

@@ -6,7 +6,7 @@ const { app, BrowserWindow, Tray, Menu, nativeImage, shell, dialog, ipcMain, ses
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
-const { spawn, execFileSync } = require('child_process');
+const { spawn, execFile, execFileSync, spawnSync } = require('child_process');
 const { ROOT, PORT, IS_WIN, IS_MAC, DATA } = require('../lib/config');
 
 const ORIGIN = `http://127.0.0.1:${PORT}`;
@@ -29,6 +29,39 @@ let quitting = false;
 const prefs = { minimizeToTray: true, closeToTray: true };
 let attention = 0;
 let updates = null; // electron/updater.js
+
+// macOS : sans signature Apple (identifiant d'équipe), le centre de notifications refuse l'app
+// (UNErrorDomain 1 « Notifications are not allowed ») et masque aussi la pastille du Dock — sans
+// aucune erreur côté Electron. On le détecte une fois pour passer par des replis.
+let macNative = null;
+function macNotificationsAllowed() {
+  if (macNative !== null) return macNative;
+  if (!IS_MAC) return (macNative = true);
+  try {
+    const bundle = path.resolve(process.execPath, '..', '..', '..');
+    const r = spawnSync('codesign', ['-dv', bundle], { encoding: 'utf8', timeout: 3000 });
+    const team = (/TeamIdentifier=(.+)/.exec(r.stderr || '') || [])[1];
+    macNative = !!team && team.trim() !== 'not set';
+  } catch { macNative = false; }
+  return macNative;
+}
+
+// Notification système. Repli macOS (app non signée) : celle d'AppleScript, toujours autorisée, sans action au clic.
+const liveNotes = new Set(); // référence gardée jusqu'au clic / à la fermeture (sinon l'événement « click » est perdu)
+function notify(title, body, sessionId) {
+  const clean = v => String(v || '').replace(/[\u0000-\u001f]+/g, ' ').slice(0, 300);
+  title = clean(title) || 'Claude Sessions'; body = clean(body);
+  if (IS_MAC && !macNotificationsAllowed()) {
+    execFile('osascript', ['-e', 'on run argv', '-e', 'display notification (item 2 of argv) with title (item 1 of argv)', '-e', 'end run', title, body], () => { });
+    return;
+  }
+  if (!Notification.isSupported()) return;
+  const n = new Notification({ title, body, silent: true });
+  liveNotes.add(n);
+  n.on('click', () => { liveNotes.delete(n); if (sessionId) send(`select:${sessionId}`); else showWindow(); });
+  n.on('close', () => liveNotes.delete(n));
+  n.show();
+}
 
 // Lecture d'un réglage du serveur (le jeton est dans le dossier de données, lisible par l'utilisateur seul).
 function serverGet(p) {
@@ -122,7 +155,7 @@ function createWindow() {
     else { quitting = true; } // fermer = quitter l'app ; le serveur et les sessions continuent
   });
   // Réduire : dans la zone de notification (Windows) / la barre de menus (macOS) plutôt que la barre des tâches.
-  win.on('minimize', () => { if (prefs.minimizeToTray && tray) toTray(); });
+  win.on('minimize', () => { if (prefs.minimizeToTray && tray) toTray(true); });
   for (const ev of ['resize', 'move']) win.on(ev, debounce(saveState, 500));
   win.on('focus', () => { win.flashFrame(false); updates?.onFocus?.(); });
   win.on('show', () => updates?.onFocus?.());
@@ -137,18 +170,20 @@ function createWindow() {
 }
 
 // Masque la fenêtre (plus d'entrée dans la barre des tâches) ; la 1re fois, explique où elle est passée.
-function toTray() {
+// macOS : fermer (Cmd+W) garde l'icône du Dock, comme toute app Mac (un clic la rouvre) ; seul « réduire »
+// l'enlève du Dock quand le réglage le demande.
+function toTray(minimized = false) {
   if (!win || win.isDestroyed()) return;
   win.hide();
-  if (IS_MAC && prefs.minimizeToTray) app.dock?.hide?.();
+  if (IS_MAC && minimized && prefs.minimizeToTray) app.dock?.hide?.();
   const flag = path.join(DATA, 'app-tray-hint');
   if (tray && !fs.existsSync(flag)) {
     try { fs.writeFileSync(flag, new Date().toISOString()); } catch { }
     const msg = IS_WIN
       ? 'Claude Sessions continue en arrière-plan, avec tes sessions. Clique sur son icône près de l’horloge pour la rouvrir (si elle n’est pas visible : flèche ^).'
-      : 'Claude Sessions continue en arrière-plan, avec tes sessions. Rouvre-la depuis son icône dans la barre des menus.';
+      : 'Claude Sessions continue en arrière-plan, avec tes sessions. Rouvre-la depuis le Dock ou son icône dans la barre des menus.';
     if (IS_WIN && tray.displayBalloon) tray.displayBalloon({ title: 'Claude Sessions', content: msg, iconType: 'info' });
-    else if (Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: msg, silent: true }).show();
+    else notify('Claude Sessions', msg);
   }
 }
 
@@ -186,9 +221,11 @@ function registerIpc() {
   ipcMain.on('csm:attention', (e, n) => {
     if (!trusted(e)) return;
     n = Math.max(0, Math.min(99, Number(n) || 0));
-    if (IS_MAC) app.setBadgeCount(n);
+    if (IS_MAC) { app.setBadgeCount(n); if (!macNotificationsAllowed()) setDockDot(n > 0); }
     if (IS_WIN && win) win.setOverlayIcon(n ? badgeIcon() : null, n ? `${n} en attente` : '');
-    if (n && win && !win.isFocused()) win.flashFrame(true);
+    // macOS : un seul rebond du Dock par nouvelle attente (flashFrame rebondit sans fin jusqu'au retour dans l'app)
+    if (IS_MAC) { if (n > attention && win && !win.isFocused()) app.dock?.bounce?.('informational'); }
+    else if (n && win && !win.isFocused()) win.flashFrame(true);
     attention = n;
     refreshTrayIcon();
   });
@@ -197,6 +234,7 @@ function registerIpc() {
     for (const k of Object.keys(prefs)) if (typeof p[k] === 'boolean') prefs[k] = p[k];
   });
   ipcMain.on('csm:focus', e => { if (trusted(e)) showWindow(); });
+  ipcMain.on('csm:notify', (e, o) => { if (trusted(e) && o && typeof o === 'object') notify(o.title, o.body, typeof o.id === 'string' ? o.id : ''); });
   ipcMain.handle('csm:update', async (e, action) => {
     if (!trusted(e) || !updates) return updates?.state || null;
     if (action === 'check') await updates.check();
@@ -219,7 +257,7 @@ function trayImages() {
   if (trayImg) return;
   const size = IS_MAC ? 18 : 16;
   trayImg = nativeImage.createFromPath(path.join(ROOT, 'public', 'icon.png')).resize({ width: size, height: size, quality: 'best' });
-  // même icône + point rouge en bas à droite (pixels BGRA sous Windows, RGBA ailleurs)
+  // même icône + point rouge en bas à droite (toBitmap : pixels BGRA, Windows comme macOS)
   const s = trayImg.getSize(), bmp = Buffer.from(trayImg.toBitmap());
   const r = Math.round(s.width * 0.28), cx = s.width - r - 0.5, cy = s.height - r - 0.5;
   for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) {
@@ -227,7 +265,7 @@ function trayImages() {
     if (d <= r + 1) {
       const edge = d > r; // liseré sombre pour détacher le point
       const [R_, G, B] = edge ? [30, 27, 24] : [240, 86, 74];
-      if (IS_WIN) { bmp[i] = B; bmp[i + 1] = G; bmp[i + 2] = R_; } else { bmp[i] = R_; bmp[i + 1] = G; bmp[i + 2] = B; }
+      bmp[i] = B; bmp[i + 1] = G; bmp[i + 2] = R_;
       bmp[i + 3] = 255;
     }
   }
@@ -240,6 +278,27 @@ async function refreshTrayIcon() {
   const list = (await serverGet('/api/sessions')) || [];
   const alive = list.filter(s => s.alive).length;
   tray.setToolTip(`Claude Sessions — ${alive} session${alive > 1 ? 's' : ''} active${alive > 1 ? 's' : ''}${attention ? ` · ${attention} en attente de réponse` : ''}`);
+}
+
+// Repli macOS de la pastille (app non signée) : point rouge dessiné sur l'icône du Dock.
+let dockImg = null, dockImgAlert = null, dockDot = false;
+function setDockDot(on) {
+  if (on === dockDot || !app.dock) return;
+  dockDot = on;
+  if (!dockImg) {
+    dockImg = nativeImage.createFromPath(path.join(ROOT, 'public', 'icon.png'));
+    const s = dockImg.getSize(), bmp = Buffer.from(dockImg.toBitmap());
+    const r = s.width * 0.14, cx = s.width - r - s.width * 0.06, cy = r + s.height * 0.06;
+    for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) {
+      const d = Math.hypot(x - cx, y - cy), i = (y * s.width + x) * 4;
+      if (d > r + 1) continue;
+      const a = Math.min(1, r + 1 - d); // bord adouci ; pixels BGRA
+      [48, 59, 240].forEach((c, k) => { bmp[i + k] = Math.round(bmp[i + k] * (1 - a) + c * a); });
+      bmp[i + 3] = Math.max(bmp[i + 3], Math.round(255 * a));
+    }
+    dockImgAlert = nativeImage.createFromBitmap(bmp, { width: s.width, height: s.height });
+  }
+  app.dock.setIcon(on ? dockImgAlert : dockImg);
 }
 
 let badge = null;

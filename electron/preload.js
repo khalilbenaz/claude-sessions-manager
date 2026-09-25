@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('csmNative', {
   pickFolder: initial => ipcRenderer.invoke('csm:pick-folder', typeof initial === 'string' ? initial : ''),
   setAttention: n => ipcRenderer.send('csm:attention', Number(n) || 0),
   focus: () => ipcRenderer.send('csm:focus'),
+  // notification par l'app (repli macOS sans signature Apple) ; id = session à ouvrir au clic
+  notify: (title, body, id) => ipcRenderer.send('csm:notify', { title: String(title || ''), body: String(body || ''), id: String(id || '') }),
   setPrefs: p => ipcRenderer.send('csm:prefs', { minimizeToTray: !!p.minimizeToTray, closeToTray: !!p.closeToTray }),
   appVersion: () => ipcRenderer.sendSync('csm:app-version'),
   restartServer: () => ipcRenderer.invoke('csm:restart-server'),
