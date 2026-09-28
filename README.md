@@ -226,7 +226,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 | **Sécurité** | reverrouiller quand la fenêtre est masquée, après une inactivité |
 | **Modèles de session** | lancer, renommer, supprimer |
 | **Prompts** | ouvrir la bibliothèque de prompts |
-| **Synchronisation** | code de synchro, nom de cette machine, correspondance des dossiers, état (§ 16 bis) |
+| **Synchronisation** | créer ou saisir un code de synchro, le copier, état ; Avancé : nom de machine, correspondance des dossiers, serveur (§ 16 bis) |
 | **Diagnostic** | versions, `claude` et `git` trouvés ou non, hooks, dossiers, dernières lignes du journal ; **Copier le rapport** pour une issue |
 | **Journaux** | le journal du serveur, filtrable |
 | **À propos** | version, rechercher des mises à jour |
@@ -235,25 +235,24 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 
 Retrouver sur le PC les sessions créées sur le Mac, et inversement : **nom, dossier, modèle et options, groupe, épinglage, couleur, accès téléphone**. Les **conversations restent sur chaque machine** : rien de leur contenu n'est envoyé.
 
-- **Désactivée par défaut.** Rien n'est synchronisé tant que tu n'as pas collé un **code de synchro**. Chaque code est un espace isolé : sans ton code, personne ne voit tes sessions, et tu ne vois pas les leurs.
-- **Première machine** : Réglages › Synchronisation › **Nouveau code…** (demande l'adresse de ton serveur de synchro, voir plus bas), puis **Copier**.
-- **Autres machines** : colle le même code dans Réglages › Synchronisation. Donne un **nom de machine** parlant (« PC bureau », « Mac »).
+- **Désactivée par défaut.** Rien n'est synchronisé tant qu'aucun **code de synchro** n'est actif. Chaque code est un espace isolé : sans ton code, personne ne voit tes sessions, et tu ne vois pas les leurs.
+- **Première machine** : Réglages › Synchronisation › **Créer un code**. Le serveur génère un code (`XXXX-XXXX-XXXX-XXXX-XXXX`), l'enregistre, et l'app l'affiche en clair avec un bouton **Copier**. La synchro démarre tout de suite.
+- **Autres machines** : Réglages › Synchronisation › **J'ai déjà un code**, colle le code puis **Activer** (majuscules, espaces et tirets indifférents). Donne un **nom de machine** parlant (« PC bureau », « Mac ») dans **Avancé**.
 - Une session venue d'une autre machine apparaît **arrêtée**, avec un badge **⇄ machine**. **Reprendre** ouvre une nouvelle conversation dans le dossier correspondant de cette machine.
-- **Dossiers** : le dossier personnel est traduit tout seul (`/Users/moi/Projets/app` ↔ `C:\Users\moi\Projets\app`). Pour d'autres emplacements, déclare des alias identiques sur chaque machine, une ligne par alias : `code=D:\dev` sur le PC, `code=~/dev` sur le Mac. Si le dossier n'existe pas ici, la session s'ouvre dans le dossier personnel (une note l'indique).
+- **Dossiers** : le dossier personnel est traduit tout seul (`/Users/moi/Projets/app` ↔ `C:\Users\moi\Projets\app`). Pour d'autres emplacements, déclare des alias identiques sur chaque machine (Avancé), une ligne par alias : `code=D:\dev` sur le PC, `code=~/dev` sur le Mac. Si le dossier n'existe pas ici, la session s'ouvre dans le dossier personnel (une note l'indique).
 - Renommer, regrouper ou supprimer une session se propage aux autres machines en moins d'une minute ; en cas de modifications simultanées, la plus récente gagne. Une session supprimée ailleurs mais **en cours ici** n'est pas arrêtée.
 - **Ne partage ton code qu'avec tes propres machines** : il donne accès à ta liste de sessions. **Désactiver** l'efface de cette machine.
 
-**Serveur de synchro** (à héberger toi-même, gratuit) : un Worker Cloudflare + une base D1, fournis dans [`sync-worker/`](sync-worker).
+**Serveur de synchro** : par défaut, l'app utilise le serveur public du projet (Worker Cloudflare + base D1). Il ne garde que l'empreinte SHA-256 de chaque code, jamais le code lui-même, et limite la création de codes. Tu peux héberger le tien (gratuit) avec [`sync-worker/`](sync-worker), puis mettre son adresse dans Réglages › Synchronisation › Avancé › **Serveur** :
 
 ```bash
 cd sync-worker
 npx wrangler d1 create csm-sync          # puis mets son database_id dans wrangler.toml
 npx wrangler d1 execute csm-sync --remote --file schema.sql
 npx wrangler deploy                       # affiche l'adresse https://csm-sync.<toi>.workers.dev
-npx wrangler secret put SYNC_KEYS         # colle la clé affichée par « Nouveau code… » (plusieurs : séparées par des virgules)
 ```
 
-Le serveur refuse toute clé absente de `SYNC_KEYS`, et chaque clé a son propre espace (empreinte SHA-256). Il ne stocke que les champs listés plus haut.
+Chaque code a son propre espace. Le serveur refuse tout code qu'il n'a pas créé et ne stocke que les champs listés plus haut.
 
 ## 17. Mises à jour
 
@@ -287,7 +286,7 @@ Sur Mac, <kbd>Ctrl</kbd>+<kbd>Alt</kbd> = <kbd>Ctrl</kbd>+<kbd>Option</kbd>. Dan
 
 ## 19. Données, sécurité, confidentialité
 
-- **Tout reste sur ta machine.** Le serveur de l'app écoute uniquement sur `127.0.0.1` (inaccessible depuis le réseau), exige un jeton aléatoire et vérifie l'en-tête Host. Aucune télémétrie : seules tes sessions Claude Code parlent à l'API d'Anthropic, comme d'habitude. Seule exception, si tu l'actives : la synchronisation (§ 16 bis) envoie la liste des sessions (noms, dossiers, groupes, options — pas les conversations) au serveur que tu as choisi. [Politique de confidentialité](https://khalilbenaz.github.io/claude-sessions-manager/privacy.html).
+- **Tout reste sur ta machine.** Le serveur de l'app écoute uniquement sur `127.0.0.1` (inaccessible depuis le réseau), exige un jeton aléatoire et vérifie l'en-tête Host. Aucune télémétrie : seules tes sessions Claude Code parlent à l'API d'Anthropic, comme d'habitude. Seule exception, si tu l'actives : la synchronisation (§ 16 bis) envoie la liste des sessions (noms, dossiers, groupes, options — pas les conversations) au serveur de synchro (celui du projet ou le tien). [Politique de confidentialité](https://khalilbenaz.github.io/claude-sessions-manager/privacy.html).
 - **Fenêtre isolée** : pas d'accès système depuis la page, navigation limitée au serveur local, liens externes ouverts dans ton navigateur, permissions limitées aux notifications et au presse-papiers, aucun script extérieur (CSP).
 - **Données de l'app** : `%APPDATA%\claude-sessions` (Windows), `~/Library/Application Support/claude-sessions` (macOS) — sessions, réglages, modèles, prompts, jeton, journal. Désinstaller l'app ne les supprime pas.
 - **Conversations** : ce sont celles de Claude Code, dans `~/.claude/projects` ; l'app les lit (historique, consommation, export) et n'y écrit que le nom d'une session renommée.

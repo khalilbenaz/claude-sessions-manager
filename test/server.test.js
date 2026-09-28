@@ -327,6 +327,11 @@ function fakeSyncServer(keys) {
   const srv = http.createServer((q, r) => {
     const key = (q.headers.authorization || '').replace(/^Bearer /, '');
     const send = (code, v) => { r.writeHead(code, { 'content-type': 'application/json' }); r.end(JSON.stringify(v)); };
+    if (q.method === 'POST' && q.url === '/spaces') {
+      const code = Array.from({ length: 20 }, () => '0123456789ABCDEFGHJKMNPQRSTVWXYZ'[Math.floor(Math.random() * 32)]).join('');
+      keys.push(code);
+      return send(200, { code });
+    }
     if (!keys.includes(key)) return send(401, { error: 'unauthorized' });
     if (!spaces.has(key)) spaces.set(key, new Map());
     const rows = spaces.get(key);
@@ -357,6 +362,33 @@ test('synchro : désactivée par défaut, isolée par code', async () => {
   await api('PUT', '/api/settings', { syncCode: 'n-importe-quoi' });
   assert.equal((await api('GET', '/api/sync')).invalid, true);
   await api('PUT', '/api/settings', { syncCode: '' });
+});
+
+test('synchro : code créé par le serveur, puis saisi sur une autre machine', async () => {
+  const fake = await fakeSyncServer([]);
+  try {
+    await api('PUT', '/api/settings', { syncServer: fake.url });
+    const { code } = await api('POST', '/api/sync/code');
+    assert.match(code, /^([0-9A-HJKMNP-TV-Z]{4}-){4}[0-9A-HJKMNP-TV-Z]{4}$/);
+    await api('PUT', '/api/settings', { syncCode: code });
+    const st = await api('POST', '/api/sync/now');
+    assert.equal(st.enabled, true); assert.equal(st.code, code); assert.equal(st.lastError, '');
+    const key = code.replace(/-/g, '');
+    await api('POST', '/api/sessions', { cwd: WORK, name: 'via-code-court' });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return [...fake.rows(key).values()].some(x => x.data.name === 'via-code-court'); }, 10000, 'session envoyée');
+
+    // « J'ai déjà un code » : minuscules et espaces acceptés, même espace
+    await api('PUT', '/api/settings', { syncCode: ' ' + code.toLowerCase().replace(/-/g, ' ') });
+    const again = await api('POST', '/api/sync/now');
+    assert.equal(again.code, code); assert.equal(again.lastError, '');
+    // code inventé : refusé par le serveur
+    await api('PUT', '/api/settings', { syncCode: 'ABCD-EFGH-JKMN-PQRS-TVWX' });
+    assert.match((await api('POST', '/api/sync/now')).lastError, /refusé/);
+  } finally {
+    for (const s of await api('GET', '/api/sessions')) if (s.name === 'via-code-court') await api('DELETE', `/api/sessions/${s.id}`);
+    await api('PUT', '/api/settings', { syncCode: '', syncServer: '' });
+    fake.srv.close();
+  }
 });
 
 test('synchro : envoi, session distante arrêtée, renommage, suppressions', async () => {

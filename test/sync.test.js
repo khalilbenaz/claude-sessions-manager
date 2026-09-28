@@ -7,11 +7,22 @@ const { encodeCode, decodeCode, parseRoots, toPortable, fromPortable } = require
 test('code de synchro : aller-retour et refus', () => {
   const c = encodeCode('https://sync.example.dev/', 'a'.repeat(32));
   assert.match(c, /^csm1\./);
-  assert.deepEqual(decodeCode(c), { url: 'https://sync.example.dev', key: 'a'.repeat(32) });
+  assert.deepEqual(decodeCode(c), { url: 'https://sync.example.dev', key: 'a'.repeat(32), code: c });
   assert.equal(decodeCode(''), null);
   assert.equal(decodeCode('csm1.pasdubase64'), null);
   assert.equal(decodeCode(encodeCode('https://x.dev', 'court')), null, 'clé trop courte');
   assert.equal(decodeCode(encodeCode('javascript:alert(1)', 'a'.repeat(32))), null);
+});
+
+test('code court : saisie tolérante, serveur du réglage', () => {
+  const k = 'ABCD-EFGH-JKMN-PQRS-TVWX';
+  assert.deepEqual(decodeCode(k, 'https://s.dev/'), { url: 'https://s.dev', key: 'ABCDEFGHJKMNPQRSTVWX', code: k });
+  assert.equal(decodeCode(' abcd efgh jkmn pqrs tvwx ', 'https://s.dev').code, k, 'minuscules et espaces');
+  assert.equal(decodeCode('0O1I-L000-0000-0000-0000', 'https://s.dev').key, '00111000000000000000', 'O→0, I/L→1');
+  assert.equal(decodeCode('ABCD-EFGH-JKMN-PQRS', 'https://s.dev'), null, 'trop court');
+  assert.equal(decodeCode('UUUU-EFGH-JKMN-PQRS-TVWX', 'https://s.dev'), null, 'U hors alphabet');
+  assert.equal(decodeCode(k, 'javascript:x'), null, 'serveur invalide');
+  assert.equal(decodeCode(k).url, require('../lib/sync').DEFAULT_SERVER);
 });
 
 test('dossiers : Mac vers Windows par le dossier personnel', () => {
