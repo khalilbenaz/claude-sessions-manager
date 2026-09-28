@@ -139,6 +139,17 @@ const EN = {
   'Joindre une image ou un fichier (ou glisser-déposer / coller dans le terminal)': 'Attach an image or file (or drag & drop / paste into the terminal)',
   'Reprendre une ancienne session (Ctrl+Alt+H)': 'Resume a past session (Ctrl+Alt+H)', 'Réglages (Ctrl+,)': 'Settings (Ctrl+,)', 'Nouvelle session (Ctrl+Alt+N)': 'New session (Ctrl+Alt+N)',
   'Ferme ces sessions dans leur terminal et les reprend ici': 'Closes these sessions in their terminal and resumes them here', 'Renommer (Ctrl+Alt+R)': 'Rename (Ctrl+Alt+R)',
+  // synchronisation (#27)
+  'Synchronisation': 'Sync', 'Code de synchro': 'Sync code', 'Copier mon code': 'Copy my code', 'Générer un code…': 'Generate a code…', 'Désactiver': 'Turn off',
+  'Nom de cette machine': 'This machine’s name', 'Racines de dossiers (une par ligne, alias=chemin)': 'Folder roots (one per line, alias=path)',
+  'Synchroniser maintenant': 'Sync now', 'Synchronisation…': 'Syncing…', 'Synchronisation désactivée.': 'Sync is off.', 'Synchronisé avec': 'Synced with', 'en attente': 'pending',
+  'Code de synchro invalide : colle le code complet (csm1.…) copié sur l’autre machine.': 'Invalid sync code: paste the full code (csm1.…) copied from the other machine.',
+  'Code copié : colle-le dans Réglages › Synchronisation sur l’autre machine. Ne le partage pas.': 'Code copied: paste it in Settings › Sync on the other machine. Don’t share it.',
+  'Désactiver la synchronisation sur cette machine ? Les sessions restent ici, le code est effacé.': 'Turn off sync on this machine? Sessions stay here, the code is erased.',
+  'Adresse de ton serveur de synchro (Worker Cloudflare, voir sync-worker/ dans le dépôt) :': 'Address of your sync server (Cloudflare Worker, see sync-worker/ in the repo):',
+  'Code créé. Ajoute cette clé au secret SYNC_KEYS de ton Worker (wrangler secret put SYNC_KEYS), puis colle le même code sur tes autres machines :': 'Code created. Add this key to your Worker’s SYNC_KEYS secret (wrangler secret put SYNC_KEYS), then paste the same code on your other machines:',
+  "Retrouve la liste des sessions (nom, dossier, modèle, groupe) sur tes autres machines. Les conversations restent sur chaque machine. Désactivée tant qu'aucun code n'est collé : seules les machines qui partagent le même code se voient.": 'See your session list (name, folder, model, group) on your other machines. Conversations stay on each machine. Off until a code is pasted: only machines sharing the same code see each other.',
+  'Le dossier personnel est reconnu tout seul ({home}). Déclare le même alias sur chaque machine pour les dossiers rangés ailleurs (ex. code=D:\\dev sur le PC, code=~/dev sur le Mac).': 'The home folder is matched automatically ({home}). Declare the same alias on each machine for folders stored elsewhere (e.g. code=D:\\dev on the PC, code=~/dev on the Mac).',
 };
 
 let LANG = 'fr';

@@ -90,9 +90,11 @@ const STORE = path.join(DATA, 'sessions.json');
 const sessions = new Map();
 
 // Champs ajoutés par les modules (lib/*) : mémorisés et envoyés à l'interface tels quels.
-const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'alerts', 'remote'];
+const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'alerts', 'remote', 'syncId', 'origin', 'syncCwd'];
 const extra = s => Object.fromEntries(EXTRA_FIELDS.filter(k => s[k] !== undefined).map(k => [k, s[k]]));
 
+// Appelés après chaque écriture de sessions.json (lib/sync : repère les changements à envoyer).
+const persistHooks = [];
 function persist() {
   const list = [...sessions.values()].map(s => ({
     id: s.id, name: s.name, cwd: s.cwd, args: s.args, claudeSessionId: s.claudeSessionId,
@@ -100,6 +102,7 @@ function persist() {
     ...extra(s), ...(s.lock ? { lock: s.lock } : {}),
   }));
   fs.writeFileSync(STORE, JSON.stringify(list, null, 2));
+  for (const fn of persistHooks) { try { fn(); } catch (e) { console.error('persist hook', e); } }
 }
 
 function publicView(s) {
@@ -689,10 +692,10 @@ const listeners = {};
 function on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); }
 function emit(ev, ...a) { for (const fn of listeners[ev] || []) { try { fn(...a); } catch (e) { console.error('module', ev, e); } } }
 const ctx = {
-  route, on, emit, json, readBody, sessions, publicView, persist, broadcast, createSession, killSession, spawnSession,
+  route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
   renameSession, history, transcriptPath, setStatus, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
 };
-for (const mod of ['lock', 'git', 'settings', 'usage', 'tools', 'queue', 'remote']) {
+for (const mod of ['lock', 'git', 'settings', 'usage', 'tools', 'queue', 'remote', 'sync']) {
   try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }
 }
 

@@ -13,7 +13,7 @@ let historyCache = [];
 const STATUS_LABEL = { starting: t('démarrage'), working: t('travaille'), attention: t('attend une réponse'), idle: t('prêt'), exited: t('arrêtée') };
 
 // Réglages (serveur) : voir lib/settings.js. Valeurs par défaut en attendant la réponse.
-let SETTINGS = { theme: 'system', fontSize: 14, fontFamily: '', defaultModel: 'opus', defaultMode: '', notifications: true, sound: 'soft', dnd: false, waitingMinutes: 10, longRunMinutes: 0, worktreeDefault: false, compactSidebar: false, autoUpdate: true, onboarded: true };
+let SETTINGS = { theme: 'system', fontSize: 14, fontFamily: '', defaultModel: 'opus', defaultMode: '', notifications: true, sound: 'off', dnd: false, waitingMinutes: 10, longRunMinutes: 0, worktreeDefault: false, compactSidebar: false, autoUpdate: true, onboarded: true };
 const THEMES = {
   dark: { background: '#101114', foreground: '#e6e6e6', cursor: '#d97757', selectionBackground: '#3a4150' },
   light: { background: '#fbfaf8', foreground: '#1f1b18', cursor: '#c4613f', selectionBackground: '#d9d2c7', black: '#1f1b18', brightBlack: '#6b6560', white: '#8b8580', brightWhite: '#1f1b18', yellow: '#9a6b00', brightYellow: '#8a5a00', green: '#1f7a3f', brightGreen: '#1a6b36', cyan: '#0e6f86', brightCyan: '#0b5f73', blue: '#1f5fbf', brightBlue: '#1a4fa0', magenta: '#8a3fa0', brightMagenta: '#7a2f90', red: '#c0392b', brightRed: '#a93226' },
@@ -251,6 +251,8 @@ function connect() {
       const langChanged = m.settings.lang !== SETTINGS.lang;
       SETTINGS = { ...SETTINGS, ...m.settings }; applySettings();
       if (langChanged) location.reload();
+    } else if (m.t === 'sync') {
+      window.dispatchEvent(new CustomEvent('csm:sync', { detail: m.status }));
     } else if (m.t === 'templates' || m.t === 'prompts') {
       window.dispatchEvent(new CustomEvent(`csm:${m.t}`, { detail: m[m.t] }));
     } else if (m.t === 'removed') {
@@ -370,7 +372,7 @@ function render() {
     li.querySelector('.n').textContent = (s.locked ? (window.csmFeatures.isLockedHere?.(s.id) ? '🔒 ' : '🔓 ') : '') + s.name;
     li.querySelector('.dot').textContent = '';
     li.querySelector('.dot').dataset.initial = (s.name || '?').trim().charAt(0).toUpperCase();
-    li.querySelector('.sub').textContent = (isRemote(s) ? '📱 ' : '') + (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
+    li.querySelector('.sub').textContent = (isRemote(s) ? '📱 ' : '') + (s.origin && window.csmFeatures?.syncMachine && s.origin !== window.csmFeatures.syncMachine ? `⇄ ${s.origin} · ` : '') + (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
     li.onclick = () => select(s.id);
     li.ondblclick = () => renameSession(s.id);
     li.querySelector('.ren').onclick = e => { e.stopPropagation(); renameSession(s.id); };
