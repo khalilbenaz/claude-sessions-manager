@@ -273,6 +273,8 @@ dialog.settings[open] { display: flex; }
 .setPages .row { display: flex; gap: 8px; margin-bottom: 8px; }
 .setPages .row input { flex: 1; }
 #diagOut, #logOut { background: var(--term); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 12px; white-space: pre-wrap; max-height: 380px; overflow: auto; }
+.syncCode { flex: 1; font-size: 18px; letter-spacing: 1px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; user-select: all; }
+#syncStatus.bad { color: var(--warn); }
 #diagOut.bad { border-color: var(--warn); }
 #logOut .lerr { color: var(--warn); } #logOut .lupd { color: var(--ok); }
 .checks div { padding: 4px 0; } .checks .ok { color: var(--ok); } .checks .bad { color: var(--warn); }

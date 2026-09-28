@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.4.1] — 2026-09-28
+
+### Modifié
+- **Code de synchro créé en un clic** : Réglages › Synchronisation › **Créer un code** demande au serveur un code court (`XXXX-XXXX-XXXX-XXXX-XXXX`), l'enregistre en base (empreinte seulement) et l'affiche en clair avec **Copier**. Sur une autre machine, **J'ai déjà un code** puis **Activer**. Plus besoin de configurer le serveur à la main ; les codes créés avant restent valables. Le serveur limite la création de codes et refuse tout code inconnu (#27).
+
 ## [3.4.0] — 2026-09-28
 
 ### Ajouté

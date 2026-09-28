@@ -11,3 +11,11 @@ CREATE TABLE IF NOT EXISTS csm_sessions (
   PRIMARY KEY (space, uid)
 );
 CREATE INDEX IF NOT EXISTS csm_sessions_rev ON csm_sessions(space, rev);
+
+-- Espaces créés par POST /spaces. Seule l'empreinte du code est gardée ; ipHash sert à limiter les créations.
+CREATE TABLE IF NOT EXISTS csm_spaces (
+  space     TEXT PRIMARY KEY,
+  createdAt INTEGER NOT NULL,
+  ipHash    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS csm_spaces_created ON csm_spaces(createdAt);

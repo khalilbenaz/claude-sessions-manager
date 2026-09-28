@@ -296,15 +296,29 @@
         <button type="button" id="openPrompts">Ouvrir la bibliothèque de prompts</button>
       </section>
       <section data-st="sync" hidden>
-        <p class="hint">Retrouve la liste des sessions (nom, dossier, modèle, groupe) sur tes autres machines. Les conversations restent sur chaque machine. Désactivée tant qu'aucun code n'est collé : seules les machines qui partagent le même code se voient.</p>
-        <label>Code de synchro <input type="password" data-set="syncCode" id="syncCode" placeholder="csm1.…" spellcheck="false" autocomplete="off"></label>
-        <div class="row"><button type="button" id="syncShow">Afficher</button><button type="button" id="syncCopy">Copier mon code</button><button type="button" id="syncNew">Générer un code…</button><button type="button" id="syncOff" class="danger">Désactiver</button></div>
-        <label>Nom de cette machine <input data-set="syncMachine" id="syncMachine" spellcheck="false"></label>
-        <label>Racines de dossiers (une par ligne, alias=chemin)
-          <textarea data-set="syncRoots" rows="3" spellcheck="false" placeholder="code=D:\dev&#10;pro=~/Travail"></textarea></label>
-        <p class="hint">Le dossier personnel est reconnu tout seul ({home}). Déclare le même alias sur chaque machine pour les dossiers rangés ailleurs (ex. code=D:\dev sur le PC, code=~/dev sur le Mac).</p>
+        <p class="hint">Retrouve la liste des sessions (nom, dossier, modèle, groupe) sur tes autres machines. Les conversations restent sur chaque machine. Seules les machines qui partagent le même code se voient.</p>
+        <div id="syncSetup">
+          <p><b>Première machine</b> : crée un code, puis saisis-le sur tes autres machines.</p>
+          <button type="button" id="syncNew" class="primary">Créer un code</button>
+          <p><b>J'ai déjà un code</b> (créé sur une autre machine) :</p>
+          <div class="row"><input id="syncJoinCode" class="mono" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" spellcheck="false" autocomplete="off"><button type="button" id="syncJoin" class="primary">Activer</button></div>
+        </div>
+        <div id="syncOn" hidden>
+          <label>Ton code de synchro</label>
+          <div class="row"><code id="syncCodeShow" class="syncCode mono"></code><button type="button" id="syncCopy">Copier</button></div>
+          <p class="hint">Saisis ce code sur tes autres machines (Réglages › Synchronisation › J'ai déjà un code). Ne le partage avec personne d'autre : qui a le code voit tes sessions.</p>
+          <div class="row"><button type="button" id="syncNow">Synchroniser maintenant</button><button type="button" id="syncOff" class="danger">Désactiver</button></div>
+        </div>
         <p id="syncStatus" class="hint"></p>
-        <button type="button" id="syncNow">Synchroniser maintenant</button>
+        <details>
+          <summary>Avancé</summary>
+          <label>Nom de cette machine <input data-set="syncMachine" id="syncMachine" spellcheck="false"></label>
+          <label>Racines de dossiers (une par ligne, alias=chemin)
+            <textarea data-set="syncRoots" rows="3" spellcheck="false" placeholder="code=D:\dev&#10;pro=~/Travail"></textarea></label>
+          <p class="hint">Le dossier personnel est reconnu tout seul ({home}). Déclare le même alias sur chaque machine pour les dossiers rangés ailleurs (ex. code=D:\dev sur le PC, code=~/dev sur le Mac).</p>
+          <label>Serveur de synchro <input data-set="syncServer" id="syncServer" spellcheck="false" placeholder="https://…"></label>
+          <p class="hint">Vide = serveur par défaut. Pour héberger le tien, voir sync-worker/ dans le dépôt.</p>
+        </details>
       </section>
       <section data-st="diag" hidden>
         <pre id="diagOut" class="mono">…</pre>

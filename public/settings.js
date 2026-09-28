@@ -77,40 +77,50 @@
   }
 
   // ---------------------------------------------------------------- synchronisation (#27)
+  // Pas de code : « Créer un code » (le serveur le génère et l'enregistre) ou « J'ai déjà un code ».
+  // Avec un code : affiché en clair, copiable, pour le saisir sur les autres machines.
   function renderSync(st) {
     if (!st) return;
     F.syncMachine = st.machine;
     $('#syncMachine').placeholder = st.machine;
+    $('#syncServer').placeholder = st.server;
+    $('#syncSetup').hidden = st.enabled;
+    $('#syncOn').hidden = !st.enabled;
+    $('#syncCodeShow').textContent = st.code || '';
     const when = st.lastOk ? new Date(st.lastOk).toLocaleTimeString() : '';
-    $('#syncStatus').textContent = st.invalid ? t('Code de synchro invalide : colle le code complet (csm1.…) copié sur l’autre machine.')
+    $('#syncStatus').textContent = st.invalid ? t('Code de synchro invalide : vérifie qu’il a bien 20 caractères (XXXX-XXXX-XXXX-XXXX-XXXX).')
       : !st.enabled ? t('Synchronisation désactivée.')
       : st.lastError ? `✗ ${st.lastError}`
-      : `✓ ${t('Synchronisé avec')} ${st.server}${when ? ' · ' + when : ''}${st.pending ? ` · ${st.pending} ${t('en attente')}` : ''}`;
+      : st.lastOk ? `✓ ${t('Synchronisé')} · ${when}${st.pending ? ` · ${st.pending} ${t('en attente')}` : ''}`
+      : t('Synchronisation…');
     $('#syncStatus').classList.toggle('bad', !!(st.invalid || st.lastError));
-    $('#syncCopy').disabled = $('#syncOff').disabled = !SETTINGS.syncCode;
   }
   async function loadSync() { try { renderSync(await api('GET', '/api/sync')); } catch (e) { $('#syncStatus').textContent = e.message; } }
   async function syncNow() {
     $('#syncStatus').textContent = t('Synchronisation…');
     try { renderSync(await api('POST', '/api/sync/now')); } catch (e) { $('#syncStatus').textContent = e.message; }
   }
+  async function useCode(code) { await saveSettings({ syncCode: code }); await syncNow(); }
   $('#syncNow').onclick = syncNow;
-  $('#syncShow').onclick = () => { const i = $('#syncCode'); i.type = i.type === 'password' ? 'text' : 'password'; };
-  $('#syncCopy').onclick = () => clip.copy(SETTINGS.syncCode).then(() => toast(t('Code copié : colle-le dans Réglages › Synchronisation sur l’autre machine. Ne le partage pas.')));
+  $('#syncCopy').onclick = () => clip.copy($('#syncCodeShow').textContent).then(() => toast(t('Code copié : saisis-le dans Réglages › Synchronisation sur ton autre machine. Ne le partage avec personne d’autre.')));
   $('#syncOff').onclick = async () => {
-    if (!confirm(t('Désactiver la synchronisation sur cette machine ? Les sessions restent ici, le code est effacé.'))) return;
-    await saveSettings({ syncCode: '' }); $('#syncCode').value = ''; syncNow();
+    if (!confirm(t('Désactiver la synchronisation sur cette machine ? Les sessions restent ici. Garde ton code si tu veux la réactiver.'))) return;
+    await useCode('');
   };
   $('#syncNew').onclick = async () => {
-    const url = prompt(t('Adresse de ton serveur de synchro (Worker Cloudflare, voir sync-worker/ dans le dépôt) :'), 'https://');
-    if (!url) return;
-    try {
-      const r = await api('POST', '/api/sync/code', { url: url.trim() });
-      await saveSettings({ syncCode: r.code }); $('#syncCode').value = r.code;
-      alert(t('Code créé. Ajoute cette clé au secret SYNC_KEYS de ton Worker (wrangler secret put SYNC_KEYS), puis colle le même code sur tes autres machines :') + '\n\n' + r.key);
-      syncNow();
-    } catch (e) { alert(e.message); }
+    const b = $('#syncNew'); b.disabled = true;
+    $('#syncStatus').textContent = t('Création du code…');
+    try { const r = await api('POST', '/api/sync/code'); await useCode(r.code); }
+    catch (e) { $('#syncStatus').textContent = `✗ ${e.message}`; $('#syncStatus').classList.add('bad'); }
+    finally { b.disabled = false; }
   };
+  $('#syncJoin').onclick = async () => {
+    const code = $('#syncJoinCode').value.trim();
+    if (!code) return $('#syncJoinCode').focus();
+    await useCode(code);
+    if (!$('#syncOn').hidden) $('#syncJoinCode').value = '';
+  };
+  $('#syncJoinCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('#syncJoin').click(); });
   window.addEventListener('csm:sync', e => { if (dlg.open) renderSync(e.detail); });
   window.addEventListener('csm:ready', () => api('GET', '/api/sync').then(st => { F.syncMachine = st.machine; render(); }).catch(() => { }));
 
