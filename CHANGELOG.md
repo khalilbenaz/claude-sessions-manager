@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.4.0] — 2026-09-28
+
+### Ajouté
+- **Synchronisation de la liste des sessions entre machines** (PC ↔ Mac) : nom, dossier, modèle et options, groupe, épinglage, couleur, accès téléphone. Les conversations restent locales. Désactivée par défaut ; s'active en collant un **code de synchro** (Réglages › Synchronisation). Chaque code est un espace isolé sur un serveur Cloudflare (Worker + D1, dans `sync-worker/`) qui n'accepte que les clés autorisées. Une session venue d'ailleurs apparaît arrêtée avec un badge ⇄ ; « Reprendre » ouvre une nouvelle conversation dans le dossier traduit (dossier personnel automatique, alias pour les autres). La modification la plus récente gagne ; les suppressions se propagent (#27).
+
+### Modifié
+- **Son des notifications coupé par défaut**, y compris sur les installations existantes (une fois ; il se rallume dans Réglages › Notifications).
+
 ## [3.3.3] — 2026-09-25
 
 ### Corrigé (tests manuels sur Mac, #1)

@@ -17,6 +17,7 @@ const HOME = path.join(TMP, 'home'), DATA = path.join(TMP, 'data'), WORK = path.
 for (const d of [HOME, DATA, WORK]) fs.mkdirSync(d, { recursive: true });
 const ENV = {
   ...process.env, CSM_PORT: String(PORT), CSM_DATA: DATA, HOME, USERPROFILE: HOME,
+  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300',
   CSM_CLAUDE: process.execPath, CSM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-claude.js')}"`,
   GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com',
 };
@@ -152,9 +153,22 @@ test('consommation, chronologie, export', async () => {
 
 test('réglages : validation des valeurs', async () => {
   const r = await api('PUT', '/api/settings', { theme: 'light', fontSize: 16, sound: 'n’importe', inconnu: 1 });
-  assert.equal(r.theme, 'light'); assert.equal(r.fontSize, 16); assert.equal(r.sound, 'soft'); assert.equal(r.inconnu, undefined);
+  assert.equal(r.theme, 'light'); assert.equal(r.fontSize, 16); assert.equal(r.sound, 'off', 'valeur invalide → défaut (son coupé)'); assert.equal(r.inconnu, undefined);
   await api('PUT', '/api/templates', [{ name: 'Mon modèle', cwd: WORK, model: 'opus', prompt: 'salut' }]);
   assert.equal((await api('GET', '/api/templates'))[0].name, 'Mon modèle');
+});
+
+test('réglages : son coupé une fois pour les installations existantes (3.4.0)', async () => {
+  await stopServer();
+  const f = path.join(DATA, 'settings.json');
+  const cur = JSON.parse(fs.readFileSync(f, 'utf8')); delete cur.soundOffMigrated; cur.sound = 'soft';
+  fs.writeFileSync(f, JSON.stringify(cur));
+  await startServer();
+  assert.equal((await api('GET', '/api/settings')).sound, 'off', 'ancienne installation : son coupé');
+  await api('PUT', '/api/settings', { sound: 'soft' });
+  await stopServer(); await startServer();
+  assert.equal((await api('GET', '/api/settings')).sound, 'soft', 'rallumé ensuite : choix respecté');
+  await api('PUT', '/api/settings', { sound: 'off' });
 });
 
 test('prompts de départ au premier lancement', async () => {
@@ -304,4 +318,87 @@ test('diagnostic et journaux', async () => {
   const d = await api('GET', '/api/diag');
   assert.equal(d.claude.ok, true); assert.match(d.claude.version, /faux claude/);
   assert.ok((await api('GET', '/api/logs')).text.includes('Claude Sessions Manager'));
+});
+
+// ---------------------------------------------------------------- synchronisation (#27)
+// Faux serveur de synchro : même API que sync-worker (un espace par clé, la modification la plus récente gagne).
+function fakeSyncServer(keys) {
+  const spaces = new Map(); let rev = 0;
+  const srv = http.createServer((q, r) => {
+    const key = (q.headers.authorization || '').replace(/^Bearer /, '');
+    const send = (code, v) => { r.writeHead(code, { 'content-type': 'application/json' }); r.end(JSON.stringify(v)); };
+    if (!keys.includes(key)) return send(401, { error: 'unauthorized' });
+    if (!spaces.has(key)) spaces.set(key, new Map());
+    const rows = spaces.get(key);
+    let b = ''; q.on('data', c => b += c); q.on('end', () => {
+      const u = new URL(q.url, 'http://x');
+      if (q.method === 'GET') {
+        const since = Number(u.searchParams.get('since')) || 0;
+        return send(200, { rev, items: [...rows.values()].filter(x => x.rev > since).sort((a, b) => a.rev - b.rev) });
+      }
+      let applied = 0;
+      for (const it of JSON.parse(b).items) {
+        const cur = rows.get(it.uid);
+        if (cur && cur.updatedAt >= it.updatedAt) continue;
+        rows.set(it.uid, { ...it, deleted: it.deleted ? 1 : 0, rev: ++rev }); applied++;
+      }
+      send(200, { rev, applied });
+    });
+  });
+  return new Promise(res => srv.listen(0, '127.0.0.1', () => res({
+    srv, url: `http://127.0.0.1:${srv.address().port}`, rows: k => spaces.get(k) || new Map(),
+    put: (k, it) => { if (!spaces.has(k)) spaces.set(k, new Map()); spaces.get(k).set(it.uid, { deleted: 0, origin: 'pc', ...it, rev: ++rev }); },
+  })));
+}
+
+test('synchro : désactivée par défaut, isolée par code', async () => {
+  const st = await api('GET', '/api/sync');
+  assert.equal(st.enabled, false, 'aucune synchro sans code');
+  await api('PUT', '/api/settings', { syncCode: 'n-importe-quoi' });
+  assert.equal((await api('GET', '/api/sync')).invalid, true);
+  await api('PUT', '/api/settings', { syncCode: '' });
+});
+
+test('synchro : envoi, session distante arrêtée, renommage, suppressions', async () => {
+  const { encodeCode } = require('../lib/sync');
+  const KEY = 'k'.repeat(32), OTHER = 'o'.repeat(32);
+  const fake = await fakeSyncServer([KEY, OTHER]);
+  try {
+    // clé inconnue du serveur : erreur visible, rien d'envoyé
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, 'x'.repeat(32)), syncMachine: 'mac-test' });
+    assert.match((await api('POST', '/api/sync/now')).lastError, /refusé/);
+
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY) });
+    const local = await api('POST', '/api/sessions', { cwd: WORK, name: 'locale-synchro' });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return [...fake.rows(KEY).values()].some(x => x.data.name === 'locale-synchro'); }, 10000, 'session locale envoyée');
+    assert.equal(fake.rows(OTHER).size, 0, 'un autre code ne voit rien');
+    const mine = [...fake.rows(KEY).values()].find(x => x.data.name === 'locale-synchro');
+    assert.equal(mine.origin, 'mac-test');
+    assert.ok(!('claudeSessionId' in mine.data), 'la conversation ne part pas');
+
+    // session créée sur une autre machine : ajoutée arrêtée, dossier traduit
+    fs.mkdirSync(path.join(HOME, 'proj'), { recursive: true });
+    fake.put(KEY, { uid: 'pc-session-1', updatedAt: Date.now(), origin: 'pc-bureau', data: { name: 'depuis-pc', cwd: '{home}/proj', args: '--model sonnet', group: 'Clients' } });
+    const remote = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/sessions')).find(s => s.syncId === 'pc-session-1'); }, 10000, 'session distante reçue');
+    assert.equal(remote.status, 'exited'); assert.equal(remote.alive, false);
+    assert.equal(fs.realpathSync(remote.cwd), fs.realpathSync(path.join(HOME, 'proj')));
+    assert.equal(remote.args, '--model sonnet'); assert.equal(remote.group, 'Clients'); assert.equal(remote.origin, 'pc-bureau');
+    assert.equal(remote.claudeSessionId, null);
+
+    // renommée ici : renvoyée au serveur, sans écho
+    await api('POST', `/api/sessions/${remote.id}/rename`, { name: 'renommée-sur-mac' });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get('pc-session-1').data.name === 'renommée-sur-mac'; }, 10000, 'renommage envoyé');
+    assert.equal(fake.rows(KEY).get('pc-session-1').data.cwd, '{home}/proj', 'dossier portable conservé');
+
+    // supprimée ailleurs : retirée ici (arrêtée)
+    fake.put(KEY, { uid: 'pc-session-1', updatedAt: Date.now() + 5000, deleted: 1, data: {} });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return !(await session(remote.id)); }, 10000, 'suppression distante appliquée');
+
+    // supprimée ici : pierre tombale envoyée
+    await api('DELETE', `/api/sessions/${local.id}`);
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get(mine.uid).deleted === 1; }, 10000, 'suppression locale envoyée');
+  } finally {
+    await api('PUT', '/api/settings', { syncCode: '' });
+    fake.srv.close();
+  }
 });

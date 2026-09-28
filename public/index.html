@@ -249,6 +249,7 @@
       <button data-st="security">Sécurité</button>
       <button data-st="templates">Modèles de session</button>
       <button data-st="prompts">Prompts</button>
+      <button data-st="sync">Synchronisation</button>
       <button data-st="diag">Diagnostic</button>
       <button data-st="logs">Journaux</button>
       <button data-st="about">À propos</button>
@@ -293,6 +294,17 @@
       <section data-st="prompts" hidden>
         <p class="hint">Snippets réutilisables, insérés dans la session active depuis la palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) ou le menu ⋯.</p>
         <button type="button" id="openPrompts">Ouvrir la bibliothèque de prompts</button>
+      </section>
+      <section data-st="sync" hidden>
+        <p class="hint">Retrouve la liste des sessions (nom, dossier, modèle, groupe) sur tes autres machines. Les conversations restent sur chaque machine. Désactivée tant qu'aucun code n'est collé : seules les machines qui partagent le même code se voient.</p>
+        <label>Code de synchro <input type="password" data-set="syncCode" id="syncCode" placeholder="csm1.…" spellcheck="false" autocomplete="off"></label>
+        <div class="row"><button type="button" id="syncShow">Afficher</button><button type="button" id="syncCopy">Copier mon code</button><button type="button" id="syncNew">Générer un code…</button><button type="button" id="syncOff" class="danger">Désactiver</button></div>
+        <label>Nom de cette machine <input data-set="syncMachine" id="syncMachine" spellcheck="false"></label>
+        <label>Racines de dossiers (une par ligne, alias=chemin)
+          <textarea data-set="syncRoots" rows="3" spellcheck="false" placeholder="code=D:\dev&#10;pro=~/Travail"></textarea></label>
+        <p class="hint">Le dossier personnel est reconnu tout seul ({home}). Déclare le même alias sur chaque machine pour les dossiers rangés ailleurs (ex. code=D:\dev sur le PC, code=~/dev sur le Mac).</p>
+        <p id="syncStatus" class="hint"></p>
+        <button type="button" id="syncNow">Synchroniser maintenant</button>
       </section>
       <section data-st="diag" hidden>
         <pre id="diagOut" class="mono">…</pre>

@@ -1,0 +1,8 @@
+name = "csm-sync"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ktv-sync"
+database_id = "3a1025f3-917d-46cb-abdc-3f1b86c03d9a"

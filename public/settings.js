@@ -12,6 +12,7 @@
     if (name === 'logs') loadLogs();
     if (name === 'templates') renderTemplates();
     if (name === 'about') renderAbout();
+    if (name === 'sync') loadSync();
   }
   dlg.querySelectorAll('.setNav [data-st]').forEach(b => { b.onclick = () => page(b.dataset.st); });
   $('#setClose').onclick = () => dlg.close();
@@ -34,6 +35,7 @@
       if (k === 'fontSize') { LS.set('csm.font', v); for (const tt of terms.values()) tt.term.options.fontSize = v; fitAll(); }
       if (k === 'notifications' && v && 'Notification' in window) Notification.requestPermission();
       if (k === 'lang') setTimeout(() => location.reload(), 300);
+      if (k.startsWith('sync')) setTimeout(() => syncNow(), 300);
     });
   });
   $('#soundTest').onclick = () => playSound($('[data-set=sound]').value);
@@ -73,6 +75,44 @@
       li.querySelector('[data-a=del]').onclick = async () => { if (!confirm(`${t('Supprimer le modèle')} « ${x.name} » ?`)) return; list.splice(+li.dataset.i, 1); await api('PUT', '/api/templates', list); renderTemplates(); };
     });
   }
+
+  // ---------------------------------------------------------------- synchronisation (#27)
+  function renderSync(st) {
+    if (!st) return;
+    F.syncMachine = st.machine;
+    $('#syncMachine').placeholder = st.machine;
+    const when = st.lastOk ? new Date(st.lastOk).toLocaleTimeString() : '';
+    $('#syncStatus').textContent = st.invalid ? t('Code de synchro invalide : colle le code complet (csm1.…) copié sur l’autre machine.')
+      : !st.enabled ? t('Synchronisation désactivée.')
+      : st.lastError ? `✗ ${st.lastError}`
+      : `✓ ${t('Synchronisé avec')} ${st.server}${when ? ' · ' + when : ''}${st.pending ? ` · ${st.pending} ${t('en attente')}` : ''}`;
+    $('#syncStatus').classList.toggle('bad', !!(st.invalid || st.lastError));
+    $('#syncCopy').disabled = $('#syncOff').disabled = !SETTINGS.syncCode;
+  }
+  async function loadSync() { try { renderSync(await api('GET', '/api/sync')); } catch (e) { $('#syncStatus').textContent = e.message; } }
+  async function syncNow() {
+    $('#syncStatus').textContent = t('Synchronisation…');
+    try { renderSync(await api('POST', '/api/sync/now')); } catch (e) { $('#syncStatus').textContent = e.message; }
+  }
+  $('#syncNow').onclick = syncNow;
+  $('#syncShow').onclick = () => { const i = $('#syncCode'); i.type = i.type === 'password' ? 'text' : 'password'; };
+  $('#syncCopy').onclick = () => clip.copy(SETTINGS.syncCode).then(() => toast(t('Code copié : colle-le dans Réglages › Synchronisation sur l’autre machine. Ne le partage pas.')));
+  $('#syncOff').onclick = async () => {
+    if (!confirm(t('Désactiver la synchronisation sur cette machine ? Les sessions restent ici, le code est effacé.'))) return;
+    await saveSettings({ syncCode: '' }); $('#syncCode').value = ''; syncNow();
+  };
+  $('#syncNew').onclick = async () => {
+    const url = prompt(t('Adresse de ton serveur de synchro (Worker Cloudflare, voir sync-worker/ dans le dépôt) :'), 'https://');
+    if (!url) return;
+    try {
+      const r = await api('POST', '/api/sync/code', { url: url.trim() });
+      await saveSettings({ syncCode: r.code }); $('#syncCode').value = r.code;
+      alert(t('Code créé. Ajoute cette clé au secret SYNC_KEYS de ton Worker (wrangler secret put SYNC_KEYS), puis colle le même code sur tes autres machines :') + '\n\n' + r.key);
+      syncNow();
+    } catch (e) { alert(e.message); }
+  };
+  window.addEventListener('csm:sync', e => { if (dlg.open) renderSync(e.detail); });
+  window.addEventListener('csm:ready', () => api('GET', '/api/sync').then(st => { F.syncMachine = st.machine; render(); }).catch(() => { }));
 
   // ---------------------------------------------------------------- diagnostic et journaux
   let diagText = '';
