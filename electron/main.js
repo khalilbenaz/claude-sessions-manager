@@ -1,4 +1,5 @@
 'use strict';
+require('../lib/tz').alignTimezone(); // avant tout usage de Date : suivre le fuseau du système
 // Claude Sessions — application de bureau (Windows / macOS).
 // La fenêtre n'est qu'une vue : les sessions vivent dans le serveur local (processus séparé), qui continue
 // de tourner quand on ferme ou quitte l'application.

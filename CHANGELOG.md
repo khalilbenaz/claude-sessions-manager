@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.4.2] — 2026-09-28
+### Corrigé
+- L'heure affichée (dernière synchro, etc.) suit le fuseau du système même quand les données de fuseaux embarquées par Electron sont périmées (ex. Maroc passé à GMT le 20/09/2026 : l'app affichait GMT+1).
+
 ## [3.4.1] — 2026-09-28
 
 ### Modifié

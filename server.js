@@ -1,4 +1,5 @@
 'use strict';
+require('./lib/tz').alignTimezone(); // avant tout usage de Date : suivre le fuseau du système
 // Claude Sessions Manager — serveur local : héberge N sessions Claude Code (PTY) et les expose à une UI web.
 const http = require('http');
 const fs = require('fs');
