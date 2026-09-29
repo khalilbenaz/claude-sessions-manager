@@ -60,6 +60,7 @@ const EN = {
   'Automatique': 'Automatic', 'Modèle par défaut': 'Default model', 'Mode par défaut': 'Default mode', 'Proposer un worktree git par défaut dans un dépôt': 'Offer a git worktree by default in a repository',
   'Éditeur pour « Ouvrir dans »': 'Editor for “Open in”', 'Commande personnalisée': 'Custom command', 'Commande personnalisée…': 'Custom command…',
   'Mises à jour automatiques': 'Automatic updates',
+  "Afficher les quotas et l'heure de leur réinitialisation sous chaque session (si tu n'as pas ta propre barre d'état Claude Code)": 'Show quotas and their reset time under each session (unless you have your own Claude Code status line)',
   'Réduire dans la zone de notification (au lieu de la barre des tâches)': 'Minimize to the notification area (instead of the taskbar)',
   "Fermer la fenêtre la garde dans la zone de notification (sinon l'app se ferme ; les sessions continuent)": 'Closing the window keeps the app in the notification area (otherwise the app quits; sessions keep running)', 'Barre latérale compacte': 'Compact sidebar', 'Taille du texte': 'Font size', 'Police': 'Font',
   'Raccourcis :': 'Shortcuts:', 'pour zoomer.': 'to zoom.', 'Notifications système': 'System notifications', 'Son': 'Sound', 'Aucun': 'None', 'Discret': 'Soft', 'Clochette': 'Bell',

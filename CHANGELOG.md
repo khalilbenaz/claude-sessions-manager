@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.6.0] — 2026-09-29
+### Ajouté
+- Barre d'état des quotas dans chaque session : 5 h / 7 j avec l'heure et le délai de réinitialisation, contexte utilisé, modèle (`5h 20% ↻ 13:21 (2h09) · 7j 90% ↻ jeu 18:44 (2j7h)`). Fournie seulement si tu n'as pas ta propre `statusLine` Claude Code ; réglage dans Réglages › Général.
+
 ## [3.5.1] — 2026-09-29
 ### Modifié
 - Terminal : plus de barre de défilement (inutile : la molette fait défiler, et en plein écran c'est Claude qui défile).
