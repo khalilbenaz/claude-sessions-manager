@@ -515,3 +515,54 @@ test('synchro : la conversation suit la session d’une machine à l’autre, ch
     fake.srv.close();
   }
 });
+
+test('synchro : liste des groupes, modèles de session, déplacement entre groupes, options', async () => {
+  const { encodeCode, seal, unseal } = require('../lib/sync');
+  const KEY = 'g'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  const enc = o => ({ e: seal(KEY, Buffer.from(JSON.stringify(o))).toString('base64') });
+  const dec = row => JSON.parse(unseal(KEY, Buffer.from(row.data.e, 'base64')).toString('utf8'));
+  try {
+    // l'autre machine a déjà des groupes et un modèle ; ici un groupe local : réunion à la première synchro
+    await api('PUT', '/api/settings', { groupList: 'Local', syncGroups: true, syncTemplates: true });
+    fs.mkdirSync(path.join(HOME, 'tplproj'), { recursive: true });
+    fake.put(KEY, { uid: 'csmcfg-groups', updatedAt: Date.now(), origin: 'mac', data: enc({ list: ['Clients', 'Perso'] }) });
+    fake.put(KEY, { uid: 'csmtpl-mactpl1', updatedAt: Date.now(), origin: 'mac', data: enc({ id: 'mactpl1', name: 'Revue', cwd: '{home}/tplproj', model: 'sonnet', mode: '', extra: '', worktree: false, prompt: 'relis', group: 'Clients' }) });
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-test' });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/settings')).groupList === 'Clients\nPerso\nLocal'; }, 10000, 'groupes réunis');
+    const tpl = await waitFor(async () => (await api('GET', '/api/templates')).find(t => t.id === 'mactpl1'), 10000, 'modèle reçu');
+    assert.equal(fs.realpathSync(tpl.cwd), fs.realpathSync(path.join(HOME, 'tplproj')), 'dossier du modèle traduit');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); const g = fake.rows(KEY).get('csmcfg-groups'); return g && dec(g).list.join() === 'Clients,Perso,Local'; }, 10000, 'réunion renvoyée');
+
+    // modèle créé ici : envoyé chiffré ; supprimé ici : pierre tombale
+    await api('PUT', '/api/templates', [...await api('GET', '/api/templates'), { id: 'pctpl22', name: 'Secret', cwd: WORK, prompt: 'prompt-confidentiel' }]);
+    const row = await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get('csmtpl-pctpl22'); }, 10000, 'modèle envoyé');
+    assert.ok(!JSON.stringify(row.data).includes('prompt-confidentiel'), 'modèle chiffré');
+    assert.equal(dec(row).prompt, 'prompt-confidentiel');
+
+    // session déplacée de groupe sur l'autre machine : suivie ici
+    const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'a-deplacer', group: 'Clients' });
+    const uid = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await session(s.id)).syncId; }, 10000, 'session envoyée');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get(uid)?.data.group === 'Clients'; }, 10000, 'groupe envoyé');
+    const cur = fake.rows(KEY).get(uid);
+    fake.put(KEY, { ...cur, updatedAt: Date.now() + 1000, origin: 'mac', data: { ...cur.data, group: 'Perso' } });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return (await session(s.id)).group === 'Perso'; }, 10000, 'déplacement reçu');
+
+    // option désactivée : les modèles distants sont ignorés, puis appliqués quand elle est réactivée
+    await api('PUT', '/api/settings', { syncTemplates: false });
+    fake.put(KEY, { uid: 'csmtpl-mactpl2', updatedAt: Date.now(), origin: 'mac', data: enc({ id: 'mactpl2', name: 'Plus tard', cwd: '', prompt: '' }) });
+    await api('POST', '/api/sync/now'); await api('POST', '/api/sync/now');
+    assert.ok(!(await api('GET', '/api/templates')).some(t => t.id === 'mactpl2'), 'ignoré quand désactivé');
+    await api('PUT', '/api/templates', (await api('GET', '/api/templates')).filter(t => t.id !== 'pctpl22'));
+    await api('POST', '/api/sync/now');
+    assert.equal(fake.rows(KEY).get('csmtpl-pctpl22').deleted, 0, 'rien envoyé quand désactivé');
+    await api('PUT', '/api/settings', { syncTemplates: true });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/templates')).some(t => t.id === 'mactpl2'); }, 10000, 'appliqué après réactivation');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get('csmtpl-pctpl22').deleted === 1; }, 10000, 'suppression envoyée après réactivation');
+    await api('DELETE', `/api/sessions/${s.id}`);
+  } finally {
+    await api('PUT', '/api/settings', { syncCode: '', groupList: '' });
+    await api('PUT', '/api/templates', []);
+    fake.srv.close();
+  }
+});

@@ -240,6 +240,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 
 Retrouver sur le PC les sessions créées sur le Mac, et inversement : **nom, dossier, modèle et options, groupe, épinglage, couleur, accès téléphone**, et **leur conversation** (historique et contexte), pour continuer sur une machine ce qui a été commencé sur l'autre.
 
+- **Quoi synchroniser** (Réglages › Synchronisation › *À synchroniser*) : la liste des sessions (toujours), et au choix **les conversations**, **la liste des groupes** (groupes vides compris, dans l'ordre ; déplacer une session d'un groupe à l'autre sur une machine la déplace aussi sur les autres) et **les modèles de session** (chiffrés, dossier traduit comme pour les sessions). À la première synchro, les groupes des deux machines sont réunis. Une option décochée n'envoie ni n'applique rien ; recochée, tout ce qui a changé entre-temps est rattrapé.
 - **Conversations chiffrées de bout en bout** : l'app les compresse et les chiffre (AES-256-GCM, clé dérivée de ton code) avant l'envoi. Le serveur ne stocke que des octets illisibles et ne connaît pas ton code. Pour ne synchroniser que la liste : décoche **Synchroniser aussi les conversations** (Réglages › Synchronisation).
 
 - **Désactivée par défaut.** Rien n'est synchronisé tant qu'aucun **code de synchro** n'est actif. Chaque code est un espace isolé : sans ton code, personne ne voit tes sessions, et tu ne vois pas les leurs.
