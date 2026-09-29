@@ -707,7 +707,7 @@ test('synchro : mémoire claude-mem envoyée chiffrée et chargée depuis les au
 
     // sessions de l'app : mémoire dans l'espace synchronisé (jamais celle du terminal, ~/.claude-mem)
     const sess = await api('POST', '/api/sessions', { name: 'mem-env', cwd: WORK });
-    const envf = await waitFor(async () => { const f = path.join(WORK, `env-${sess.id}.json`); return fs.existsSync(f) && JSON.parse(fs.readFileSync(f, 'utf8')); }, 8000, 'env de la session');
+    const envf = await waitFor(async () => { const f = path.join(TMP, "mem", `env-${sess.id}.json`); return fs.existsSync(f) && JSON.parse(fs.readFileSync(f, 'utf8')); }, 8000, 'env de la session');
     assert.equal(envf.CLAUDE_MEM_DATA_DIR, MEM);
     assert.match(envf.CLAUDE_MEM_WORKER_PORT, /^\d+$/); assert.notEqual(envf.CLAUDE_MEM_WORKER_PORT, '37777');
     assert.equal(JSON.parse(fs.readFileSync(path.join(MEM, 'settings.json'), 'utf8')).CLAUDE_MEM_DATA_DIR, MEM);
