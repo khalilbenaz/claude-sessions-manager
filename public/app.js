@@ -66,10 +66,6 @@ function ensureTerm(id) {
   term.loadAddon(new WebLinksAddon.WebLinksAddon((e, uri) => window.open(uri, '_blank')));
   term.open(el);
   term.onData(d => send({ t: 'input', id, d }));
-  // Écran alternatif (Claude Code en "tui": "fullscreen") : Claude gère lui-même le défilement à la molette,
-  // la barre de xterm ne montrerait que l'ancien historique, figée → masquée.
-  const altScreen = () => el.classList.toggle('alt', term.buffer.active.type === 'alternate');
-  term.buffer.onBufferChange(altScreen);
   // clic / focus dans un panneau de la vue partagée : ce panneau devient le panneau actif
   term.textarea?.addEventListener('focus', () => {
     const i = panes.indexOf(id);
