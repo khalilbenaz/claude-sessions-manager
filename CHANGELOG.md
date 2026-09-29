@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.5.1] — 2026-09-29
+### Modifié
+- Terminal : plus de barre de défilement (inutile : la molette fait défiler, et en plein écran c'est Claude qui défile).
+
 ## [3.5.0] — 2026-09-29
 ### Ajouté
 - Synchro : les **conversations** suivent maintenant les sessions d'une machine à l'autre (historique et contexte). « Reprendre » sur le PC continue la conversation commencée sur le Mac, et inversement. Chiffrées de bout en bout (AES-256-GCM, clé dérivée du code de synchro) : le serveur ne peut pas les lire. Réglage « Synchroniser aussi les conversations » (activé par défaut). Nécessite la mise à jour du serveur de synchro (sync-worker, nouvelles tables D1).

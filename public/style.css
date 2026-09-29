@@ -312,5 +312,5 @@ ul.results li.empty { flex-wrap: wrap; border: 1px dashed var(--line); backgroun
 ul.results li.empty small { white-space: normal; }
 ul.results li > div .tag { align-self: flex-start; margin-left: 0; }
 #palList li.hint { display: block; padding: 12px 14px; }
-/* écran alternatif (Claude en plein écran) : défilement géré par Claude, pas de barre xterm figée */
-.term.alt .xterm-scrollable-element > .scrollbar { display: none !important; }
+/* pas de barre de défilement dans les terminaux : la molette suffit (et en plein écran, c'est Claude qui défile) */
+.term .xterm-scrollable-element > .scrollbar { display: none !important; }
