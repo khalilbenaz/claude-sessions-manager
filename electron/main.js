@@ -89,7 +89,7 @@ function loginShellPath() {
   if (!IS_MAC) return process.env.PATH;
   try {
     const sh = process.env.SHELL || '/bin/zsh';
-    const out = execFileSync(sh, ['-ilc', 'printf "__P__%s__P__" "$PATH"'], { encoding: 'utf8', timeout: 4000 });
+    const out = execFileSync(sh, ['-ilc', 'printf "__P__%s__P__" "$PATH"'], { encoding: 'utf8', timeout: 10000 });
     return (out.match(/__P__(.*)__P__/) || [])[1] || process.env.PATH;
   } catch { return process.env.PATH; }
 }

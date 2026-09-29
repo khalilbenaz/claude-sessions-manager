@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const { execFile } = require('child_process');
 const pty = require('node-pty');
 const { WebSocketServer } = require('ws');
-const { ROOT, PORT, IS_WIN, IS_MAC, DATA, LEGACY_DATA, which, resolveClaude, stablePath } = require('./lib/config');
+const { ROOT, PORT, IS_WIN, IS_MAC, DATA, LEGACY_DATA, which, resolveClaude, stablePath, addBinDirToPath } = require('./lib/config');
 
 const HOST = '127.0.0.1';
 const VERSION = require('./package.json').version;
@@ -49,6 +49,7 @@ const TOKEN = fs.existsSync(TOKEN_FILE)
   : (() => { const t = crypto.randomBytes(24).toString('hex'); fs.writeFileSync(TOKEN_FILE, t); return t; })();
 
 const CLAUDE = resolveClaude();
+addBinDirToPath(CLAUDE);
 
 // Hooks injectés via --settings : remontent l'état réel (travaille / attend / idle) et le session_id Claude.
 // Chemin absolu de node : le PATH d'un service (launchd, tâche planifiée) ne le contient pas forcément.

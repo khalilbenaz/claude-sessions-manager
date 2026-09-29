@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.4.3] — 2026-09-29
+### Corrigé
+- macOS : les sessions ne démarrent plus en « env: node: No such file or directory » (code 127) quand l'app est lancée avec un PATH minimal (shell de connexion trop lent au démarrage). Le serveur complète le PATH avec les emplacements usuels de node/claude (fnm, nvm, volta, Homebrew…) et le dossier réel de claude ; délai du shell de connexion porté à 10 s.
+- Fenêtre « Nouvelle session » : plus de défilement horizontal, les listes déroulantes restent dans leur colonne.
+- Barre du haut : les boutons passent à la ligne quand la fenêtre est étroite au lieu d'être rognés.
+
 ## [3.4.2] — 2026-09-28
 ### Corrigé
 - L'heure affichée (dernière synchro, etc.) suit le fuseau du système même quand les données de fuseaux embarquées par Electron sont périmées (ex. Maroc passé à GMT le 20/09/2026 : l'app affichait GMT+1).
