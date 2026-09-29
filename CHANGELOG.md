@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.5.0] — 2026-09-29
+### Ajouté
+- Synchro : les **conversations** suivent maintenant les sessions d'une machine à l'autre (historique et contexte). « Reprendre » sur le PC continue la conversation commencée sur le Mac, et inversement. Chiffrées de bout en bout (AES-256-GCM, clé dérivée du code de synchro) : le serveur ne peut pas les lire. Réglage « Synchroniser aussi les conversations » (activé par défaut). Nécessite la mise à jour du serveur de synchro (sync-worker, nouvelles tables D1).
+### Corrigé
+- Terminal : avec Claude Code en plein écran (`"tui": "fullscreen"`), la barre de défilement de xterm restait figée (c'est Claude qui fait défiler) ; elle est masquée dans ce mode.
+
 ## [3.4.4] — 2026-09-29
 ### Corrigé
 - Barre du haut : elle reste sur une seule ligne. Le titre, le dossier et le message se tronquent (…) en premier ; quand la fenêtre est étroite, le message puis le dossier sont masqués ; les boutons restent toujours visibles.

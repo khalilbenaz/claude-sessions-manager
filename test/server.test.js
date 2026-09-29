@@ -323,7 +323,8 @@ test('diagnostic et journaux', async () => {
 // ---------------------------------------------------------------- synchronisation (#27)
 // Faux serveur de synchro : même API que sync-worker (un espace par clé, la modification la plus récente gagne).
 function fakeSyncServer(keys) {
-  const spaces = new Map(); let rev = 0;
+  const spaces = new Map(), txs = new Map(); let rev = 0;
+  const txOf = k => { if (!txs.has(k)) txs.set(k, { meta: new Map(), chunks: new Map() }); return txs.get(k); };
   const srv = http.createServer((q, r) => {
     const key = (q.headers.authorization || '').replace(/^Bearer /, '');
     const send = (code, v) => { r.writeHead(code, { 'content-type': 'application/json' }); r.end(JSON.stringify(v)); };
@@ -335,8 +336,26 @@ function fakeSyncServer(keys) {
     if (!keys.includes(key)) return send(401, { error: 'unauthorized' });
     if (!spaces.has(key)) spaces.set(key, new Map());
     const rows = spaces.get(key);
-    let b = ''; q.on('data', c => b += c); q.on('end', () => {
+    const parts = []; q.on('data', c => parts.push(c)); q.on('end', () => {
+      const raw = Buffer.concat(parts), b = raw.toString('utf8');
       const u = new URL(q.url, 'http://x');
+      const t = u.pathname.match(/^\/transcripts(?:\/([^/]+)(?:\/([^/]+)\/([^/]+))?)?$/);
+      if (t) {
+        const T = txOf(key), [, uid, ver, n] = t;
+        if (!uid) return send(200, { items: [...T.meta.entries()].map(([uid, m]) => ({ uid, ...m })) });
+        if (n !== undefined && q.method === 'PUT') { T.chunks.set(`${uid}/${ver}/${n}`, raw); return send(200, { ok: true }); }
+        if (n !== undefined) {
+          const c = T.chunks.get(`${uid}/${ver}/${n}`);
+          if (!c) return send(404, {});
+          r.writeHead(200, { 'content-type': 'application/octet-stream' }); return r.end(c);
+        }
+        const m = JSON.parse(b), cur = T.meta.get(uid);
+        for (let i = 0; i < m.chunks; i++) if (!T.chunks.has(`${uid}/${m.ver}/${i}`)) return send(409, {});
+        if (cur && cur.updatedAt > m.updatedAt) return send(200, { applied: false });
+        T.meta.set(uid, m);
+        for (const k of [...T.chunks.keys()]) if (k.startsWith(uid + '/') && !k.startsWith(`${uid}/${m.ver}/`)) T.chunks.delete(k);
+        return send(200, { applied: true });
+      }
       if (q.method === 'GET') {
         const since = Number(u.searchParams.get('since')) || 0;
         return send(200, { rev, items: [...rows.values()].filter(x => x.rev > since).sort((a, b) => a.rev - b.rev) });
@@ -346,12 +365,13 @@ function fakeSyncServer(keys) {
         const cur = rows.get(it.uid);
         if (cur && cur.updatedAt >= it.updatedAt) continue;
         rows.set(it.uid, { ...it, deleted: it.deleted ? 1 : 0, rev: ++rev }); applied++;
+        if (it.deleted) { const T = txOf(key); T.meta.delete(it.uid); for (const k of [...T.chunks.keys()]) if (k.startsWith(it.uid + '/')) T.chunks.delete(k); }
       }
       send(200, { rev, applied });
     });
   });
   return new Promise(res => srv.listen(0, '127.0.0.1', () => res({
-    srv, url: `http://127.0.0.1:${srv.address().port}`, rows: k => spaces.get(k) || new Map(),
+    srv, url: `http://127.0.0.1:${srv.address().port}`, rows: k => spaces.get(k) || new Map(), tx: txOf,
     put: (k, it) => { if (!spaces.has(k)) spaces.set(k, new Map()); spaces.get(k).set(it.uid, { deleted: 0, origin: 'pc', ...it, rev: ++rev }); },
   })));
 }
@@ -430,6 +450,67 @@ test('synchro : envoi, session distante arrêtée, renommage, suppressions', asy
     await api('DELETE', `/api/sessions/${local.id}`);
     await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get(mine.uid).deleted === 1; }, 10000, 'suppression locale envoyée');
   } finally {
+    await api('PUT', '/api/settings', { syncCode: '' });
+    fake.srv.close();
+  }
+});
+
+test('synchro : la conversation suit la session d’une machine à l’autre, chiffrée', async () => {
+  const { encodeCode, seal, unseal, txVersion } = require('../lib/sync');
+  const KEY = 'c'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  const c = await wsClient();
+  const projFile = (cwd, cid) => path.join(HOME, '.claude', 'projects', cwd.replace(/[^a-zA-Z0-9]/g, '-'), cid + '.jsonl');
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'win-test' });
+    // conversation créée ici : envoyée chiffrée
+    const local = await api('POST', '/api/sessions', { cwd: WORK, name: 'conv-locale' });
+    await waitFor(async () => (await session(local.id)).status === 'idle', 15000, 'session prête');
+    c.ws.send(JSON.stringify({ t: 'input', id: local.id, d: 'secret-du-mac\r' }));
+    await waitFor(() => (c.out[local.id] || '').includes('echo: secret-du-mac'), 15000, 'réponse');
+    const cidLocal = (await session(local.id)).claudeSessionId;
+    assert.ok(fs.existsSync(projFile(WORK, cidLocal)), 'transcript écrit');
+    const uid = (await session(local.id)).syncId;
+    const meta = await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.tx(KEY).meta.get(uid); }, 15000, 'conversation envoyée');
+    assert.equal(meta.origin, 'win-test'); assert.equal(meta.cid, cidLocal);
+    const blob = Buffer.concat([...Array(meta.chunks).keys()].map(i => fake.tx(KEY).chunks.get(`${uid}/${meta.ver}/${i}`)));
+    assert.ok(!blob.includes('secret-du-mac'), 'le serveur ne voit pas la conversation en clair');
+    assert.match(unseal(KEY, blob).toString('utf8'), /secret-du-mac/);
+
+    // conversation venue d'une autre machine : téléchargée, puis « Reprendre » la continue
+    fs.mkdirSync(path.join(HOME, 'proj2'), { recursive: true });
+    const cid = '11111111-2222-3333-4444-555555555555';
+    const raw = Buffer.from(JSON.stringify({ type: 'user', message: { role: 'user', content: 'question posée sur le PC' }, sessionId: cid, cwd: 'C:/autre' }) + '\n');
+    const ver = txVersion(KEY, raw), sealed = seal(KEY, raw);
+    fake.tx(KEY).chunks.set(`pc-conv-1/${ver}/0`, sealed);
+    fake.tx(KEY).meta.set('pc-conv-1', { cid, ver, chunks: 1, size: sealed.length, updatedAt: Date.now(), origin: 'pc-bureau' });
+    fake.put(KEY, { uid: 'pc-conv-1', updatedAt: Date.now(), origin: 'pc-bureau', data: { name: 'conv-pc', cwd: '{home}/proj2' } });
+    const remote = await waitFor(async () => { await api('POST', '/api/sync/now'); const x = (await api('GET', '/api/sessions')).find(s => s.syncId === 'pc-conv-1'); return x?.claudeSessionId && x; }, 15000, 'conversation distante reçue');
+    assert.equal(remote.claudeSessionId, cid);
+    const file = projFile(remote.cwd, cid);
+    assert.equal(fs.readFileSync(file, 'utf8'), raw.toString('utf8'));
+    // modifiée à nouveau sur le PC pendant que la session est arrêtée ici : « Reprendre » prend la dernière version
+    const raw2 = Buffer.concat([raw, Buffer.from(JSON.stringify({ type: 'user', message: { role: 'user', content: 'suite sur le PC' }, sessionId: cid }) + '\n')]);
+    const ver2 = txVersion(KEY, raw2), sealed2 = seal(KEY, raw2);
+    fake.tx(KEY).chunks.set(`pc-conv-1/${ver2}/0`, sealed2);
+    fake.tx(KEY).meta.set('pc-conv-1', { cid, ver: ver2, chunks: 1, size: sealed2.length, updatedAt: Date.now() + 1000, origin: 'pc-bureau' });
+    await api('POST', `/api/sessions/${remote.id}/restart`);
+    assert.match(fs.readFileSync(file, 'utf8'), /suite sur le PC/);
+    await waitFor(() => (c.out[remote.id] || '').includes('reprise ' + cid.slice(0, 8)), 15000, 'claude relancé avec --resume');
+    // la suite écrite ici repart vers le serveur
+    await waitFor(async () => (await session(remote.id)).status === 'idle', 15000, 'reprise prête');
+    await sleep(1200); // mtime local > updatedAt distant (horodaté dans le futur ci-dessus)
+    c.ws.send(JSON.stringify({ t: 'input', id: remote.id, d: 'reponse-du-windows\r' }));
+    await waitFor(async () => { await api('POST', '/api/sync/now'); const m = fake.tx(KEY).meta.get('pc-conv-1'); return m.origin === 'win-test' && m.ver !== ver2; }, 15000, 'suite envoyée');
+    const m = fake.tx(KEY).meta.get('pc-conv-1');
+    assert.match(unseal(KEY, fake.tx(KEY).chunks.get(`pc-conv-1/${m.ver}/0`)).toString('utf8'), /suite sur le PC[\s\S]*reponse-du-windows/);
+
+    // session supprimée : sa conversation disparaît du serveur
+    await api('DELETE', `/api/sessions/${local.id}`);
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return !fake.tx(KEY).meta.has(uid); }, 10000, 'conversation effacée du serveur');
+    await api('DELETE', `/api/sessions/${remote.id}`);
+  } finally {
+    c.ws.close();
     await api('PUT', '/api/settings', { syncCode: '' });
     fake.srv.close();
   }

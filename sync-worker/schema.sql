@@ -1,4 +1,5 @@
--- Une ligne par session synchronisée. Aucune conversation n'est stockée ici.
+-- Une ligne par session synchronisée. Les conversations (tables csm_transcripts / csm_chunks) arrivent
+-- chiffrées par l'app : le serveur ne peut pas les lire.
 -- space = empreinte SHA-256 du code de synchro : chaque code est un espace isolé.
 CREATE TABLE IF NOT EXISTS csm_sessions (
   space     TEXT NOT NULL,
@@ -19,3 +20,26 @@ CREATE TABLE IF NOT EXISTS csm_spaces (
   ipHash    TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS csm_spaces_created ON csm_spaces(createdAt);
+
+-- Conversation en vigueur de chaque session : version (HMAC du contenu, calculé par l'app) et nombre de morceaux.
+CREATE TABLE IF NOT EXISTS csm_transcripts (
+  space     TEXT NOT NULL,
+  uid       TEXT NOT NULL,      -- syncId de la session
+  cid       TEXT NOT NULL,      -- identifiant de la conversation Claude Code
+  ver       TEXT NOT NULL,
+  chunks    INTEGER NOT NULL,
+  size      INTEGER NOT NULL,   -- octets chiffrés
+  updatedAt INTEGER NOT NULL,   -- date de modification du transcript sur la machine qui l'a envoyé
+  origin    TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (space, uid)
+);
+
+-- Morceaux chiffrés (1 Mo au plus, en base64).
+CREATE TABLE IF NOT EXISTS csm_chunks (
+  space TEXT NOT NULL,
+  uid   TEXT NOT NULL,
+  ver   TEXT NOT NULL,
+  n     INTEGER NOT NULL,
+  data  TEXT NOT NULL,
+  PRIMARY KEY (space, uid, ver, n)
+);
