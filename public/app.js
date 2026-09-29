@@ -249,7 +249,7 @@ function connect() {
       if (panes.includes(m.s.id)) renderPaneFrames();
     } else if (m.t === 'settings') {
       const langChanged = m.settings.lang !== SETTINGS.lang;
-      SETTINGS = { ...SETTINGS, ...m.settings }; applySettings();
+      SETTINGS = { ...SETTINGS, ...m.settings }; applySettings(); render(); // groupes créés dans une autre fenêtre
       if (langChanged) location.reload();
     } else if (m.t === 'sync') {
       window.dispatchEvent(new CustomEvent('csm:sync', { detail: m.status }));
@@ -327,11 +327,78 @@ setInterval(() => {
   }
 }, 30000);
 
+// ------------------------------------------------------------------ groupes
+// Groupes créés à la main (réglage groupList, visibles même vides) puis ceux portés par les sessions.
+const declaredGroups = () => String(SETTINGS.groupList || '').split('\n').map(x => x.trim()).filter(Boolean);
+function groupNames() {
+  return [...new Set([...declaredGroups(), ...[...sessions.values()].sort((a, b) => (a.order || 0) - (b.order || 0)).map(s => s.group).filter(Boolean)])];
+}
+const saveGroupList = list => saveSettings({ groupList: [...new Set(list.filter(Boolean))].join('\n') });
+const moveToGroup = (id, g) => api('POST', `/api/sessions/${id}/meta`, { group: g || '' }).catch(e => toast(e.message, true));
+
+async function newGroup(moveId) {
+  const name = (await askName(t('Nouveau groupe'), '', t('Glisse ensuite des sessions sur son titre, ou clic droit sur une session › Déplacer vers le groupe.'), true))?.slice(0, 60);
+  if (!name) return;
+  await saveGroupList([...declaredGroups(), name]);
+  if (moveId) await moveToGroup(moveId, name);
+  collapsed.delete(name);
+  render();
+}
+async function renameGroup(g) {
+  const name = (await askName(t('Renommer le groupe'), g, t('Toutes les sessions du groupe suivent.')))?.slice(0, 60);
+  if (!name) return;
+  const list = declaredGroups();
+  await saveGroupList(list.includes(g) ? list.map(x => (x === g ? name : x)) : [...list, name]);
+  await Promise.all([...sessions.values()].filter(s => s.group === g).map(s => moveToGroup(s.id, name)));
+  render();
+}
+async function deleteGroup(g) {
+  const members = [...sessions.values()].filter(s => s.group === g);
+  if (members.length && !confirm(`${t('Supprimer le groupe')} « ${g} » ? ${members.length} ${t('session(s) passent dans « Sans groupe » (elles ne sont pas fermées).')}`)) return;
+  await saveGroupList(declaredGroups().filter(x => x !== g));
+  await Promise.all(members.map(s => moveToGroup(s.id, '')));
+  render();
+}
+function moveItems(id) {
+  const s = sessions.get(id); if (!s) return [];
+  return [
+    ...groupNames().map(g => [(s.group === g ? '✓ ' : '') + g, () => moveToGroup(id, g), { disabled: s.group === g }]),
+    '-',
+    [t('Nouveau groupe…'), () => newGroup(id)],
+    [t('Sans groupe'), () => moveToGroup(id, ''), { disabled: !s.group }],
+  ];
+}
+function groupItems(g) {
+  return [
+    [t('Nouvelle session dans ce groupe'), () => { openNew(); $('#formNew').group.value = g; }],
+    [t('Renommer le groupe…'), () => renameGroup(g)],
+    '-',
+    [t('Supprimer le groupe'), () => deleteGroup(g), { danger: true }],
+  ];
+}
+// Titre de groupe : on y dépose une session (glisser depuis la liste) ; clic droit = menu du groupe.
+function groupHeadEvents(el, g) {
+  if (g === '📌') return;
+  el.ondragover = e => { if ([...e.dataTransfer.types].includes('text/csm-session')) { e.preventDefault(); el.classList.add('dragover'); } };
+  el.ondragleave = () => el.classList.remove('dragover');
+  el.ondrop = e => {
+    el.classList.remove('dragover');
+    const id = e.dataTransfer.getData('text/csm-session'); if (!id) return;
+    e.preventDefault(); e.stopPropagation();
+    moveToGroup(id, g);
+  };
+  el.oncontextmenu = e => {
+    e.preventDefault(); e.stopPropagation();
+    showMenu(g ? groupItems(g) : [[t('Nouveau groupe…'), () => newGroup()]], e.clientX, e.clientY);
+  };
+}
+$('#btnNewGroup').onclick = () => newGroup();
+
 // ------------------------------------------------------------------ rendu
 // Ordre d'affichage : épinglées d'abord, puis par groupe (ordre d'apparition), puis ordre manuel.
 function sorted() {
   const all = [...sessions.values()].sort((a, b) => (a.order || 0) - (b.order || 0));
-  const groups = [...new Set(all.map(s => s.group || ''))];
+  const groups = [...groupNames(), ''];
   return all.sort((a, b) => (!!b.pinned - !!a.pinned) || (a.pinned && b.pinned ? 0 : groups.indexOf(a.group || '') - groups.indexOf(b.group || '')) || (a.order || 0) - (b.order || 0));
 }
 const collapsed = new Set(LS.get('csm.collapsed', []));
@@ -350,13 +417,14 @@ function render() {
     const g = s.pinned ? '📌' : (s.group || '');
     if (g !== lastGroup && (g || lastGroup !== null)) {
       lastGroup = g;
-      if (g || [...sessions.values()].some(x => x.group || x.pinned)) {
+      if (g || groupNames().length || [...sessions.values()].some(x => x.pinned)) {
         const h = document.createElement('li');
         h.className = 'ghead' + (collapsed.has(g) ? ' closed' : '');
         h.innerHTML = '<span class="gcar">▾</span><span class="gname"></span><span class="gcount"></span>';
         h.querySelector('.gname').textContent = g === '📌' ? t('Épinglées') : g || t('Sans groupe');
         h.querySelector('.gcount').textContent = [...sessions.values()].filter(x => (x.pinned ? '📌' : (x.group || '')) === g).length;
         h.onclick = () => { collapsed.has(g) ? collapsed.delete(g) : collapsed.add(g); LS.set('csm.collapsed', [...collapsed]); render(); };
+        groupHeadEvents(h, g);
         ul.appendChild(h);
       }
     }
@@ -383,12 +451,28 @@ function render() {
     li.ondrop = e => {
       e.preventDefault(); li.classList.remove('dragover');
       const from = e.dataTransfer.getData('text/plain'); if (!from || from === s.id) return;
+      const src = sessions.get(from);
+      if (src && !s.pinned && (src.group || '') !== (s.group || '')) moveToGroup(from, s.group || '');
       const ids = sorted().map(x => x.id).filter(x => x !== from);
       ids.splice(ids.indexOf(s.id), 0, from);
       api('POST', '/api/order', { ids });
     };
     ul.appendChild(li);
   });
+  const used = new Set([...sessions.values()].map(s => s.group || ''));
+  for (const g of groupNames().filter(x => !used.has(x))) {
+    const h = document.createElement('li');
+    h.className = 'ghead empty';
+    h.innerHTML = '<span class="gcar">▾</span><span class="gname"></span><span class="gcount">0</span>';
+    h.querySelector('.gname').textContent = g;
+    groupHeadEvents(h, g);
+    ul.appendChild(h);
+    const hint = document.createElement('li');
+    hint.className = 'gempty';
+    hint.textContent = t('Glisse une session ici');
+    groupHeadEvents(hint, g);
+    ul.appendChild(hint);
+  }
   const attn = [...sessions.values()].filter(s => s.status === 'attention').length;
   document.title = attn ? `(${attn}) Claude Sessions` : 'Claude Sessions';
   $('#groups').innerHTML = [...new Set([...sessions.values()].map(x => x.group).filter(Boolean))].map(x => `<option value="${x.replace(/"/g, '&quot;')}">`).join('');
@@ -683,7 +767,7 @@ function moreItems(id) {
     [t('Exporter la conversation…'), () => window.csmFeatures.exportConversation(s), { disabled: !s.claudeSessionId }],
     [t('Enregistrer comme modèle…'), () => saveSessionAsTemplate(id)],
     '-',
-    [t('Groupe…'), () => window.csmFeatures.setGroup(id)],
+    [t('Déplacer vers le groupe…'), () => showMenu(moveItems(id), ...lastMenuPos)],
     [s.pinned ? t('Désépingler') : t('Épingler en haut'), () => api('POST', `/api/sessions/${id}/meta`, { pinned: !s.pinned })],
     ...(window.csmFeatures.lockItems?.(id) || []),
     [s.alerts?.mute ? t('Réactiver les alertes') : t('Couper les alertes de cette session'), () => api('POST', `/api/sessions/${id}/meta`, { alerts: { mute: !s.alerts?.mute } })],

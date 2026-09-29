@@ -112,7 +112,9 @@ L'état vient directement de Claude Code (des hooks sont ajoutés à chaque sess
 
 Un **groupe** est une étiquette libre qui sert à **ranger tes sessions par projet dans la barre latérale** — par exemple « Wafacash », « Perso », « Client X ». Il n'a aucun effet sur le fonctionnement des sessions : c'est de l'organisation visuelle.
 
-- **Définir le groupe** : champ *Groupe* dans « Nouvelle session » (les groupes existants sont proposés), ou plus tard ⋯ › **Groupe…** (taper `-` pour retirer la session de son groupe).
+- **Créer un groupe** : bouton **🗂** en bas de la barre latérale (ou palette › Nouveau groupe). Un groupe créé ainsi reste affiché **même vide**, avec une zone « Glisse une session ici ».
+- **Déplacer une session** : **glisse-la sur le titre d'un groupe** (ou sur une session de ce groupe), ou clic droit / ⋯ › **Déplacer vers le groupe…** (liste des groupes, *Nouveau groupe…*, *Sans groupe*). À la création : champ *Groupe* dans « Nouvelle session ».
+- **Gérer un groupe** : clic droit sur son titre › *Nouvelle session dans ce groupe*, *Renommer le groupe…* (ses sessions suivent), *Supprimer le groupe* (ses sessions passent dans « Sans groupe », rien n'est fermé).
 - **Affichage** : chaque groupe a un en-tête (nom + nombre de sessions) ; **clic sur l'en-tête = replier / déplier**. Les sessions sans groupe sont sous « Sans groupe ».
 - **Épingler** (⋯ › Épingler en haut) : la session passe dans « Épinglées », tout en haut, quel que soit son groupe.
 - **Couleur** : liseré à gauche de la session pour la repérer d'un coup d'œil.

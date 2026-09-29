@@ -220,6 +220,9 @@ dialog menu { display: flex; justify-content: flex-end; gap: 8px; margin: 14px 0
 #list li.ghead .gcount { margin-left: auto; }
 #list li.ghead.closed .gcar { transform: rotate(-90deg); }
 #list li.ghead .gcar { transition: transform .15s; font-size: 9px; }
+#list li.ghead.dragover, #list li.gempty.dragover { color: var(--fg); background: color-mix(in srgb, var(--accent, #d97757) 18%, transparent); border-radius: 6px; }
+#list li.gempty { padding: 6px 10px 8px 22px; color: var(--dim); font-size: 12px; font-style: italic; border: 1px dashed color-mix(in srgb, var(--dim) 45%, transparent); border-radius: 6px; margin: 2px 6px 6px; cursor: default; }
+body.compact #list li.gempty { display: none; }
 #list li { border-left: 3px solid var(--sc, transparent) !important; }
 #list li.shown:not(.active) { background: color-mix(in srgb, var(--panel2) 55%, transparent); }
 .palHint { margin: 8px 10px 2px; display: flex; align-items: center; gap: 8px; text-align: left; color: var(--dim); background: var(--bg); }

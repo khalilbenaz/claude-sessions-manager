@@ -27,6 +27,7 @@
     const s = sessions.get(active);
     const a = [
       ['⊕', t('Nouvelle session'), () => openNew(), `${MOD}+Alt+N`],
+      ['🗂', t('Nouveau groupe'), () => newGroup()],
       ['🕘', t('Historique des conversations'), () => openHistory(), `${MOD}+Alt+H`],
       ['🔎', t('Rechercher dans toutes les sessions'), () => F.openSearch(), `${MOD}+Maj+F`],
       ['📣', t('Envoyer à plusieurs sessions'), () => F.openBroadcast(), `${MOD}+Alt+B`],

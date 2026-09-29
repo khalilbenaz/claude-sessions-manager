@@ -71,6 +71,26 @@ test('vue partagée et palette', async () => {
   await win.keyboard.press('Escape');
 });
 
+test('groupes : créer un groupe vide, y glisser une session, le supprimer', async () => {
+  await win.click('#btnNewGroup');
+  await win.waitForSelector('#dlgRename[open]');
+  await win.fill('#renInput', 'Clients');
+  await win.click('#dlgRename button[value=ok]');
+  // groupe vide visible, avec sa zone de dépôt
+  await win.waitForFunction(() => [...document.querySelectorAll('#list li.ghead.empty .gname')].some(x => x.textContent === 'Clients'));
+  const src = await win.evaluate(() => [...sessions.values()].find(s => s.name === 'e2e').id);
+  await win.dragAndDrop(`#list li[data-id="${src}"]`, '#list li.gempty');
+  await win.waitForFunction(id => sessions.get(id).group === 'Clients', src, { timeout: 15000 });
+  await win.waitForFunction(() => !document.querySelector('#list li.gempty'));
+  // menu « Déplacer vers le groupe » : retour dans « Sans groupe »
+  await win.evaluate(id => showMenu(moveItems(id), 50, 50), src);
+  await win.click('#ctx button:has-text("Sans groupe")');
+  await win.waitForFunction(id => !sessions.get(id).group, src);
+  // supprimer le groupe (vide) : il disparaît
+  await win.evaluate(() => deleteGroup('Clients'));
+  await win.waitForFunction(() => !groupNames().includes('Clients'));
+});
+
 test('synchro : créer un code l’affiche en clair, prêt à copier', async () => {
   const http = require('http');
   const codes = [];
