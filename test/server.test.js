@@ -460,7 +460,7 @@ test('synchro : la conversation suit la session d’une machine à l’autre, ch
   const KEY = 'c'.repeat(32);
   const fake = await fakeSyncServer([KEY]);
   const c = await wsClient();
-  const projFile = (cwd, cid) => path.join(HOME, '.claude', 'projects', cwd.replace(/[^a-zA-Z0-9]/g, '-'), cid + '.jsonl');
+  const projFile = (cwd, cid) => path.join(HOME, '.claude', 'projects', fs.realpathSync(cwd).replace(/[^a-zA-Z0-9]/g, '-'), cid + '.jsonl');
   try {
     await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'win-test' });
     // conversation créée ici : envoyée chiffrée
