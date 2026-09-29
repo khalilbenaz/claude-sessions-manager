@@ -631,6 +631,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (s && m[2] === 'kill' && req.method === 'POST') { s.wantRun = false; persist(); killSession(s); return json(res, 200, {}); }
     if (s && m[2] === 'restart' && req.method === 'POST') {
+      if (!s.pty) await ctx.prepareResume?.(s); // conversation modifiée sur une autre machine (lib/sync)
       killSession(s);
       s.buf += '\x1b[2J\x1b[H';
       broadcast({ t: 'clear', id: s.id });

@@ -296,7 +296,7 @@
         <button type="button" id="openPrompts">Ouvrir la bibliothèque de prompts</button>
       </section>
       <section data-st="sync" hidden>
-        <p class="hint">Retrouve la liste des sessions (nom, dossier, modèle, groupe) sur tes autres machines. Les conversations restent sur chaque machine. Seules les machines qui partagent le même code se voient.</p>
+        <p class="hint">Retrouve tes sessions (nom, dossier, modèle, groupe) et leurs conversations sur tes autres machines. Les conversations sont chiffrées avec ton code avant l’envoi : le serveur ne peut pas les lire. Seules les machines qui partagent le même code se voient.</p>
         <div id="syncSetup">
           <p><b>Première machine</b> : crée un code, puis saisis-le sur tes autres machines.</p>
           <button type="button" id="syncNew" class="primary">Créer un code</button>
@@ -309,6 +309,7 @@
           <p class="hint">Saisis ce code sur tes autres machines (Réglages › Synchronisation › J'ai déjà un code). Ne le partage avec personne d'autre : qui a le code voit tes sessions.</p>
           <div class="row"><button type="button" id="syncNow">Synchroniser maintenant</button><button type="button" id="syncOff" class="danger">Désactiver</button></div>
         </div>
+        <label class="check"><input type="checkbox" data-set="syncTranscripts"> <span>Synchroniser aussi les conversations (historique et contexte, chiffrés)</span></label>
         <p id="syncStatus" class="hint"></p>
         <details>
           <summary>Avancé</summary>
