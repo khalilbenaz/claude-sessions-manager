@@ -4,7 +4,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; ve
 
 ## [3.4.4] — 2026-09-29
 ### Corrigé
-- Barre du haut : elle reste sur une seule ligne. Le titre, le dossier et le message se tronquent (…) en premier ; quand la fenêtre est étroite, les boutons de disposition puis le dossier sont masqués.
+- Barre du haut : elle reste sur une seule ligne. Le titre, le dossier et le message se tronquent (…) en premier ; quand la fenêtre est étroite, le message puis le dossier sont masqués ; les boutons restent toujours visibles.
 
 ## [3.4.3] — 2026-09-29
 ### Corrigé

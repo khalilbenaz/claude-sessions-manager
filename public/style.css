@@ -88,11 +88,11 @@ main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: r
 /* Fenêtre étroite : les boutons passent à la ligne au lieu d'être rognés ; chemin et message se
    réduisent (base 0) sans jamais forcer ce retour à la ligne. */
 /* Barre sur une seule ligne : le titre, le dossier et le message se tronquent (…) avant que les boutons
-   ne manquent de place ; sous un seuil, on masque d'abord les éléments secondaires ; défilement en dernier recours. */
+   ne manquent de place ; sous un seuil, on masque d’abord le message puis le dossier ; défilement en dernier recours. */
 #bar { flex-wrap: nowrap; container-type: inline-size; overflow-x: auto; scrollbar-width: none; }
 #bar::-webkit-scrollbar { display: none; }
 #bar .name { flex: 0 1 auto; min-width: 60px; }
-@container (max-width: 820px) { #bar .layouts, #bar .msg { display: none; } }
+@container (max-width: 820px) { #bar .msg { display: none; } }
 @container (max-width: 640px) { #bar .cwd, #bar .branch { display: none; } }
 #bar .name[contenteditable="true"] { outline: 1px solid var(--accent); border-radius: 4px; padding: 0 4px; }
 #bar .cwd { color: var(--dim); font-family: Consolas, Menlo, monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 40px; flex: 1 1 0; max-width: max-content; direction: rtl; text-align: left; }
