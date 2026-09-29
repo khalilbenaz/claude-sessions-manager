@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.4.4] — 2026-09-29
+### Corrigé
+- Barre du haut : elle reste sur une seule ligne. Le titre, le dossier et le message se tronquent (…) en premier ; quand la fenêtre est étroite, les boutons de disposition puis le dossier sont masqués.
+
 ## [3.4.3] — 2026-09-29
 ### Corrigé
 - macOS : les sessions ne démarrent plus en « env: node: No such file or directory » (code 127) quand l'app est lancée avec un PATH minimal (shell de connexion trop lent au démarrage). Le serveur complète le PATH avec les emplacements usuels de node/claude (fnm, nvm, volta, Homebrew…) et le dossier réel de claude ; délai du shell de connexion porté à 10 s.
