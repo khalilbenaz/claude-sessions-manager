@@ -55,36 +55,45 @@ addBinDirToPath(CLAUDE);
 // Chemin absolu de node : le PATH d'un service (launchd, tâche planifiée) ne le contient pas forcément.
 // Barres obliques : valables pour le shell des hooks sous Windows (bash ou cmd) comme sous macOS.
 const fwd = p => p.replace(/\\/g, '/');
-const HOOK_SCRIPT = fwd(path.join(ROOT, 'hook.js'));
 // Dans l'application (Electron lancé en mode Node), l'exécutable n'est pas « node » : il faut
 // ELECTRON_RUN_AS_NODE=1, qu'on ne laisse pas fuiter dans l'environnement de claude (il casserait les
-// applications Electron lancées depuis une session, ex. `code`). Un petit lanceur le pose pour le hook seul.
-function hookRunner() {
-  if (!process.versions.electron) return `"${fwd(process.execPath)}" "${HOOK_SCRIPT}"`;
+// applications Electron lancées depuis une session, ex. `code`). Un petit lanceur le pose pour le script seul.
+function nodeRunner(script) {
+  const js = path.join(ROOT, script);
+  if (!process.versions.electron) return `"${fwd(process.execPath)}" "${fwd(js)}"`;
   // Node du système s'il est installé : démarre bien plus vite qu'Electron (un hook par action de Claude).
   const sysNode = stablePath(which(IS_WIN ? 'node.exe' : 'node'));
-  if (sysNode) return `"${fwd(sysNode)}" "${HOOK_SCRIPT}"`;
-  const file = path.join(DATA, IS_WIN ? 'hook.cmd' : 'hook.sh');
+  if (sysNode) return `"${fwd(sysNode)}" "${fwd(js)}"`;
+  const file = path.join(DATA, path.basename(script, '.js') + (IS_WIN ? '.cmd' : '.sh'));
   const body = IS_WIN
-    ? `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\n"${process.execPath}" "${path.join(ROOT, 'hook.js')}" %*\r\n`
-    : `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec "${process.execPath}" "${path.join(ROOT, 'hook.js')}" "$@"\n`;
+    ? `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\n"${process.execPath}" "${js}" %*\r\n`
+    : `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec "${process.execPath}" "${js}" "$@"\n`;
   fs.writeFileSync(file, body);
   if (!IS_WIN) fs.chmodSync(file, 0o755);
   return `"${fwd(file)}"`;
 }
-const HOOK_RUNNER = hookRunner();
+const HOOK_RUNNER = nodeRunner('hook.js');
 const hookCmd = (ev) => [{ hooks: [{ type: 'command', command: `${HOOK_RUNNER} ${ev}`, timeout: 15 }] }];
+const HOOKS = {
+  SessionStart: hookCmd('start'),
+  UserPromptSubmit: hookCmd('working'),
+  PreToolUse: hookCmd('working'),
+  Notification: hookCmd('attention'),
+  Stop: hookCmd('idle'),
+  SessionEnd: hookCmd('end'),
+};
 const HOOK_SETTINGS = path.join(DATA, 'hooks-settings.json');
-fs.writeFileSync(HOOK_SETTINGS, JSON.stringify({
-  hooks: {
-    SessionStart: hookCmd('start'),
-    UserPromptSubmit: hookCmd('working'),
-    PreToolUse: hookCmd('working'),
-    Notification: hookCmd('attention'),
-    Stop: hookCmd('idle'),
-    SessionEnd: hookCmd('end'),
-  },
-}, null, 2));
+fs.writeFileSync(HOOK_SETTINGS, JSON.stringify({ hooks: HOOKS }, null, 2));
+// Variante avec la barre d'état de CSM (statusline.js : quotas, heure du reset, contexte, modèle), utilisée
+// seulement si l'utilisateur n'a pas déjà sa propre barre dans ses réglages Claude Code.
+const HOOK_SETTINGS_SL = path.join(DATA, 'hooks-settings-statusline.json');
+fs.writeFileSync(HOOK_SETTINGS_SL, JSON.stringify({ hooks: HOOKS, statusLine: { type: 'command', command: nodeRunner('statusline.js'), padding: 0 } }, null, 2));
+function userHasStatusLine(cwd) {
+  const files = [path.join(os.homedir(), '.claude', 'settings.json'), path.join(os.homedir(), '.claude', 'settings.local.json')];
+  if (cwd) files.push(path.join(cwd, '.claude', 'settings.json'), path.join(cwd, '.claude', 'settings.local.json'));
+  return files.some(f => { try { return !!JSON.parse(fs.readFileSync(f, 'utf8')).statusLine; } catch { return false; } });
+}
+const settingsFor = s => (ctx.getSettings?.().statusLine !== false && !userHasStatusLine(s.cwd) ? HOOK_SETTINGS_SL : HOOK_SETTINGS);
 
 // ---------------------------------------------------------------- sessions gérées
 const STORE = path.join(DATA, 'sessions.json');
@@ -186,7 +195,7 @@ function renameSession(s, name) {
 function spawnSession(s, { resume, fork } = {}) {
   if (resume && !transcriptExists(resume)) resume = undefined;
   // CSM_CLAUDE_ARGS : arguments placés avant ceux de claude (tests : CSM_CLAUDE=node, CSM_CLAUDE_ARGS=faux-claude.js)
-  const args = [...splitArgs(process.env.CSM_CLAUDE_ARGS || ''), '--settings', HOOK_SETTINGS, ...splitArgs(s.args)];
+  const args = [...splitArgs(process.env.CSM_CLAUDE_ARGS || ''), '--settings', settingsFor(s), ...splitArgs(s.args)];
   if (resume) args.push('--resume', resume);
   if (resume && fork) args.push('--fork-session'); // ponctuel : jamais mémorisé dans s.args
   args.push(...(ctx.remoteArgs?.(s) || [])); // accès depuis l'app Claude (lib/remote.js)

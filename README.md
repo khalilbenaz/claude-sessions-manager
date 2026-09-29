@@ -145,6 +145,7 @@ Bouton **± Modifications** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd>) ou ⋯
 - **Modifications** : fichiers modifiés dans le dossier de la session (git) avec leur état (M modifié, N nouveau, S supprimé). Clic = **diff coloré** ; ↺ = annuler un fichier ; **commit** avec « Proposer un message » et « Committer tout ». Rafraîchi quand Claude a fini un tour.
 - **Chronologie** : les actions de Claude (📖 lus, ✏️ modifiés, ▶ commandes, 🔎 recherches…) avec l'heure.
 - **Consommation** : tokens d'entrée / sortie et **coût estimé** de la session, puis de toutes les sessions sur 5 h, aujourd'hui et 7 jours ; graphique par jour ; sessions les plus coûteuses. Estimation aux tarifs API publics, indicative (inclus dans un abonnement Claude).
+- **Barre d'état des quotas** : sous l'invite de chaque session, CSM affiche tes quotas d'abonnement et l'heure de leur réinitialisation, le contexte utilisé et le modèle : `5h 20% ↻ 13:21 (2h09) · 7j 90% ↻ jeu 18:44 (2j7h) · ctx 42% · Opus 5.5`. Seulement si tu n'as pas déjà ta propre barre d'état Claude Code (`statusLine` dans `~/.claude/settings.json`) ; désactivable dans Réglages › Général.
 
 **Exporter une conversation** : ⋯ › Exporter → Markdown (fichier ou presse-papiers) ou impression / PDF.
 
@@ -220,7 +221,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 
 | Onglet | Contenu |
 |---|---|
-| **Général** | thème (système, clair, sombre), langue, modèle et mode par défaut, worktree proposé par défaut, éditeur pour « Ouvrir dans », mises à jour automatiques, barre latérale compacte, réduire / fermer dans la zone de notification |
+| **Général** | thème (système, clair, sombre), langue, modèle et mode par défaut, worktree proposé par défaut, éditeur pour « Ouvrir dans », barre d'état des quotas, mises à jour automatiques, barre latérale compacte, réduire / fermer dans la zone de notification |
 | **Terminal** | taille et police du texte |
 | **Notifications** | notifications système, son (coupé par défaut, avec test), ne pas déranger, rappels d'attente et de longue exécution |
 | **Sécurité** | reverrouiller quand la fenêtre est masquée, après une inactivité |
