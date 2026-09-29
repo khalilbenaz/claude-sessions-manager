@@ -85,10 +85,12 @@ main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: r
 #bar { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--panel); min-height: 43px; }
 #bar .name { font-weight: 600; cursor: text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; flex: none; }
 #bar button { white-space: nowrap; flex: none; }
-#bar { overflow: hidden; }
+/* Fenêtre étroite : les boutons passent à la ligne au lieu d'être rognés ; chemin et message se
+   réduisent (base 0) sans jamais forcer ce retour à la ligne. */
+#bar { flex-wrap: wrap; row-gap: 6px; }
 #bar .name[contenteditable="true"] { outline: 1px solid var(--accent); border-radius: 4px; padding: 0 4px; }
-#bar .cwd { color: var(--dim); font-family: Consolas, Menlo, monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 40px; flex: 0 1 auto; direction: rtl; text-align: left; }
-#bar .msg { color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#bar .cwd { color: var(--dim); font-family: Consolas, Menlo, monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 40px; flex: 1 1 0; max-width: max-content; direction: rtl; text-align: left; }
+#bar .msg { color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 0; max-width: max-content; }
 #bar .msg.attention { color: var(--warn); }
 #bar .spacer { flex: 1; }
 /* ---- zone de travail : panneaux (vue partagée) + panneau latéral */
@@ -170,7 +172,10 @@ dialog label { display: flex; flex-direction: column; gap: 4px; margin-bottom: 1
 dialog input, dialog select { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; color: var(--fg); font-size: 13px; }
 dialog input:focus, dialog select:focus { outline: none; border-color: var(--accent); }
 dialog .pick { display: flex; gap: 6px; } dialog .pick input { flex: 1; min-width: 0; } dialog .pick button { white-space: nowrap; }
-dialog .row { display: flex; gap: 10px; } dialog .row label { flex: 1; }
+dialog .row { display: flex; gap: 10px; } dialog .row label { flex: 1; min-width: 0; }
+/* Un <select> prend la largeur de sa plus longue option : on le borne à sa colonne (pas de défilement horizontal). */
+dialog select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+dialog { max-width: calc(100vw - 32px); overflow-x: hidden; }
 dialog menu { display: flex; justify-content: flex-end; gap: 8px; margin: 14px 0 0; padding: 0; }
 
 .impInfo { color: var(--fg); margin: 0 0 12px; }
