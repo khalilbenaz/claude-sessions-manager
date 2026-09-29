@@ -470,7 +470,7 @@ test('synchro : la conversation suit la session d’une machine à l’autre, ch
     await waitFor(() => (c.out[local.id] || '').includes('echo: secret-du-mac'), 15000, 'réponse');
     const cidLocal = (await session(local.id)).claudeSessionId;
     assert.ok(fs.existsSync(projFile(WORK, cidLocal)), 'transcript écrit');
-    const uid = (await session(local.id)).syncId;
+    const uid = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await session(local.id)).syncId; }, 10000, 'identifiant de synchro');
     const meta = await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.tx(KEY).meta.get(uid); }, 15000, 'conversation envoyée');
     assert.equal(meta.origin, 'win-test'); assert.equal(meta.cid, cidLocal);
     const blob = Buffer.concat([...Array(meta.chunks).keys()].map(i => fake.tx(KEY).chunks.get(`${uid}/${meta.ver}/${i}`)));
