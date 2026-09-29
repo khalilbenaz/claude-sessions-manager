@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.8.0] — 2026-09-29
+### Ajouté
+- Synchro : liste des groupes (vides compris, dans l'ordre, réunie à la première synchro) et modèles de session (chiffrés) ; le déplacement d'une session entre groupes suit sur les autres machines. Choix de ce qui est synchronisé : conversations, groupes, modèles (Réglages › Synchronisation › À synchroniser).
+
 ## [3.7.0] — 2026-09-29
 ### Ajouté
 - Groupes : bouton 🗂 « Nouveau groupe » (barre latérale, palette) ; un groupe créé reste visible vide. Glisser une session sur le titre d'un groupe (ou sur une session de ce groupe) l'y déplace ; menu « Déplacer vers le groupe… » ; clic droit sur un groupe : nouvelle session dedans, renommer (les sessions suivent), supprimer.

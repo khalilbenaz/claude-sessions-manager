@@ -64,6 +64,10 @@ const EN = {
   "Supprimer le groupe": "Delete group",
   "Nouvelle session dans ce groupe": "New session in this group",
   "session(s) passent dans « Sans groupe » (elles ne sont pas fermées).": "session(s) move to “No group” (they are not closed).",
+  "À synchroniser": "What to sync",
+  "Sessions : nom, dossier, modèle, groupe de chaque session, épinglage, couleur": "Sessions: name, folder, model, group of each session, pin, color",
+  "Liste des groupes (groupes vides compris, dans l'ordre)": "Group list (including empty groups, in order)",
+  "Modèles de session (chiffrés)": "Session templates (encrypted)",
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
