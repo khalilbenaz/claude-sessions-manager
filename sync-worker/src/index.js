@@ -2,7 +2,10 @@
 // l'envoi (AES-256-GCM, clé dérivée du code) : ici, les conversations ne sont que des octets illisibles.
 // GET  /sessions?since=<rev>  -> { rev, items: [{ uid, data, updatedAt, deleted, origin, rev }] }
 // POST /sessions { items }    -> { rev, applied }   (une ligne n'écrase que si updatedAt est plus récent)
-// POST /spaces                -> { code }           (crée un espace : le code n'est montré qu'une fois)
+// POST /spaces { auth }       -> { ok }             (crée un espace ; auth = SHA-256 de la clé d'accès, calculée
+//                                                   par l'app à partir d'un code qu'elle a tiré : le code ne vient jamais ici)
+// POST /spaces                -> { code }           (ancien format : code tiré ici, applis < 3.8)
+// POST /spaces/link { auth }  (Bearer ancien code)  rattache une clé d'accès à un espace créé avant la 3.8
 // GET  /transcripts           -> { items: [{ uid, cid, ver, chunks, size, updatedAt, origin }] }
 // PUT  /transcripts/<uid>/<ver>/<n>   octets        (morceau n de la version ver, 1 Mo au plus)
 // GET  /transcripts/<uid>/<ver>/<n>   -> octets
@@ -10,10 +13,11 @@
 //      (valide une version dont tous les morceaux sont envoyés ; les autres versions sont effacées)
 // Une session supprimée (POST /sessions, deleted) efface aussi sa conversation.
 //
-// Authorization: Bearer <clé>. La clé vient du code de synchro saisi dans l'app ; chaque clé est un espace
-// isolé (space = SHA-256 de la clé). Une clé est acceptée si son empreinte est dans csm_spaces (code créé par
-// POST /spaces) ou si elle figure dans le secret SYNC_KEYS. Le serveur ne garde que l'empreinte, jamais le code :
-// un inconnu qui trouve l'URL ne peut rien lire sans deviner 100 bits aléatoires.
+// Authorization: Bearer <clé d'accès>, dérivée du code par l'app (le code, qui sert aussi à chiffrer, ne vient
+// jamais ici). Une clé est acceptée si son empreinte est dans csm_auth (rattachée à un espace), dans csm_spaces,
+// ou si elle figure dans le secret SYNC_KEYS. Le serveur ne garde que des empreintes.
+// Limites : 5 créations d'espace par jour et par adresse (/64 en IPv6), 2000 par jour au total ; par espace
+// 5000 lignes et 200 Mo de conversations ; 6 Go de conversations au total.
 // Le rev est attribué dans SQL : D1 sérialise les écritures, deux push simultanés n'ont jamais le même rev.
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -33,9 +37,17 @@ const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const newCode = () => [...crypto.getRandomValues(new Uint8Array(20))].map(b => ALPHABET[b & 31]).join('');
 const DAY = 86400000;
 const PER_IP_PER_DAY = 5;
-const PER_DAY = 500;
+const PER_DAY = 2000;
 const CHUNK_MAX = 1024 * 1024 + 64, MAX_CHUNKS = 40;
-const SPACE_MAX = 400 * 1024 * 1024; // octets de conversations par espace
+const SPACE_MAX = 200 * 1024 * 1024;       // octets de conversations par espace
+const TOTAL_MAX = 6 * 1024 * 1024 * 1024;  // octets de conversations tous espaces confondus (D1 : 10 Go)
+const ROWS_MAX = 5000;                     // sessions / groupes / modèles par espace
+const HEX64 = /^[0-9a-f]{64}$/;
+// IPv6 : on compte par /64 (un attaquant dispose en général de tout un /64)
+function ipKey(req) {
+  const ip = req.headers.get('cf-connecting-ip') || '';
+  return ip.includes(':') ? ip.split(':').slice(0, 4).join(':') + '::/64' : ip;
+}
 
 // Morceaux stockés en base64 (TEXT) : évite les particularités des BLOB de D1.
 function toB64(u8) {
@@ -68,6 +80,8 @@ async function transcripts(req, env, space, parts) {
     if (!body.length || body.length > CHUNK_MAX) return json({ error: 'chunk too large' }, 413);
     const used = await env.DB.prepare('SELECT COALESCE(SUM(LENGTH(data)), 0) AS used FROM csm_chunks WHERE space = ?').bind(space).first();
     if (used.used * 0.75 + body.length > SPACE_MAX) return json({ error: 'space full' }, 413);
+    const total = await env.DB.prepare('SELECT COALESCE(SUM(size), 0) AS total FROM csm_transcripts').first();
+    if (total.total + body.length > TOTAL_MAX) return json({ error: 'server full' }, 507);
     await env.DB.prepare(
       'INSERT INTO csm_chunks (space, uid, ver, n, data) VALUES (?, ?, ?, ?, ?) ON CONFLICT(space, uid, ver, n) DO UPDATE SET data = excluded.data',
     ).bind(space, uid, ver, idx, toB64(body)).run();
@@ -99,26 +113,47 @@ async function transcripts(req, env, space, parts) {
 async function spaceOf(req, env) {
   const key = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (key.length < 16) return null;
-  const space = await sha256(key);
+  const h = await sha256(key);
+  const linked = await env.DB.prepare('SELECT space FROM csm_auth WHERE auth = ?').bind(h).first();
+  if (linked) return linked.space;
   const allowed = String(env.SYNC_KEYS || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (allowed.some(k => sameString(k, key))) return space;
-  const row = await env.DB.prepare('SELECT 1 FROM csm_spaces WHERE space = ?').bind(space).first();
-  return row ? space : null;
+  if (allowed.some(k => sameString(k, key))) return h;
+  const row = await env.DB.prepare('SELECT 1 FROM csm_spaces WHERE space = ?').bind(h).first();
+  return row ? h : null;
 }
 
 async function createSpace(req, env) {
+  let body = {};
+  try { body = await req.json(); } catch { }
   const since = Date.now() - DAY;
-  const ipHash = await sha256('csm-ip:' + (req.headers.get('cf-connecting-ip') || ''));
+  const ipHash = await sha256('csm-ip:' + ipKey(req));
   const counts = await env.DB.prepare(
     'SELECT COUNT(*) AS total, SUM(ipHash = ?) AS mine FROM csm_spaces WHERE createdAt > ?',
   ).bind(ipHash, since).first();
   if ((counts.mine || 0) >= PER_IP_PER_DAY || (counts.total || 0) >= PER_DAY) {
     return json({ error: 'trop de codes créés aujourd’hui, réessaie demain' }, 429);
   }
+  if (typeof body?.auth === 'string') {
+    if (!HEX64.test(body.auth)) return json({ error: 'bad auth' }, 400);
+    const out = await env.DB.prepare('INSERT INTO csm_spaces (space, createdAt, ipHash) VALUES (?, ?, ?) ON CONFLICT(space) DO NOTHING')
+      .bind(body.auth, Date.now(), ipHash).run();
+    return out.meta?.changes ? json({ ok: true }) : json({ error: 'espace déjà existant' }, 409);
+  }
   const code = newCode();
   await env.DB.prepare('INSERT INTO csm_spaces (space, createdAt, ipHash) VALUES (?, ?, ?)')
     .bind(await sha256(code), Date.now(), ipHash).run();
   return json({ code });
+}
+
+// Rattache une clé d'accès (empreinte) à l'espace d'un code créé avant la 3.8, sur preuve de l'ancien accès.
+async function linkSpace(req, env) {
+  const space = await spaceOf(req, env);
+  if (!space) return json({ error: 'unauthorized' }, 401);
+  let body;
+  try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+  if (!HEX64.test(body?.auth || '')) return json({ error: 'bad auth' }, 400);
+  await env.DB.prepare('INSERT INTO csm_auth (auth, space) VALUES (?, ?) ON CONFLICT(auth) DO NOTHING').bind(body.auth, space).run();
+  return json({ ok: true });
 }
 
 async function currentRev(env, space) {
@@ -131,6 +166,7 @@ export default {
     const url = new URL(req.url);
     if (url.pathname === '/health') return json({ ok: true });
     if (url.pathname === '/spaces') return req.method === 'POST' ? createSpace(req, env) : json({ error: 'method not allowed' }, 405);
+    if (url.pathname === '/spaces/link') return req.method === 'POST' ? linkSpace(req, env) : json({ error: 'method not allowed' }, 405);
     const tx = url.pathname.match(/^\/transcripts(?:\/([^/]+)(?:\/([^/]+)\/([^/]+))?)?$/);
     if (url.pathname !== '/sessions' && !tx) return json({ error: 'not found' }, 404);
     const space = await spaceOf(req, env);
@@ -149,6 +185,12 @@ export default {
       let body;
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
       const items = Array.isArray(body?.items) ? body.items.slice(0, 500) : [];
+      const count = await env.DB.prepare('SELECT COUNT(*) AS c FROM csm_sessions WHERE space = ?').bind(space).first();
+      if (count.c + items.length > ROWS_MAX) {
+        // au-delà : seules les mises à jour de lignes existantes passent
+        const known = new Set((await env.DB.prepare('SELECT uid FROM csm_sessions WHERE space = ?').bind(space).all()).results.map(r => r.uid));
+        if (items.some(it => !known.has(it?.uid)) && count.c >= ROWS_MAX) return json({ error: 'space full' }, 413);
+      }
       const next = '(SELECT COALESCE(MAX(rev), 0) + 1 FROM csm_sessions WHERE space = ?1)';
       const stmts = [], dels = [];
       for (const it of items) {
