@@ -3,6 +3,14 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
 ## [3.8.0] — 2026-09-29
+### Sécurité (audit complet)
+- Synchro : le code ne quitte plus les machines. Il est tiré localement ; le serveur ne reçoit qu'une clé d'accès dérivée (HKDF) dont il ne garde que l'empreinte, et ne peut donc plus déchiffrer. Les anciens espaces sont rattachés automatiquement ; créer un nouveau code est recommandé pour un chiffrement strict.
+- Synchro : les sessions (nom, dossier, arguments…) sont chiffrées et authentifiées ; les arguments repris d'une autre machine sont limités au modèle, au mode (hors bypassPermissions) et à l'effort (un serveur ou un tiers ne peut plus faire exécuter de commande via --settings, --dangerously-skip-permissions…). Couleur, groupe et nom validés.
+- Synchro : chiffrement lié à l'élément (session, version, date) : un serveur ne peut plus échanger deux conversations ni en remettre une ancienne ; identifiant de conversation vérifié avant d'en faire un nom de fichier. HTTPS exigé (sauf serveur local).
+- Serveur de synchro : limites par adresse (/64 en IPv6), par espace (5000 lignes, 200 Mo) et au total.
+- Verrouillage : l'identifiant de conversation d'une session verrouillée n'est plus exposé, et --resume / --continue dans les arguments d'une nouvelle session sont refusés comme « Reprendre ». Essais de mot de passe limités aussi par HTTP (5 puis attente croissante).
+- Les sessions ne reçoivent plus le jeton complet de l'API : un jeton dédié n'ouvre que la route des hooks (tout ce que Claude exécute en héritait).
+- Fichiers de données (jeton, réglages, sessions, état de synchro) créés en lecture/écriture pour l'utilisateur seul.
 ### Ajouté
 - Synchro : liste des groupes (vides compris, dans l'ordre, réunie à la première synchro) et modèles de session (chiffrés) ; le déplacement d'une session entre groupes suit sur les autres machines. Choix de ce qui est synchronisé : conversations, groupes, modèles (Réglages › Synchronisation › À synchroniser).
 

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS csm_sessions (
 );
 CREATE INDEX IF NOT EXISTS csm_sessions_rev ON csm_sessions(space, rev);
 
--- Espaces créés par POST /spaces. Seule l'empreinte du code est gardée ; ipHash sert à limiter les créations.
+-- Espaces créés par POST /spaces : empreinte de la clé d'accès (ou du code, avant la 3.8) ; ipHash limite les créations.
 CREATE TABLE IF NOT EXISTS csm_spaces (
   space     TEXT PRIMARY KEY,
   createdAt INTEGER NOT NULL,
@@ -42,4 +42,10 @@ CREATE TABLE IF NOT EXISTS csm_chunks (
   n     INTEGER NOT NULL,
   data  TEXT NOT NULL,
   PRIMARY KEY (space, uid, ver, n)
+);
+
+-- Clés d'accès rattachées à un espace créé avant la 3.8 (POST /spaces/link) : empreinte -> espace.
+CREATE TABLE IF NOT EXISTS csm_auth (
+  auth  TEXT PRIMARY KEY,
+  space TEXT NOT NULL
 );

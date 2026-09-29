@@ -45,6 +45,7 @@ async function prompt(text) {
   log({ type: 'assistant', message: { id: `msg_${turn}_${sessionId.slice(0, 6)}`, model: 'claude-haiku-4-5', role: 'assistant',
     content: [{ type: 'text', text: reply }, { type: 'tool_use', name: 'Read', input: { file_path: path.join(cwd, 'README.md') } }],
     usage: { input_tokens: 100, output_tokens: 20, cache_read_input_tokens: 1000, cache_creation_input_tokens: 0 } } });
+  if (/montre-jeton/.test(text)) out(`\r\nJETON:${process.env.CSM_TOKEN}\r\n`);
   if (/touch (\S+)/.test(text)) fs.writeFileSync(path.join(cwd, RegExp.$1), `créé par le faux claude (${turn})\n`);
   out(`\r\n● ${reply}\r\n`);
   if (/attends/.test(text)) await hook('Notification', { message: 'Claude attend ta permission' });

@@ -321,27 +321,41 @@ test('diagnostic et journaux', async () => {
 });
 
 // ---------------------------------------------------------------- synchronisation (#27)
-// Faux serveur de synchro : même API que sync-worker (un espace par clé, la modification la plus récente gagne).
-function fakeSyncServer(keys) {
-  const spaces = new Map(), txs = new Map(); let rev = 0;
+// Faux serveur de synchro : même API que sync-worker (un espace par clé d'accès, la modification la plus récente gagne).
+// keys : codes dont l'espace accepte la clé d'accès dérivée (espaces 3.8+) ; legacy : codes d'avant la 3.8, acceptés
+// seulement en clair, jusqu'au rattachement (POST /spaces/link). bearers : tout ce que l'app a envoyé comme clé.
+function fakeSyncServer(keys, legacy = []) {
+  const { authKey } = require('../lib/sync');
+  const sha = x => require('crypto').createHash('sha256').update(x).digest('hex');
+  const spaces = new Map(), txs = new Map(), linked = new Map(), bearers = new Set(); let rev = 0;
   const txOf = k => { if (!txs.has(k)) txs.set(k, { meta: new Map(), chunks: new Map() }); return txs.get(k); };
+  const idOf = k => (keys.includes(k) || legacy.includes(k) ? k : 'reg:' + sha(authKey(k))); // code -> espace
+  const spaceOf = b => linked.get(sha(b)) || keys.find(k => authKey(k) === b) || (legacy.includes(b) ? b : null);
   const srv = http.createServer((q, r) => {
     const key = (q.headers.authorization || '').replace(/^Bearer /, '');
+    if (key) bearers.add(key);
     const send = (code, v) => { r.writeHead(code, { 'content-type': 'application/json' }); r.end(JSON.stringify(v)); };
-    if (q.method === 'POST' && q.url === '/spaces') {
-      const code = Array.from({ length: 20 }, () => '0123456789ABCDEFGHJKMNPQRSTVWXYZ'[Math.floor(Math.random() * 32)]).join('');
-      keys.push(code);
-      return send(200, { code });
-    }
-    if (!keys.includes(key)) return send(401, { error: 'unauthorized' });
-    if (!spaces.has(key)) spaces.set(key, new Map());
-    const rows = spaces.get(key);
     const parts = []; q.on('data', c => parts.push(c)); q.on('end', () => {
       const raw = Buffer.concat(parts), b = raw.toString('utf8');
+      if (q.method === 'POST' && q.url === '/spaces') {
+        const { auth } = JSON.parse(b || '{}');
+        if (!/^[0-9a-f]{64}$/.test(auth || '')) return send(400, {});
+        linked.set(auth, 'reg:' + auth);
+        return send(200, { ok: true });
+      }
+      if (q.method === 'POST' && q.url === '/spaces/link') {
+        if (!legacy.includes(key)) return send(401, {});
+        linked.set(JSON.parse(b).auth, key);
+        return send(200, { ok: true });
+      }
+      const sp = spaceOf(key);
+      if (!sp) return send(401, { error: 'unauthorized' });
+      if (!spaces.has(sp)) spaces.set(sp, new Map());
+      const rows = spaces.get(sp);
       const u = new URL(q.url, 'http://x');
       const t = u.pathname.match(/^\/transcripts(?:\/([^/]+)(?:\/([^/]+)\/([^/]+))?)?$/);
       if (t) {
-        const T = txOf(key), [, uid, ver, n] = t;
+        const T = txOf(sp), [, uid, ver, n] = t;
         if (!uid) return send(200, { items: [...T.meta.entries()].map(([uid, m]) => ({ uid, ...m })) });
         if (n !== undefined && q.method === 'PUT') { T.chunks.set(`${uid}/${ver}/${n}`, raw); return send(200, { ok: true }); }
         if (n !== undefined) {
@@ -365,16 +379,23 @@ function fakeSyncServer(keys) {
         const cur = rows.get(it.uid);
         if (cur && cur.updatedAt >= it.updatedAt) continue;
         rows.set(it.uid, { ...it, deleted: it.deleted ? 1 : 0, rev: ++rev }); applied++;
-        if (it.deleted) { const T = txOf(key); T.meta.delete(it.uid); for (const k of [...T.chunks.keys()]) if (k.startsWith(it.uid + '/')) T.chunks.delete(k); }
+        if (it.deleted) { const T = txOf(sp); T.meta.delete(it.uid); for (const k of [...T.chunks.keys()]) if (k.startsWith(it.uid + '/')) T.chunks.delete(k); }
       }
       send(200, { rev, applied });
     });
   });
+  const { openJson } = require('../lib/sync');
+  const rowsOf = k => spaces.get(idOf(k)) || new Map();
   return new Promise(res => srv.listen(0, '127.0.0.1', () => res({
-    srv, url: `http://127.0.0.1:${srv.address().port}`, rows: k => spaces.get(k) || new Map(), tx: txOf,
-    put: (k, it) => { if (!spaces.has(k)) spaces.set(k, new Map()); spaces.get(k).set(it.uid, { deleted: 0, origin: 'pc', ...it, rev: ++rev }); },
+    srv, url: `http://127.0.0.1:${srv.address().port}`, rows: rowsOf, tx: k => txOf(idOf(k)), bearers,
+    // contenu en clair d'une ligne (déchiffré avec le code, comme sur une autre machine)
+    plain: (k, uid) => { const x = rowsOf(k).get(uid); return x && (x.data?.e ? openJson(k, x.data, `s|${x.uid}|${x.updatedAt}`) : x.data); },
+    find: (k, fn) => [...rowsOf(k).values()].find(x => !x.deleted && fn(x.data?.e ? openJson(k, x.data, `s|${x.uid}|${x.updatedAt}`) : x.data)),
+    put: (k, it) => { const id = idOf(k); if (!spaces.has(id)) spaces.set(id, new Map()); spaces.get(id).set(it.uid, { deleted: 0, origin: 'pc', ...it, rev: ++rev }); },
   })));
 }
+// Ligne chiffrée comme par une autre machine
+const sealed = (k, uid, updatedAt, obj) => require('../lib/sync').sealJson(k, obj, `s|${uid}|${updatedAt}`);
 
 test('synchro : désactivée par défaut, isolée par code', async () => {
   const st = await api('GET', '/api/sync');
@@ -395,7 +416,9 @@ test('synchro : code créé par le serveur, puis saisi sur une autre machine', a
     assert.equal(st.enabled, true); assert.equal(st.code, code); assert.equal(st.lastError, '');
     const key = code.replace(/-/g, '');
     await api('POST', '/api/sessions', { cwd: WORK, name: 'via-code-court' });
-    await waitFor(async () => { await api('POST', '/api/sync/now'); return [...fake.rows(key).values()].some(x => x.data.name === 'via-code-court'); }, 10000, 'session envoyée');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.find(key, d => d.name === 'via-code-court'); }, 10000, 'session envoyée');
+    assert.ok(!fake.bearers.has(key), 'le code ne quitte jamais la machine');
+    assert.ok(!JSON.stringify([...fake.rows(key).values()]).includes('via-code-court'), 'sessions chiffrées sur le serveur');
 
     // « J'ai déjà un code » : minuscules et espaces acceptés, même espace
     await api('PUT', '/api/settings', { syncCode: ' ' + code.toLowerCase().replace(/-/g, ' ') });
@@ -422,25 +445,26 @@ test('synchro : envoi, session distante arrêtée, renommage, suppressions', asy
 
     await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY) });
     const local = await api('POST', '/api/sessions', { cwd: WORK, name: 'locale-synchro' });
-    await waitFor(async () => { await api('POST', '/api/sync/now'); return [...fake.rows(KEY).values()].some(x => x.data.name === 'locale-synchro'); }, 10000, 'session locale envoyée');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.find(KEY, d => d.name === 'locale-synchro'); }, 10000, 'session locale envoyée');
     assert.equal(fake.rows(OTHER).size, 0, 'un autre code ne voit rien');
-    const mine = [...fake.rows(KEY).values()].find(x => x.data.name === 'locale-synchro');
+    const mine = fake.find(KEY, d => d.name === 'locale-synchro');
     assert.equal(mine.origin, 'mac-test');
-    assert.ok(!('claudeSessionId' in mine.data), 'la conversation ne part pas');
+    assert.ok(!('claudeSessionId' in fake.plain(KEY, mine.uid)), 'l’identifiant de conversation ne part pas avec la session');
 
     // session créée sur une autre machine : ajoutée arrêtée, dossier traduit
     fs.mkdirSync(path.join(HOME, 'proj'), { recursive: true });
-    fake.put(KEY, { uid: 'pc-session-1', updatedAt: Date.now(), origin: 'pc-bureau', data: { name: 'depuis-pc', cwd: '{home}/proj', args: '--model sonnet', group: 'Clients' } });
+    fake.put(KEY, { uid: 'pc-session-1', updatedAt: Date.now(), origin: 'pc-bureau', data: { name: 'depuis-pc', cwd: '{home}/proj', args: '--model sonnet --dangerously-skip-permissions --settings {"hooks":{}} --permission-mode bypassPermissions', group: 'Clients', color: 'red;}' } });
     const remote = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/sessions')).find(s => s.syncId === 'pc-session-1'); }, 10000, 'session distante reçue');
     assert.equal(remote.status, 'exited'); assert.equal(remote.alive, false);
     assert.equal(fs.realpathSync(remote.cwd), fs.realpathSync(path.join(HOME, 'proj')));
-    assert.equal(remote.args, '--model sonnet'); assert.equal(remote.group, 'Clients'); assert.equal(remote.origin, 'pc-bureau');
+    assert.equal(remote.args, '--model sonnet', 'arguments dangereux écartés'); assert.equal(remote.group, 'Clients'); assert.equal(remote.origin, 'pc-bureau');
+    assert.equal(remote.color, undefined, 'couleur invalide écartée');
     assert.equal(remote.claudeSessionId, null);
 
     // renommée ici : renvoyée au serveur, sans écho
     await api('POST', `/api/sessions/${remote.id}/rename`, { name: 'renommée-sur-mac' });
-    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get('pc-session-1').data.name === 'renommée-sur-mac'; }, 10000, 'renommage envoyé');
-    assert.equal(fake.rows(KEY).get('pc-session-1').data.cwd, '{home}/proj', 'dossier portable conservé');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.plain(KEY, 'pc-session-1').name === 'renommée-sur-mac'; }, 10000, 'renommage envoyé');
+    assert.equal(fake.plain(KEY, 'pc-session-1').cwd, '{home}/proj', 'dossier portable conservé');
 
     // supprimée ailleurs : retirée ici (arrêtée)
     fake.put(KEY, { uid: 'pc-session-1', updatedAt: Date.now() + 5000, deleted: 1, data: {} });
@@ -458,6 +482,7 @@ test('synchro : envoi, session distante arrêtée, renommage, suppressions', asy
 test('synchro : la conversation suit la session d’une machine à l’autre, chiffrée', async () => {
   const { encodeCode, seal, unseal, txVersion } = require('../lib/sync');
   const KEY = 'c'.repeat(32);
+  const aad = (uid, m) => `t|${uid}|${m.cid}|${m.ver}|${m.updatedAt}`;
   const fake = await fakeSyncServer([KEY]);
   const c = await wsClient();
   const projFile = (cwd, cid) => path.join(HOME, '.claude', 'projects', fs.realpathSync(cwd).replace(/[^a-zA-Z0-9]/g, '-'), cid + '.jsonl');
@@ -475,15 +500,16 @@ test('synchro : la conversation suit la session d’une machine à l’autre, ch
     assert.equal(meta.origin, 'win-test'); assert.equal(meta.cid, cidLocal);
     const blob = Buffer.concat([...Array(meta.chunks).keys()].map(i => fake.tx(KEY).chunks.get(`${uid}/${meta.ver}/${i}`)));
     assert.ok(!blob.includes('secret-du-mac'), 'le serveur ne voit pas la conversation en clair');
-    assert.match(unseal(KEY, blob).toString('utf8'), /secret-du-mac/);
+    assert.match(unseal(KEY, blob, aad(uid, meta)).toString('utf8'), /secret-du-mac/);
 
     // conversation venue d'une autre machine : téléchargée, puis « Reprendre » la continue
     fs.mkdirSync(path.join(HOME, 'proj2'), { recursive: true });
     const cid = '11111111-2222-3333-4444-555555555555';
     const raw = Buffer.from(JSON.stringify({ type: 'user', message: { role: 'user', content: 'question posée sur le PC' }, sessionId: cid, cwd: 'C:/autre' }) + '\n');
-    const ver = txVersion(KEY, raw), sealed = seal(KEY, raw);
-    fake.tx(KEY).chunks.set(`pc-conv-1/${ver}/0`, sealed);
-    fake.tx(KEY).meta.set('pc-conv-1', { cid, ver, chunks: 1, size: sealed.length, updatedAt: Date.now(), origin: 'pc-bureau' });
+    const ver = txVersion(KEY, raw), m1 = { cid, ver, chunks: 1, updatedAt: Date.now(), origin: 'pc-bureau' };
+    const blob1 = seal(KEY, raw, aad('pc-conv-1', m1));
+    fake.tx(KEY).chunks.set(`pc-conv-1/${ver}/0`, blob1);
+    fake.tx(KEY).meta.set('pc-conv-1', { ...m1, size: blob1.length });
     fake.put(KEY, { uid: 'pc-conv-1', updatedAt: Date.now(), origin: 'pc-bureau', data: { name: 'conv-pc', cwd: '{home}/proj2' } });
     const remote = await waitFor(async () => { await api('POST', '/api/sync/now'); const x = (await api('GET', '/api/sessions')).find(s => s.syncId === 'pc-conv-1'); return x?.claudeSessionId && x; }, 15000, 'conversation distante reçue');
     assert.equal(remote.claudeSessionId, cid);
@@ -491,9 +517,10 @@ test('synchro : la conversation suit la session d’une machine à l’autre, ch
     assert.equal(fs.readFileSync(file, 'utf8'), raw.toString('utf8'));
     // modifiée à nouveau sur le PC pendant que la session est arrêtée ici : « Reprendre » prend la dernière version
     const raw2 = Buffer.concat([raw, Buffer.from(JSON.stringify({ type: 'user', message: { role: 'user', content: 'suite sur le PC' }, sessionId: cid }) + '\n')]);
-    const ver2 = txVersion(KEY, raw2), sealed2 = seal(KEY, raw2);
-    fake.tx(KEY).chunks.set(`pc-conv-1/${ver2}/0`, sealed2);
-    fake.tx(KEY).meta.set('pc-conv-1', { cid, ver: ver2, chunks: 1, size: sealed2.length, updatedAt: Date.now() + 1000, origin: 'pc-bureau' });
+    const ver2 = txVersion(KEY, raw2), m2 = { cid, ver: ver2, chunks: 1, updatedAt: Date.now() + 1000, origin: 'pc-bureau' };
+    const blob2 = seal(KEY, raw2, aad('pc-conv-1', m2));
+    fake.tx(KEY).chunks.set(`pc-conv-1/${ver2}/0`, blob2);
+    fake.tx(KEY).meta.set('pc-conv-1', { ...m2, size: blob2.length });
     await api('POST', `/api/sessions/${remote.id}/restart`);
     assert.match(fs.readFileSync(file, 'utf8'), /suite sur le PC/);
     await waitFor(() => (c.out[remote.id] || '').includes('reprise ' + cid.slice(0, 8)), 15000, 'claude relancé avec --resume');
@@ -503,7 +530,7 @@ test('synchro : la conversation suit la session d’une machine à l’autre, ch
     c.ws.send(JSON.stringify({ t: 'input', id: remote.id, d: 'reponse-du-windows\r' }));
     await waitFor(async () => { await api('POST', '/api/sync/now'); const m = fake.tx(KEY).meta.get('pc-conv-1'); return m.origin === 'win-test' && m.ver !== ver2; }, 15000, 'suite envoyée');
     const m = fake.tx(KEY).meta.get('pc-conv-1');
-    assert.match(unseal(KEY, fake.tx(KEY).chunks.get(`pc-conv-1/${m.ver}/0`)).toString('utf8'), /suite sur le PC[\s\S]*reponse-du-windows/);
+    assert.match(unseal(KEY, fake.tx(KEY).chunks.get(`pc-conv-1/${m.ver}/0`), aad('pc-conv-1', m)).toString('utf8'), /suite sur le PC[\s\S]*reponse-du-windows/);
 
     // session supprimée : sa conversation disparaît du serveur
     await api('DELETE', `/api/sessions/${local.id}`);
@@ -520,14 +547,14 @@ test('synchro : liste des groupes, modèles de session, déplacement entre group
   const { encodeCode, seal, unseal } = require('../lib/sync');
   const KEY = 'g'.repeat(32);
   const fake = await fakeSyncServer([KEY]);
-  const enc = o => ({ e: seal(KEY, Buffer.from(JSON.stringify(o))).toString('base64') });
-  const dec = row => JSON.parse(unseal(KEY, Buffer.from(row.data.e, 'base64')).toString('utf8'));
+  const dec = row => fake.plain(KEY, row.uid);
   try {
     // l'autre machine a déjà des groupes et un modèle ; ici un groupe local : réunion à la première synchro
     await api('PUT', '/api/settings', { groupList: 'Local', syncGroups: true, syncTemplates: true });
     fs.mkdirSync(path.join(HOME, 'tplproj'), { recursive: true });
-    fake.put(KEY, { uid: 'csmcfg-groups', updatedAt: Date.now(), origin: 'mac', data: enc({ list: ['Clients', 'Perso'] }) });
-    fake.put(KEY, { uid: 'csmtpl-mactpl1', updatedAt: Date.now(), origin: 'mac', data: enc({ id: 'mactpl1', name: 'Revue', cwd: '{home}/tplproj', model: 'sonnet', mode: '', extra: '', worktree: false, prompt: 'relis', group: 'Clients' }) });
+    const t0 = Date.now();
+    fake.put(KEY, { uid: 'csmcfg-groups', updatedAt: t0, origin: 'mac', data: sealed(KEY, 'csmcfg-groups', t0, { list: ['Clients', 'Perso'] }) });
+    fake.put(KEY, { uid: 'csmtpl-mactpl1', updatedAt: t0, origin: 'mac', data: sealed(KEY, 'csmtpl-mactpl1', t0, { id: 'mactpl1', name: 'Revue', cwd: '{home}/tplproj', model: 'sonnet', mode: '', extra: '', worktree: false, prompt: 'relis', group: 'Clients' }) });
     await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-test' });
     await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/settings')).groupList === 'Clients\nPerso\nLocal'; }, 10000, 'groupes réunis');
     const tpl = await waitFor(async () => (await api('GET', '/api/templates')).find(t => t.id === 'mactpl1'), 10000, 'modèle reçu');
@@ -543,14 +570,15 @@ test('synchro : liste des groupes, modèles de session, déplacement entre group
     // session déplacée de groupe sur l'autre machine : suivie ici
     const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'a-deplacer', group: 'Clients' });
     const uid = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await session(s.id)).syncId; }, 10000, 'session envoyée');
-    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get(uid)?.data.group === 'Clients'; }, 10000, 'groupe envoyé');
-    const cur = fake.rows(KEY).get(uid);
-    fake.put(KEY, { ...cur, updatedAt: Date.now() + 1000, origin: 'mac', data: { ...cur.data, group: 'Perso' } });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.plain(KEY, uid)?.group === 'Clients'; }, 10000, 'groupe envoyé');
+    const t1 = Date.now() + 1000;
+    fake.put(KEY, { uid, updatedAt: t1, origin: 'mac', data: sealed(KEY, uid, t1, { ...fake.plain(KEY, uid), group: 'Perso' }) });
     await waitFor(async () => { await api('POST', '/api/sync/now'); return (await session(s.id)).group === 'Perso'; }, 10000, 'déplacement reçu');
 
     // option désactivée : les modèles distants sont ignorés, puis appliqués quand elle est réactivée
     await api('PUT', '/api/settings', { syncTemplates: false });
-    fake.put(KEY, { uid: 'csmtpl-mactpl2', updatedAt: Date.now(), origin: 'mac', data: enc({ id: 'mactpl2', name: 'Plus tard', cwd: '', prompt: '' }) });
+    const t2 = Date.now();
+    fake.put(KEY, { uid: 'csmtpl-mactpl2', updatedAt: t2, origin: 'mac', data: sealed(KEY, 'csmtpl-mactpl2', t2, { id: 'mactpl2', name: 'Plus tard', cwd: '', prompt: '' }) });
     await api('POST', '/api/sync/now'); await api('POST', '/api/sync/now');
     assert.ok(!(await api('GET', '/api/templates')).some(t => t.id === 'mactpl2'), 'ignoré quand désactivé');
     await api('PUT', '/api/templates', (await api('GET', '/api/templates')).filter(t => t.id !== 'pctpl22'));
@@ -563,6 +591,54 @@ test('synchro : liste des groupes, modèles de session, déplacement entre group
   } finally {
     await api('PUT', '/api/settings', { syncCode: '', groupList: '' });
     await api('PUT', '/api/templates', []);
+    fake.srv.close();
+  }
+});
+
+test('sécurité : jeton des hooks limité, conversation verrouillée non reprenable, essais limités', async () => {
+  // le jeton donné aux sessions (hérité par tout ce que Claude exécute) n'ouvre que /api/hook
+  const S = await api('POST', '/api/sessions', { cwd: WORK, name: 'jeton' });
+  await idle(S.id);
+  const c = await wsClient();
+  c.input(S.id, 'montre-jeton\r');
+  const hookTk = (await waitFor(() => (c.out[S.id] || '').match(/JETON:(\w+)/), 8000, 'jeton de la session'))[1];
+  assert.notEqual(hookTk, token, 'pas le jeton complet');
+  assert.equal((await req('GET', '/api/sessions', undefined, { headers: { 'X-CSM-Token': hookTk } })).status, 401, 'jeton des hooks refusé hors /api/hook');
+  assert.equal((await req('POST', '/api/sessions', { cwd: WORK, args: '--dangerously-skip-permissions' }, { headers: { 'X-CSM-Token': hookTk } })).status, 401);
+  await waitFor(async () => (await session(S.id)).status === 'idle', 8000, 'hooks toujours reçus'); // le hook Stop passe avec ce jeton
+  assert.equal((await req('GET', '/api/sessions', undefined, { headers: { 'X-CSM-Token': 'mauvais' } })).status, 401);
+
+  // conversation d'une session verrouillée : ni son identifiant exposé, ni reprise via --resume / --continue dans les arguments
+  await waitFor(async () => (await session(S.id)).claudeSessionId, 8000, 'identifiant de conversation');
+  const cid = (await session(S.id)).claudeSessionId;
+  await api('POST', `/api/sessions/${S.id}/lock`, { password: 'correct-horse' });
+  assert.equal((await session(S.id)).claudeSessionId, null, 'identifiant masqué quand verrouillée');
+  assert.equal((await req('POST', '/api/sessions', { cwd: WORK, args: `--resume ${cid}` })).status, 423);
+  assert.equal((await req('POST', '/api/sessions', { cwd: WORK, args: `--resume=${cid}` })).status, 423);
+  assert.equal((await req('POST', '/api/sessions', { cwd: WORK, args: '--continue' })).status, 423);
+  assert.equal((await req('POST', '/api/sessions', { cwd: WORK, resume: cid })).status, 423);
+
+  // mot de passe : 5 essais puis attente, aussi par HTTP
+  for (let i = 0; i < 5; i++) assert.equal((await req('POST', `/api/sessions/${S.id}/unlock-remove`, { password: 'faux' + i })).status, 403);
+  const r = await req('POST', `/api/sessions/${S.id}/unlock-remove`, { password: 'correct-horse' });
+  assert.equal(r.status, 429, 'bloqué après 5 essais, même avec le bon mot de passe');
+  c.ws.close();
+  // nettoyage : la session reste verrouillée ; on la ferme via le déverrouillage WebSocket impossible ici → suppression directe du fichier non nécessaire
+});
+
+test('synchro : ancien espace (code connu du serveur) rattaché une fois à la clé d’accès', async () => {
+  const { encodeCode } = require('../lib/sync');
+  const OLD = 'l'.repeat(32);
+  const fake = await fakeSyncServer([], [OLD]);
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, OLD) });
+    const st = await api('POST', '/api/sync/now');
+    assert.equal(st.lastError, '', 'rattachement réussi');
+    fake.bearers.clear();
+    await api('POST', '/api/sync/now');
+    assert.ok(![...fake.bearers].includes(OLD), 'le code n’est plus envoyé ensuite');
+  } finally {
+    await api('PUT', '/api/settings', { syncCode: '' });
     fake.srv.close();
   }
 });

@@ -46,7 +46,11 @@ process.on('unhandledRejection', e => console.error('unhandled', e));
 const TOKEN_FILE = path.join(DATA, 'token');
 const TOKEN = fs.existsSync(TOKEN_FILE)
   ? fs.readFileSync(TOKEN_FILE, 'utf8').trim()
-  : (() => { const t = crypto.randomBytes(24).toString('hex'); fs.writeFileSync(TOKEN_FILE, t); return t; })();
+  : (() => { const t = crypto.randomBytes(24).toString('hex'); fs.writeFileSync(TOKEN_FILE, t, { mode: 0o600 }); return t; })();
+try { fs.chmodSync(TOKEN_FILE, 0o600); } catch { }
+// Jeton donné aux sessions (hooks) : n'ouvre que /api/hook. Tout ce que Claude exécute (Bash, MCP, scripts
+// d'un dépôt cloné) en hérite ; le jeton complet de l'API ne doit pas en faire partie.
+const HOOK_TOKEN = crypto.randomBytes(24).toString('hex');
 
 const CLAUDE = resolveClaude();
 addBinDirToPath(CLAUDE);
@@ -112,14 +116,35 @@ function persist() {
     createdAt: s.createdAt, order: s.order, wantRun: s.wantRun !== false, named: !!s.named, titleFor: s.titleFor || null,
     ...extra(s), ...(s.lock ? { lock: s.lock } : {}),
   }));
-  fs.writeFileSync(STORE, JSON.stringify(list, null, 2));
+  fs.writeFileSync(STORE, JSON.stringify(list, null, 2), { mode: 0o600 });
   for (const fn of persistHooks) { try { fn(); } catch (e) { console.error('persist hook', e); } }
+}
+
+// Conversation d'une session verrouillée visée par une création : « resume », ou --resume / -r / --continue / -c
+// glissés dans les arguments (--continue reprend la dernière conversation du dossier).
+function lockedResume(b) {
+  const ids = b.resume ? [String(b.resume)] : [];
+  const a = splitArgs(String(b.args || ''));
+  let cont = false;
+  a.forEach((x, i) => {
+    const m = x.match(/^--resume=(.+)$/);
+    if (m) ids.push(m[1]);
+    else if ((x === '--resume' || x === '-r') && a[i + 1]) ids.push(a[i + 1]);
+    else if (x === '--continue' || x === '-c') cont = true;
+  });
+  for (const id of ids) { const lk = ctx.lockedByConversation?.(id); if (lk) return lk; }
+  if (cont || ids.length) {
+    const cwd = b.cwd ? path.resolve(String(b.cwd).replace(/^~(?=$|[\\/])/, os.homedir())) : os.homedir();
+    const norm = p => (IS_WIN ? p.toLowerCase() : p);
+    return [...sessions.values()].find(s => s.lock && norm(path.resolve(s.cwd)) === norm(cwd) && (cont || ids.includes(s.claudeSessionId)));
+  }
+  return null;
 }
 
 function publicView(s) {
   return {
     id: s.id, name: s.name, cwd: s.cwd, args: s.args, status: s.status, message: s.message,
-    claudeSessionId: s.claudeSessionId, createdAt: s.createdAt, lastActivity: s.lastActivity,
+    claudeSessionId: s.lock ? null : s.claudeSessionId, createdAt: s.createdAt, lastActivity: s.lastActivity,
     statusSince: s.statusSince, alive: !!s.pty, order: s.order, ...extra(s),
     // verrouillée : ni message (peut citer une commande), ni texte des prompts en attente
     ...(s.lock ? { locked: true, lockHint: s.lock.hint || '', message: '', queue: s.queue ? s.queue.map(q => ({ id: q.id, text: '' })) : undefined } : {}),
@@ -199,7 +224,7 @@ function spawnSession(s, { resume, fork } = {}) {
   if (resume) args.push('--resume', resume);
   if (resume && fork) args.push('--fork-session'); // ponctuel : jamais mémorisé dans s.args
   args.push(...(ctx.remoteArgs?.(s) || [])); // accès depuis l'app Claude (lib/remote.js)
-  const env = { ...process.env, CSM_ID: s.id, CSM_PORT: String(PORT), CSM_TOKEN: TOKEN, COLORTERM: 'truecolor' };
+  const env = { ...process.env, CSM_ID: s.id, CSM_PORT: String(PORT), CSM_TOKEN: HOOK_TOKEN, COLORTERM: 'truecolor' };
   // Si le serveur a été lancé depuis une session Claude, ne pas propager son identité (sinon session "enfant" non persistée).
   for (const k of Object.keys(env)) if (/^(CLAUDECODE|CLAUDE_CODE_|CLAUDE_PID$|CLAUDE_EFFORT$|AI_AGENT$|ELECTRON_RUN_AS_NODE$)/i.test(k)) delete env[k];
   let p;
@@ -540,7 +565,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (!p.startsWith('/api/')) { res.writeHead(404); return res.end(); }
-  if (req.headers['x-csm-token'] !== TOKEN) return json(res, 401, { error: 'token' });
+  const tk = String(req.headers['x-csm-token'] || '');
+  if (!(tk === TOKEN || (p === '/api/hook' && tk === HOOK_TOKEN))) return json(res, 401, { error: 'token' });
 
   // Session verrouillée : routes refusées sans ticket de déverrouillage de cette fenêtre (lib/lock.js).
   const lockOf = (() => {
@@ -584,7 +610,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/sessions' && req.method === 'GET') return json(res, 200, [...sessions.values()].map(publicView));
     if (p === '/api/sessions' && req.method === 'POST') {
       const b = await readBody(req);
-      const lk = b.resume && ctx.lockedByConversation?.(b.resume);
+      const lk = lockedResume(b);
       if (lk && !ctx.canAccess(lk, req)) return json(res, 423, { error: 'conversation d\u2019une session verrouillée' });
       return json(res, 200, publicView(createSession(b)));
     }
@@ -705,7 +731,7 @@ function on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); }
 function emit(ev, ...a) { for (const fn of listeners[ev] || []) { try { fn(...a); } catch (e) { console.error('module', ev, e); } } }
 const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
-  renameSession, history, transcriptPath, setStatus, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
+  renameSession, history, transcriptPath, setStatus, lockedResume, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
 };
 for (const mod of ['lock', 'git', 'settings', 'usage', 'tools', 'queue', 'remote', 'sync']) {
   try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }

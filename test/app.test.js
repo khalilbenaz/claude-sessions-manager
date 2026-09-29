@@ -93,12 +93,15 @@ test('groupes : créer un groupe vide, y glisser une session, le supprimer', asy
 
 test('synchro : créer un code l’affiche en clair, prêt à copier', async () => {
   const http = require('http');
-  const codes = [];
+  const auths = new Set(), sha = x => require('crypto').createHash('sha256').update(x).digest('hex');
   const srv = http.createServer((q, r) => {
     const send = (c, v) => { r.writeHead(c, { 'content-type': 'application/json' }); r.end(JSON.stringify(v)); };
-    if (q.method === 'POST' && q.url === '/spaces') { codes.push('ABCDEFGHJKMNPQRSTVWX'); return send(200, { code: codes[0] }); }
-    if (!codes.includes((q.headers.authorization || '').replace(/^Bearer /, ''))) return send(401, {});
-    q.resume(); q.on('end', () => send(200, q.method === 'GET' ? { rev: 0, items: [] } : { rev: 0, applied: 0 }));
+    let b = ''; q.on('data', c => { b += c; });
+    q.on('end', () => {
+      if (q.method === 'POST' && q.url === '/spaces') { auths.add(JSON.parse(b || '{}').auth); return send(200, { ok: true }); }
+      if (!auths.has(sha((q.headers.authorization || '').replace(/^Bearer /, '')))) return send(401, {});
+      send(200, q.method === 'GET' ? (q.url.startsWith('/transcripts') ? { items: [] } : { rev: 0, items: [] }) : { rev: 0, applied: 0 });
+    });
   });
   await new Promise(r => srv.listen(0, '127.0.0.1', r));
   try {
@@ -108,7 +111,7 @@ test('synchro : créer un code l’affiche en clair, prêt à copier', async () 
     assert.equal(await win.isHidden('#syncOn'), true);
     await win.click('#syncNew');
     await win.waitForSelector('#syncOn:not([hidden])');
-    assert.equal(await win.textContent('#syncCodeShow'), 'ABCD-EFGH-JKMN-PQRS-TVWX');
+    assert.match(await win.textContent('#syncCodeShow'), /^([0-9A-HJKMNP-TV-Z]{4}-){4}[0-9A-HJKMNP-TV-Z]{4}$/);
     assert.equal(await win.isHidden('#syncSetup'), true);
     await win.waitForFunction(() => /✓/.test(document.querySelector('#syncStatus').textContent));
     if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT });
