@@ -71,7 +71,7 @@ test('vue partagée et palette', async () => {
   await win.keyboard.press('Escape');
 });
 
-test('groupes : créer un groupe vide, y glisser une session, le supprimer', async () => {
+test('groupes : créer un groupe vide, y glisser une session, le renommer, le supprimer', async () => {
   await win.click('#btnNewGroup');
   await win.waitForSelector('#dlgRename[open]');
   await win.fill('#renInput', 'Clients');
@@ -86,9 +86,18 @@ test('groupes : créer un groupe vide, y glisser une session, le supprimer', asy
   await win.evaluate(id => showMenu(moveItems(id), 50, 50), src);
   await win.click('#ctx button:has-text("Sans groupe")');
   await win.waitForFunction(id => !sessions.get(id).group, src);
-  // supprimer le groupe (vide) : il disparaît
-  await win.evaluate(() => deleteGroup('Clients'));
-  await win.waitForFunction(() => !groupNames().includes('Clients'));
+  // renommer par le bouton ✎ du titre (groupe vide : il reste déclaré sous son nouveau nom)
+  const head = n => `#list li.ghead:has(.gname:text-is("${n}"))`;
+  await win.hover(head('Clients'));
+  await win.click(`${head('Clients')} .gren`);
+  await win.waitForSelector('#dlgRename[open]');
+  await win.fill('#renInput', 'Clients 2');
+  await win.click('#dlgRename button[value=ok]');
+  await win.waitForFunction(() => groupNames().includes('Clients 2') && !groupNames().includes('Clients'));
+  // supprimer par le bouton ✕ : il disparaît
+  await win.hover(head('Clients 2'));
+  await win.click(`${head('Clients 2')} .gdel`);
+  await win.waitForFunction(() => !groupNames().includes('Clients 2'));
 });
 
 test('synchro : créer un code l’affiche en clair, prêt à copier', async () => {

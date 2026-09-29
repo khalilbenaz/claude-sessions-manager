@@ -227,6 +227,7 @@ function spawnSession(s, { resume, fork } = {}) {
   const env = { ...process.env, CSM_ID: s.id, CSM_PORT: String(PORT), CSM_TOKEN: HOOK_TOKEN, COLORTERM: 'truecolor' };
   // Si le serveur a été lancé depuis une session Claude, ne pas propager son identité (sinon session "enfant" non persistée).
   for (const k of Object.keys(env)) if (/^(CLAUDECODE|CLAUDE_CODE_|CLAUDE_PID$|CLAUDE_EFFORT$|AI_AGENT$|ELECTRON_RUN_AS_NODE$)/i.test(k)) delete env[k];
+  Object.assign(env, ctx.memEnv?.() || {}); // mémoire claude-mem synchronisée, séparée de celle du terminal
   let p;
   try {
     p = pty.spawn(CLAUDE, args, {

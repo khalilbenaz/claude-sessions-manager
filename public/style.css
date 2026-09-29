@@ -217,7 +217,12 @@ dialog menu { display: flex; justify-content: flex-end; gap: 8px; margin: 14px 0
 /* ---- barre latérale : groupes, compact, focus */
 #list li.ghead { display: flex; gap: 6px; align-items: center; padding: 8px 8px 3px; cursor: pointer; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; border: none; }
 #list li.ghead:hover { background: none; color: var(--fg); }
-#list li.ghead .gcount { margin-left: auto; }
+#list li.ghead .gname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#list li.ghead .gacts { display: none; gap: 2px; }
+#list li.ghead:hover .gacts { display: inline-flex; }
+#list li.ghead .gacts button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 0 4px; font-size: 12px; line-height: 1; border-radius: 4px; }
+#list li.ghead .gacts button:hover { color: var(--fg); background: color-mix(in srgb, var(--dim) 20%, transparent); }
+#list li.ghead .gacts .gdel:hover { color: #e5484d; }
 #list li.ghead.closed .gcar { transform: rotate(-90deg); }
 #list li.ghead .gcar { transition: transform .15s; font-size: 9px; }
 #list li.ghead.dragover, #list li.gempty.dragover { color: var(--fg); background: color-mix(in srgb, var(--accent, #d97757) 18%, transparent); border-radius: 6px; }

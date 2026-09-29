@@ -14,10 +14,10 @@ const ROOT = path.join(__dirname, '..');
 const PORT = 17000 + Math.floor(Math.random() * 2000);
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'csm-test-'));
 const HOME = path.join(TMP, 'home'), DATA = path.join(TMP, 'data'), WORK = path.join(TMP, 'work');
-for (const d of [HOME, DATA, WORK]) fs.mkdirSync(d, { recursive: true });
+for (const d of [HOME, DATA, WORK, path.join(TMP, 'mem')]) fs.mkdirSync(d, { recursive: true });
 const ENV = {
   ...process.env, CSM_PORT: String(PORT), CSM_DATA: DATA, HOME, USERPROFILE: HOME,
-  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300',
+  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300', CSM_MEM_DB: path.join(TMP, 'mem', 'claude-mem.db'),
   CSM_CLAUDE: process.execPath, CSM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-claude.js')}"`,
   GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com',
 };
@@ -624,6 +624,104 @@ test('sécurité : jeton des hooks limité, conversation verrouillée non repren
   assert.equal(r.status, 429, 'bloqué après 5 essais, même avec le bon mot de passe');
   c.ws.close();
   // nettoyage : la session reste verrouillée ; on la ferme via le déverrouillage WebSocket impossible ici → suppression directe du fichier non nécessaire
+});
+
+// Base claude-mem minimale (mêmes tables et index que claude-mem 12)
+const MEM_SCHEMA = `
+CREATE TABLE sdk_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, content_session_id TEXT NOT NULL, memory_session_id TEXT UNIQUE, project TEXT NOT NULL,
+  platform_source TEXT NOT NULL DEFAULT 'claude', user_prompt TEXT, started_at TEXT NOT NULL, started_at_epoch INTEGER NOT NULL, completed_at TEXT, completed_at_epoch INTEGER,
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'completed', 'failed')), worker_port INTEGER, prompt_counter INTEGER DEFAULT 0, custom_title TEXT);
+CREATE UNIQUE INDEX ux_sdk_sessions_platform_content ON sdk_sessions(platform_source, content_session_id);
+CREATE TABLE observations (id INTEGER PRIMARY KEY AUTOINCREMENT, memory_session_id TEXT NOT NULL, project TEXT NOT NULL, text TEXT, type TEXT NOT NULL, title TEXT,
+  narrative TEXT, created_at TEXT NOT NULL, created_at_epoch INTEGER NOT NULL, content_hash TEXT, synced_at INTEGER, origin_device_id TEXT, origin_local_id TEXT,
+  sync_rev TEXT NOT NULL DEFAULT '1', FOREIGN KEY(memory_session_id) REFERENCES sdk_sessions(memory_session_id));
+CREATE UNIQUE INDEX ux_observations_session_hash ON observations(memory_session_id, content_hash);
+CREATE UNIQUE INDEX ux_observations_origin ON observations(origin_device_id, origin_local_id) WHERE origin_device_id IS NOT NULL;
+CREATE TABLE session_summaries (id INTEGER PRIMARY KEY AUTOINCREMENT, memory_session_id TEXT NOT NULL, project TEXT NOT NULL, request TEXT, learned TEXT,
+  created_at TEXT NOT NULL, created_at_epoch INTEGER NOT NULL, synced_at INTEGER, origin_device_id TEXT, origin_local_id TEXT, sync_rev TEXT NOT NULL DEFAULT '1');
+CREATE UNIQUE INDEX ux_session_summaries_origin ON session_summaries(origin_device_id, origin_local_id) WHERE origin_device_id IS NOT NULL;
+CREATE TABLE user_prompts (id INTEGER PRIMARY KEY AUTOINCREMENT, session_db_id INTEGER, content_session_id TEXT NOT NULL, prompt_number INTEGER NOT NULL,
+  prompt_text TEXT NOT NULL, created_at TEXT NOT NULL, created_at_epoch INTEGER NOT NULL, synced_at INTEGER, origin_device_id TEXT, origin_local_id TEXT,
+  sync_rev TEXT NOT NULL DEFAULT '1', FOREIGN KEY(session_db_id) REFERENCES sdk_sessions(id));
+CREATE UNIQUE INDEX ux_user_prompts_origin ON user_prompts(origin_device_id, origin_local_id) WHERE origin_device_id IS NOT NULL;`;
+
+test('synchro : mémoire claude-mem envoyée chiffrée et chargée depuis les autres machines', async () => {
+  const { DatabaseSync } = require('node:sqlite');
+  const { encodeCode, seal, unseal, txVersion } = require('../lib/sync');
+  const KEY = 'm'.repeat(32), DEV = 'a1b2c3d4e5f6';
+  const fake = await fakeSyncServer([KEY]);
+  const MEM = path.join(TMP, 'mem'), file = path.join(MEM, 'claude-mem.db');
+  const db = new DatabaseSync(file);
+  db.exec(MEM_SCHEMA);
+  const now = new Date().toISOString(), ep = Date.now();
+  db.prepare("INSERT INTO sdk_sessions (content_session_id, memory_session_id, project, started_at, started_at_epoch, status, worker_port) VALUES ('cs-local', 'ms-local', 'proj', ?, ?, 'active', 37777)").run(now, ep);
+  db.prepare("INSERT INTO observations (memory_session_id, project, type, title, narrative, created_at, created_at_epoch, content_hash) VALUES ('ms-local', 'proj', 'discovery', 'observation-du-mac', 'secret-memoire', ?, ?, 'h1')").run(now, ep);
+  db.prepare("INSERT INTO session_summaries (memory_session_id, project, request, created_at, created_at_epoch) VALUES ('ms-local', 'proj', 'résumé-du-mac', ?, ?)").run(now, ep);
+  db.prepare("INSERT INTO user_prompts (session_db_id, content_session_id, prompt_number, prompt_text, created_at, created_at_epoch) VALUES (1, 'cs-local', 1, 'prompt-du-mac', ?, ?)").run(now, ep);
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'mac-mem' });
+    // envoyée : un lot chiffré « mem-<machine>-1 »
+    const [uid, meta] = await waitFor(async () => { await api('POST', '/api/sync/now'); return [...fake.tx(KEY).meta.entries()].find(([u]) => u.startsWith('mem-')); }, 15000, 'mémoire envoyée');
+    assert.match(uid, /^mem-[0-9a-f]{12}-1$/); assert.equal(meta.cid, 'claude-mem');
+    const blob = Buffer.concat([...Array(meta.chunks).keys()].map(i => fake.tx(KEY).chunks.get(`${uid}/${meta.ver}/${i}`)));
+    assert.ok(!blob.includes('secret-memoire'), 'mémoire chiffrée sur le serveur');
+    const sent = JSON.parse(unseal(KEY, blob, `m|${uid}|${meta.ver}|${meta.updatedAt}`));
+    assert.equal(sent.observations[0].title, 'observation-du-mac');
+    assert.equal(sent.sessions[0].content_session_id, 'cs-local'); assert.ok(!('worker_port' in sent.sessions[0]) && !('id' in sent.sessions[0]));
+    assert.equal(sent.user_prompts[0].prompt_text, 'prompt-du-mac'); assert.equal(sent.session_summaries[0].request, 'résumé-du-mac');
+    const st = await api('GET', '/api/sync');
+    assert.equal(st.memory, true); assert.equal(st.memSent, 3); assert.equal(st.lastError, '');
+
+    // mémoire d'une autre machine : chargée ici, marquée comme reçue, jamais renvoyée
+    const batch = {
+      v: 1, dev: DEV,
+      sessions: [{ content_session_id: 'cs-pc', memory_session_id: 'ms-pc', project: 'proj', started_at: now, started_at_epoch: ep, status: 'active' }],
+      observations: [{ rid: 7, memory_session_id: 'ms-pc', project: 'proj', type: 'decision', title: 'observation-du-pc', created_at: now, created_at_epoch: ep, content_hash: 'h2', inconnue: 'x' }],
+      session_summaries: [{ rid: 3, memory_session_id: 'ms-pc', project: 'proj', request: 'résumé-du-pc', created_at: now, created_at_epoch: ep }],
+      user_prompts: [{ rid: 9, content_session_id: 'cs-pc', prompt_number: 1, prompt_text: 'prompt-du-pc', created_at: now, created_at_epoch: ep }],
+    };
+    const put = (u, b, at) => {
+      const raw = Buffer.from(JSON.stringify(b)), ver = txVersion(KEY, raw), sealed = seal(KEY, raw, `m|${u}|${ver}|${at}`);
+      fake.tx(KEY).chunks.set(`${u}/${ver}/0`, sealed);
+      fake.tx(KEY).meta.set(u, { cid: 'claude-mem', ver, chunks: 1, size: sealed.length, updatedAt: at, origin: 'pc' });
+    };
+    put(`mem-${DEV}-1`, batch, Date.now());
+    put(`mem-${DEV}-2`, { ...batch, dev: 'ffffffffffff' }, Date.now()); // machine usurpée : ignoré
+    const got = await waitFor(async () => { await api('POST', '/api/sync/now'); return db.prepare("SELECT * FROM observations WHERE title = 'observation-du-pc'").get(); }, 15000, 'mémoire reçue');
+    assert.equal(got.origin_device_id, 'csm-' + DEV); assert.equal(got.origin_local_id, '7');
+    assert.equal(db.prepare("SELECT status FROM sdk_sessions WHERE content_session_id = 'cs-pc'").get().status, 'completed');
+    const p = db.prepare("SELECT * FROM user_prompts WHERE prompt_text = 'prompt-du-pc'").get();
+    assert.equal(p.session_db_id, db.prepare("SELECT id FROM sdk_sessions WHERE content_session_id = 'cs-pc'").get().id);
+    assert.equal(db.prepare("SELECT origin_local_id FROM session_summaries WHERE request = 'résumé-du-pc'").get().origin_local_id, '3');
+    assert.equal((await api('GET', '/api/sync')).memReceived, 3);
+    // resynchroniser : ni doublon ici, ni renvoi de ce qui a été reçu
+    await api('POST', '/api/sync/now'); await api('POST', '/api/sync/now');
+    assert.equal(db.prepare('SELECT COUNT(*) c FROM observations').get().c, 2);
+    assert.equal([...fake.tx(KEY).meta.keys()].filter(u => u.startsWith('mem-') && !u.startsWith(`mem-${DEV}-`)).length, 1, 'un seul lot envoyé');
+
+    // nouvelle observation ici : un nouveau lot, avec elle seule
+    db.prepare("INSERT INTO observations (memory_session_id, project, type, title, created_at, created_at_epoch, content_hash) VALUES ('ms-local', 'proj', 'discovery', 'deuxième', ?, ?, 'h3')").run(now, ep);
+    const m2 = await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.tx(KEY).meta.get(uid.replace(/-1$/, '-2')); }, 15000, 'deuxième lot');
+    const b2 = JSON.parse(unseal(KEY, fake.tx(KEY).chunks.get(`${uid.replace(/-1$/, '-2')}/${m2.ver}/0`), `m|${uid.replace(/-1$/, '-2')}|${m2.ver}|${m2.updatedAt}`));
+    assert.deepEqual(b2.observations.map(o => o.title), ['deuxième']);
+
+    // sessions de l'app : mémoire dans l'espace synchronisé (jamais celle du terminal, ~/.claude-mem)
+    const sess = await api('POST', '/api/sessions', { name: 'mem-env', cwd: WORK });
+    const envf = await waitFor(async () => { const f = path.join(WORK, `env-${sess.id}.json`); return fs.existsSync(f) && JSON.parse(fs.readFileSync(f, 'utf8')); }, 8000, 'env de la session');
+    assert.equal(envf.CLAUDE_MEM_DATA_DIR, MEM);
+    assert.match(envf.CLAUDE_MEM_WORKER_PORT, /^\d+$/); assert.notEqual(envf.CLAUDE_MEM_WORKER_PORT, '37777');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(MEM, 'settings.json'), 'utf8')).CLAUDE_MEM_DATA_DIR, MEM);
+    await api('DELETE', `/api/sessions/${sess.id}`);
+
+    // option décochée : plus rien ne part
+    await api('PUT', '/api/settings', { syncMemory: false });
+    assert.equal((await api('POST', '/api/sync/now')).memory, false);
+  } finally {
+    db.close();
+    await api('PUT', '/api/settings', { syncCode: '', syncMemory: true });
+    fake.srv.close();
+    fs.rmSync(file, { force: true });
+  }
 });
 
 test('synchro : ancien espace (code connu du serveur) rattaché une fois à la clé d’accès', async () => {
