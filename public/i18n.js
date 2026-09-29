@@ -68,6 +68,8 @@ const EN = {
   "Sessions : nom, dossier, modèle, groupe de chaque session, épinglage, couleur": "Sessions: name, folder, model, group of each session, pin, color",
   "Liste des groupes (groupes vides compris, dans l'ordre)": "Group list (including empty groups, in order)",
   "Modèles de session (chiffrés)": "Session templates (encrypted)",
+  "Mémoire claude-mem des sessions de l'app (chiffrée, chargée sur chaque machine — celle du terminal reste locale)": "claude-mem memory of the app's sessions (encrypted, loaded on every machine — the terminal's stays local)",
+  "mémoire reçue": "memory received", "mémoire envoyée": "memory sent", "claude-mem introuvable sur cette machine": "claude-mem not found on this machine",
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',

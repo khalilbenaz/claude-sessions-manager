@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.9.0] — 2026-09-29
+### Ajouté
+- Groupes : boutons ✎ (renommer) et ✕ (supprimer) au survol de l'en-tête, double-clic sur le nom pour renommer, commandes de la palette « Renommer / Supprimer le groupe ». Renommer vers un groupe existant fusionne.
+- Synchro de la mémoire claude-mem (option cochée par défaut) : les sessions de l'app ont leur propre base claude-mem, dont observations, résumés et prompts sont envoyés chiffrés et chargés sur chaque machine de l'espace — une machine qui saisit le code récupère toute la mémoire à sa première synchro. Le `claude` du terminal système garde sa mémoire locale, jamais touchée.
+### Corrigé
+- macOS : la mise à jour automatique fonctionne enfin — téléchargement du .dmg de l'architecture, empreinte sha512 vérifiée, remplacement de l'app et relance au redémarrage (repli sur le lien de téléchargement en cas d'échec).
+
 ## [3.8.0] — 2026-09-29
 ### Sécurité (audit complet)
 - Synchro : le code ne quitte plus les machines. Il est tiré localement ; le serveur ne reçoit qu'une clé d'accès dérivée (HKDF) dont il ne garde que l'empreinte, et ne peut donc plus déchiffrer. Les anciens espaces sont rattachés automatiquement ; créer un nouveau code est recommandé pour un chiffrement strict.

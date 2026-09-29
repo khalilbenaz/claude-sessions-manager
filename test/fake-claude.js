@@ -20,6 +20,8 @@ const dir = path.join(os.homedir(), '.claude', 'projects', cwd.replace(/[^a-zA-Z
 fs.mkdirSync(dir, { recursive: true });
 const transcript = path.join(dir, `${sessionId}.jsonl`);
 if (resume && fork) { const src = fs.readdirSync(path.dirname(dir)).map(d => path.join(path.dirname(dir), d, `${resume}.jsonl`)).find(fs.existsSync); if (src) fs.copyFileSync(src, transcript); }
+// variables claude-mem reçues (test de la mémoire synchronisée)
+if (process.env.CSM_ID && process.env.CLAUDE_MEM_DATA_DIR) fs.writeFileSync(path.join(cwd, `env-${process.env.CSM_ID}.json`), JSON.stringify({ CLAUDE_MEM_DATA_DIR: process.env.CLAUDE_MEM_DATA_DIR, CLAUDE_MEM_WORKER_PORT: process.env.CLAUDE_MEM_WORKER_PORT }));
 const log = o => fs.appendFileSync(transcript, JSON.stringify({ ...o, sessionId, cwd, timestamp: new Date().toISOString() }) + '\n');
 
 function hook(ev, data = {}) {

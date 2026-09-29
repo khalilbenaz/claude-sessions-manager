@@ -392,6 +392,28 @@ function groupHeadEvents(el, g) {
     showMenu(g ? groupItems(g) : [[t('Nouveau groupe…'), () => newGroup()]], e.clientX, e.clientY);
   };
 }
+// Titre d'un groupe : nom, nombre de sessions et, pour un groupe nommé, ✎ renommer / ✕ supprimer
+// (aussi : double-clic = renommer, clic droit = menu).
+let groupClickTimer = null;
+function groupHead(g, count) {
+  const h = document.createElement('li');
+  h.innerHTML = '<span class="gcar">▾</span><span class="gname"></span><span class="gacts"></span><span class="gcount"></span>';
+  h.querySelector('.gname').textContent = g === '📌' ? t('Épinglées') : g || t('Sans groupe');
+  h.querySelector('.gcount').textContent = count;
+  if (g && g !== '📌') {
+    const acts = h.querySelector('.gacts');
+    for (const [cls, icon, title, run] of [['gren', '✎', t('Renommer le groupe…'), renameGroup], ['gdel', '✕', t('Supprimer le groupe'), deleteGroup]]) {
+      const b = document.createElement('button');
+      b.className = cls; b.textContent = icon; b.title = title;
+      b.onclick = e => { e.stopPropagation(); clearTimeout(groupClickTimer); run(g); };
+      b.ondblclick = e => e.stopPropagation();
+      acts.appendChild(b);
+    }
+    h.ondblclick = e => { e.stopPropagation(); clearTimeout(groupClickTimer); renameGroup(g); };
+  }
+  groupHeadEvents(h, g);
+  return h;
+}
 $('#btnNewGroup').onclick = () => newGroup();
 
 // ------------------------------------------------------------------ rendu
@@ -418,13 +440,14 @@ function render() {
     if (g !== lastGroup && (g || lastGroup !== null)) {
       lastGroup = g;
       if (g || groupNames().length || [...sessions.values()].some(x => x.pinned)) {
-        const h = document.createElement('li');
+        const h = groupHead(g, [...sessions.values()].filter(x => (x.pinned ? '📌' : (x.group || '')) === g).length);
         h.className = 'ghead' + (collapsed.has(g) ? ' closed' : '');
-        h.innerHTML = '<span class="gcar">▾</span><span class="gname"></span><span class="gcount"></span>';
-        h.querySelector('.gname').textContent = g === '📌' ? t('Épinglées') : g || t('Sans groupe');
-        h.querySelector('.gcount').textContent = [...sessions.values()].filter(x => (x.pinned ? '📌' : (x.group || '')) === g).length;
-        h.onclick = () => { collapsed.has(g) ? collapsed.delete(g) : collapsed.add(g); LS.set('csm.collapsed', [...collapsed]); render(); };
-        groupHeadEvents(h, g);
+        // simple clic = replier (différé pour laisser le double-clic renommer)
+        h.onclick = e => {
+          clearTimeout(groupClickTimer);
+          if (e.detail > 1) return;
+          groupClickTimer = setTimeout(() => { collapsed.has(g) ? collapsed.delete(g) : collapsed.add(g); LS.set('csm.collapsed', [...collapsed]); render(); }, g && g !== '📌' ? 220 : 0);
+        };
         ul.appendChild(h);
       }
     }
@@ -461,11 +484,8 @@ function render() {
   });
   const used = new Set([...sessions.values()].map(s => s.group || ''));
   for (const g of groupNames().filter(x => !used.has(x))) {
-    const h = document.createElement('li');
+    const h = groupHead(g, 0);
     h.className = 'ghead empty';
-    h.innerHTML = '<span class="gcar">▾</span><span class="gname"></span><span class="gcount">0</span>';
-    h.querySelector('.gname').textContent = g;
-    groupHeadEvents(h, g);
     ul.appendChild(h);
     const hint = document.createElement('li');
     hint.className = 'gempty';

@@ -79,6 +79,9 @@
   // ---------------------------------------------------------------- synchronisation (#27)
   // Pas de code : « Créer un code » (le serveur le génère et l'enregistre) ou « J'ai déjà un code ».
   // Avec un code : affiché en clair, copiable, pour le saisir sur les autres machines.
+  const memInfo = st => !st.memory ? ''
+    : st.memAvailable === false ? ` · ${t('claude-mem introuvable sur cette machine')}`
+    : (st.memReceived ? ` · ${t('mémoire reçue')} : ${st.memReceived}` : '') + (st.memSent ? ` · ${t('mémoire envoyée')} : ${st.memSent}` : '');
   function renderSync(st) {
     if (!st) return;
     F.syncMachine = st.machine;
@@ -91,7 +94,7 @@
     $('#syncStatus').textContent = st.invalid ? t('Code de synchro invalide : vérifie qu’il a bien 20 caractères (XXXX-XXXX-XXXX-XXXX-XXXX).')
       : !st.enabled ? t('Synchronisation désactivée.')
       : st.lastError ? `✗ ${st.lastError}`
-      : st.lastOk ? `✓ ${t('Synchronisé')} · ${when}${st.pending ? ` · ${st.pending} ${t('en attente')}` : ''}`
+      : st.lastOk ? `✓ ${t('Synchronisé')} · ${when}${st.pending ? ` · ${st.pending} ${t('en attente')}` : ''}${memInfo(st)}`
       : t('Synchronisation…');
     $('#syncStatus').classList.toggle('bad', !!(st.invalid || st.lastError));
   }

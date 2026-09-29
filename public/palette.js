@@ -46,6 +46,10 @@
       ['🩺', t('Diagnostic'), () => F.openSettings('diag')],
       ['📜', t('Journaux'), () => F.openSettings('logs')],
     ];
+    for (const g of groupNames()) a.push(
+      ['✎', `${t('Renommer le groupe')} « ${g} »`, () => renameGroup(g)],
+      ['✕', `${t('Supprimer le groupe')} « ${g} »`, () => deleteGroup(g)],
+    );
     if (s) a.push(
       ['✎', `${t('Renommer')} « ${s.name} »`, () => renameSession(s.id), `${MOD}+Alt+R`],
       ['↗', t('Ouvrir dans l’éditeur'), () => openIn(s.id, 'editor'), `${MOD}+Alt+E`],
