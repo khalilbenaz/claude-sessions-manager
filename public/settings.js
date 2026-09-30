@@ -29,7 +29,7 @@
   dlg.querySelectorAll('[data-set]').forEach(el => {
     el.addEventListener('change', () => {
       const k = el.dataset.set;
-      const v = el.type === 'checkbox' ? el.checked : el.type === 'number' ? Number(el.value) : el.value;
+      const v = el.type === 'checkbox' ? el.checked : el.type === 'number' || typeof SETTINGS[k] === 'number' ? Number(el.value) : el.value;
       saveSettings({ [k]: v });
       if (k === 'editor') $('#editorCmdRow').hidden = v !== 'custom';
       if (k === 'fontSize') { LS.set('csm.font', v); for (const tt of terms.values()) tt.term.options.fontSize = v; fitAll(); }

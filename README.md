@@ -229,7 +229,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 | **Sécurité** | reverrouiller quand la fenêtre est masquée, après une inactivité |
 | **Modèles de session** | lancer, renommer, supprimer |
 | **Prompts** | ouvrir la bibliothèque de prompts |
-| **Synchronisation** | créer ou saisir un code de synchro, le copier, état ; Avancé : nom de machine, correspondance des dossiers, serveur (§ 16 bis) |
+| **Synchronisation** | créer ou saisir un code de synchro, le copier, fréquence (5, 10, 30 ou 60 min), état ; Avancé : nom de machine, correspondance des dossiers, serveur (§ 16 bis) |
 | **Diagnostic** | versions, `claude` et `git` trouvés ou non, hooks, dossiers, dernières lignes du journal ; **Copier le rapport** pour une issue |
 | **Journaux** | le journal du serveur, filtrable |
 | **À propos** | version, rechercher des mises à jour |
@@ -249,7 +249,8 @@ Retrouver sur le PC les sessions créées sur le Mac, et inversement : **nom, do
 - **Autres machines** : Réglages › Synchronisation › **J'ai déjà un code**, colle le code puis **Activer** (majuscules, espaces et tirets indifférents). Donne un **nom de machine** parlant (« PC bureau », « Mac ») dans **Avancé**.
 - Une session venue d'une autre machine apparaît **arrêtée**, avec un badge **⇄ machine**. **Reprendre** continue sa conversation dans le dossier correspondant de cette machine (la dernière version est récupérée juste avant). Une conversation est envoyée dès qu'elle change (au plus toutes les 2 minutes pendant que Claude travaille) ; si elle a été modifiée des deux côtés, la plus récente gagne. Une session ouverte ici n'est jamais écrasée. Limite : 40 Mo par conversation (compressée).
 - **Dossiers** : le dossier personnel est traduit tout seul (`/Users/moi/Projets/app` ↔ `C:\Users\moi\Projets\app`). Pour d'autres emplacements, déclare des alias identiques sur chaque machine (Avancé), une ligne par alias : `code=D:\dev` sur le PC, `code=~/dev` sur le Mac. Si le dossier n'existe pas ici, la session s'ouvre dans le dossier personnel (une note l'indique).
-- Renommer, regrouper ou supprimer une session se propage aux autres machines en moins d'une minute ; en cas de modifications simultanées, la plus récente gagne. Une session supprimée ailleurs mais **en cours ici** n'est pas arrêtée.
+- **Fréquence** (Réglages › Synchronisation › *Synchroniser automatiquement*) : **toutes les 5, 10 ou 30 minutes ou toutes les heures** (5 min par défaut). Ce que tu changes sur une machine part **tout de suite** ; l'intervalle règle quand les autres machines vont le chercher. **Synchroniser maintenant** force une synchro immédiate.
+- Renommer, regrouper ou supprimer une session se propage aux autres machines à leur synchro suivante (selon leur fréquence) ; en cas de modifications simultanées, la plus récente gagne. Une session supprimée ailleurs mais **en cours ici** n'est pas arrêtée.
 - **Ne partage ton code qu'avec tes propres machines** : il donne accès à tes sessions et à leurs conversations. **Désactiver** l'efface de cette machine.
 
 **Serveur de synchro** : par défaut, l'app utilise le serveur public du projet (Worker Cloudflare + base D1). Il ne voit jamais le code ni le contenu en clair, et limite la création d'espaces et la place occupée. **Code créé avant la 3.8** : il avait été tiré par le serveur ; il continue de fonctionner (rattaché automatiquement à la nouvelle clé d'accès), mais pour un chiffrement de bout en bout strict, crée un nouveau code (Désactiver, puis Créer un code) et saisis-le sur tes autres machines. Tu peux héberger le tien (gratuit) avec [`sync-worker/`](sync-worker), puis mettre son adresse dans Réglages › Synchronisation › Avancé › **Serveur** :
