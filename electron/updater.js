@@ -15,7 +15,7 @@ const crypto = require('crypto');
 const { execFile, spawn } = require('child_process');
 
 const REPO = 'khalilbenaz/claude-sessions-manager';
-const EVERY = 6 * 3600e3;
+const EVERY = 30 * 60e3; // assez souvent pour qu'une app laissée ouverte en arrière-plan trouve la nouvelle version le jour même
 
 function newer(a, b) { // a > b ?
   const pa = String(a).replace(/^v/, '').split('.').map(Number), pb = String(b).replace(/^v/, '').split('.').map(Number);
@@ -25,7 +25,10 @@ function newer(a, b) { // a > b ?
 
 module.exports = function setupUpdater({ enabled, canRestart = async () => false, beforeInstall, onState, log }) {
   const state = { status: 'idle', version: null, url: `https://github.com/${REPO}/releases/latest`, error: null };
-  const set = patch => { Object.assign(state, patch); onState({ ...state }); };
+  const set = patch => {
+    if (patch.status && patch.status !== state.status && patch.status !== 'checking') log(`[maj] ${patch.status}${patch.version || state.version ? ' ' + (patch.version || state.version) : ''}${patch.error ? ' : ' + patch.error : ''}`);
+    Object.assign(state, patch); onState({ ...state });
+  };
   if (!app.isPackaged) { set({ status: 'dev' }); return { state, check: async () => { }, install: () => { } }; }
   // Version Microsoft Store : c'est le Store qui installe les mises à jour.
   if (process.windowsStore) { set({ status: 'store' }); return { state, check: async () => { }, install: () => shell.openExternal('ms-windows-store://downloadsandupdates'), onFocus: () => { } }; }
@@ -169,7 +172,7 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
     } else shell.openExternal(state.url);
   }
 
-  // au lancement, toutes les 6 h, et au retour sur la fenêtre si la dernière vérification date de plus d'une heure
+  // au lancement, toutes les 30 min, et au retour sur la fenêtre si la dernière vérification date de plus d'une heure
   let last = 0;
   const run = () => { last = Date.now(); return check(); };
   setTimeout(run, 20e3);
