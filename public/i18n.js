@@ -77,6 +77,7 @@ const EN = {
   'Automatique': 'Automatic', 'Modèle par défaut': 'Default model', 'Mode par défaut': 'Default mode', 'Proposer un worktree git par défaut dans un dépôt': 'Offer a git worktree by default in a repository',
   'Éditeur pour « Ouvrir dans »': 'Editor for “Open in”', 'Commande personnalisée': 'Custom command', 'Commande personnalisée…': 'Custom command…',
   'Mises à jour automatiques': 'Automatic updates',
+  'Installer la mise à jour et redémarrer tout seul (fenêtre réduite ou en arrière-plan, ou après 5 min d\'inactivité ; jamais pendant qu\'une session travaille ; les sessions reviennent)': 'Install the update and restart automatically (window minimized or in the background, or after 5 min of inactivity; never while a session is working; sessions come back)',
   "Afficher les quotas et l'heure de leur réinitialisation sous chaque session (si tu n'as pas ta propre barre d'état Claude Code)": 'Show quotas and their reset time under each session (unless you have your own Claude Code status line)',
   'Réduire dans la zone de notification (au lieu de la barre des tâches)': 'Minimize to the notification area (instead of the taskbar)',
   "Fermer la fenêtre la garde dans la zone de notification (sinon l'app se ferme ; les sessions continuent)": 'Closing the window keeps the app in the notification area (otherwise the app quits; sessions keep running)', 'Barre latérale compacte': 'Compact sidebar', 'Taille du texte': 'Font size', 'Police': 'Font',
@@ -96,7 +97,7 @@ const EN = {
   'Redémarrer pour mettre à jour': 'Restart to update', 'Télécharger': 'Download', 'Recherche de mises à jour…': 'Checking for updates…',
   'Version de développement : mises à jour automatiques désactivées.': 'Development build: automatic updates disabled.', 'Claude Sessions est à jour.': 'Claude Sessions is up to date.',
   'Mises à jour automatiques désactivées dans les réglages.': 'Automatic updates are disabled in Settings.', 'Téléchargement de la version {v}… {p}': 'Downloading version {v}… {p}',
-  'Version {v} prête : redémarre pour l’installer.': 'Version {v} is ready: restart to install it.', 'Version {v} disponible au téléchargement.': 'Version {v} is available for download.',
+  'Version {v} prête : installation automatique dès que la fenêtre est en arrière-plan, ou redémarre maintenant.': 'Version {v} is ready: it installs automatically once the window is in the background, or restart now.', 'Version {v} disponible au téléchargement.': 'Version {v} is available for download.',
   'Échec de la vérification : {e}': 'Update check failed: {e}', 'Version Microsoft Store : les mises à jour sont installées par le Store.': 'Microsoft Store version: updates are installed by the Store.', 'Réglage non enregistré : ': 'Setting not saved: ',
   // accès depuis l'app Claude
   "📱 Accessible depuis l'": '📱 Accessible from the ', 'app Claude': 'Claude app', '(téléphone) et claude.ai/code — Remote Control de Claude Code': '(phone) and claude.ai/code — Claude Code Remote Control',

@@ -3,7 +3,7 @@ require('../lib/tz').alignTimezone(); // avant tout usage de Date : suivre le fu
 // Claude Sessions — application de bureau (Windows / macOS).
 // La fenêtre n'est qu'une vue : les sessions vivent dans le serveur local (processus séparé), qui continue
 // de tourner quand on ferme ou quitte l'application.
-const { app, BrowserWindow, Tray, Menu, nativeImage, shell, dialog, ipcMain, session, screen, Notification, nativeTheme } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, shell, dialog, ipcMain, session, screen, Notification, nativeTheme, powerMonitor } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
@@ -15,7 +15,9 @@ const URL_ = `${ORIGIN}/`;
 const SERVER = path.join(ROOT, 'server.js');
 const ICON = path.join(ROOT, 'public', IS_WIN ? 'icon.ico' : 'icon.png');
 const STATE = path.join(DATA, 'app-window.json');
-const START_HIDDEN = process.argv.includes('--hidden');
+// --hidden : démarrage de session ; hidden-once : relance après une mise à jour installée pendant que la fenêtre était cachée
+const HIDDEN_ONCE = path.join(DATA, 'start-hidden-once');
+const START_HIDDEN = process.argv.includes('--hidden') || (() => { try { fs.unlinkSync(HIDDEN_ONCE); return true; } catch { return false; } })();
 
 app.setName('Claude Sessions');
 // Autre port = instance séparée (tests, essais) : profil et verrou d'instance unique distincts.
@@ -103,6 +105,8 @@ async function ensureServer() {
   for (let i = 0; i < 150; i++) { if (await isUp()) return true; await new Promise(r => setTimeout(r, 200)); }
   return false;
 }
+
+const windowAway = () => !win || win.isDestroyed() || !win.isVisible() || win.isMinimized();
 
 function stopServer() {
   try {
@@ -416,7 +420,18 @@ app.whenReady().then(async () => {
   createWindow();
   updates = require('./updater')({
     enabled: async () => ((await serverGet('/api/settings')) || {}).autoUpdate !== false,
-    beforeInstall: async () => { stopServer(); for (let i = 0; i < 75 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200)); },
+    // redémarrage automatique : réglage actif, aucune session au travail, et fenêtre réduite / cachée
+    // en arrière-plan ou ordinateur inactif depuis 5 min
+    canRestart: async () => {
+      if (((await serverGet('/api/settings')) || {}).autoRestart === false) return false;
+      if (!windowAway() && powerMonitor.getSystemIdleTime() < 300) return false;
+      const list = await serverGet('/api/sessions');
+      return Array.isArray(list) && !list.some(s => s.alive && s.status === 'working');
+    },
+    beforeInstall: async ({ auto } = {}) => {
+      // installée en arrière-plan : l'app revient cachée, sans passer devant ce que tu fais
+      if (auto && windowAway()) { try { fs.writeFileSync(HIDDEN_ONCE, '1'); } catch { } }
+      stopServer(); for (let i = 0; i < 75 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200)); },
     onState: st => { refreshTray(); if (win && !win.isDestroyed()) win.webContents.send('csm:update-state', st); },
     log: m => console.log(m),
   });

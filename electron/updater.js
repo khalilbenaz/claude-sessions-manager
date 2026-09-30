@@ -5,6 +5,8 @@
 // l'architecture (empreinte sha512 vérifiée contre latest-mac.yml), copie de l'app dans un dossier d'attente,
 // puis au redémarrage un petit script remplace l'app et la relance (mot de passe demandé seulement si le
 // dossier de l'app n'est pas modifiable). En cas d'échec : lien vers la release, comme avant.
+// Sur les deux systèmes, une version prête s'installe seule (redémarrage compris) dès que canRestart() le permet :
+// réglage actif, aucune session au travail, fenêtre réduite / cachée ou ordinateur inactif. Les sessions sont restaurées au redémarrage.
 const { app, net, shell, Notification } = require('electron');
 const fs = require('fs');
 const os = require('os');
@@ -21,7 +23,7 @@ function newer(a, b) { // a > b ?
   return false;
 }
 
-module.exports = function setupUpdater({ enabled, beforeInstall, onState, log }) {
+module.exports = function setupUpdater({ enabled, canRestart = async () => false, beforeInstall, onState, log }) {
   const state = { status: 'idle', version: null, url: `https://github.com/${REPO}/releases/latest`, error: null };
   const set = patch => { Object.assign(state, patch); onState({ ...state }); };
   if (!app.isPackaged) { set({ status: 'dev' }); return { state, check: async () => { }, install: () => { } }; }
@@ -41,7 +43,7 @@ module.exports = function setupUpdater({ enabled, beforeInstall, onState, log })
       updater.on('download-progress', p => set({ status: 'downloading', progress: Math.round(p.percent) }));
       updater.on('update-downloaded', i => {
         set({ status: 'ready', version: i.version });
-        if (Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: `Version ${i.version} prête : redémarre l'application pour l'installer (les sessions reviennent).` }).show();
+        if (Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: `Version ${i.version} prête : elle s'installera toute seule dès que la fenêtre sera en arrière-plan (ou redémarre l'application maintenant).` }).show();
       });
       updater.on('error', e => set({ status: 'error', error: String(e && e.message || e).slice(0, 300) }));
     } catch (e) { log(`[maj] electron-updater indisponible : ${e.message}`); updater = null; }
@@ -121,7 +123,7 @@ module.exports = function setupUpdater({ enabled, beforeInstall, onState, log })
         await stage(rel, version);
       }
       set({ status: 'ready', version, progress: null });
-      if (Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: `Version ${version} prête : redémarre l'application pour l'installer (les sessions reviennent).` }).show();
+      if (Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: `Version ${version} prête : elle s'installera toute seule dès que la fenêtre sera en arrière-plan (ou redémarre l'application maintenant).` }).show();
     } catch (e) {
       log(`[maj] ${e.message}`);
       // repli : lien vers la release
@@ -131,11 +133,11 @@ module.exports = function setupUpdater({ enabled, beforeInstall, onState, log })
   }
 
   // Remplace l'app une fois celle-ci fermée, puis la relance.
-  async function installMac() {
+  const macWritable = dest => { try { fs.accessSync(path.dirname(dest), fs.constants.W_OK); fs.accessSync(dest, fs.constants.W_OK); return true; } catch { return false; } };
+  async function installMac(auto) {
     const dest = bundle();
-    await beforeInstall();
-    let writable = true;
-    try { fs.accessSync(path.dirname(dest), fs.constants.W_OK); fs.accessSync(dest, fs.constants.W_OK); } catch { writable = false; }
+    await beforeInstall({ auto });
+    const writable = macWritable(dest);
     const script = [
       'while kill -0 "$CSM_PID" 2>/dev/null; do sleep 0.3; done',
       writable
@@ -159,10 +161,10 @@ module.exports = function setupUpdater({ enabled, beforeInstall, onState, log })
     else await checkMac();
   }
 
-  async function install() {
-    if (process.platform === 'darwin' && state.status === 'ready' && staged && bundle()) return installMac();
+  async function install(auto = false) {
+    if (process.platform === 'darwin' && state.status === 'ready' && staged && bundle()) return installMac(auto);
     if (updater && state.status === 'ready') {
-      await beforeInstall(); // arrêt propre du serveur : il redémarre avec le nouveau code, sessions restaurées
+      await beforeInstall({ auto }); // arrêt propre du serveur : il redémarre avec le nouveau code, sessions restaurées
       updater.quitAndInstall(true, true);
     } else shell.openExternal(state.url);
   }
@@ -172,6 +174,19 @@ module.exports = function setupUpdater({ enabled, beforeInstall, onState, log })
   const run = () => { last = Date.now(); return check(); };
   setTimeout(run, 20e3);
   setInterval(run, EVERY);
+  // Installation automatique : vérifiée chaque minute tant qu'une version est prête.
+  // Sur macOS, seulement si l'app peut être remplacée sans mot de passe (sinon personne n'est là pour le taper).
+  let installing = false;
+  setInterval(async () => {
+    if (installing || state.status !== 'ready') return;
+    if (process.platform === 'darwin' && !(staged && bundle() && macWritable(bundle()))) return;
+    try {
+      if (!(await enabled()) || !(await canRestart())) return;
+      installing = true;
+      log(`[maj] installation automatique de la version ${state.version}`);
+      await install(true);
+    } catch (e) { installing = false; log(`[maj] installation automatique : ${e.message}`); }
+  }, 60e3);
   const onFocus = () => { if (Date.now() - last > 3600e3 && state.status !== 'ready' && state.status !== 'downloading') run(); };
   return { state, check: run, install, onFocus };
 };

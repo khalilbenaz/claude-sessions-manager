@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.10.0] — 2026-09-30
+### Ajouté
+- Mises à jour (Windows et macOS) : installation et redémarrage automatiques. Une version prête s'installe seule dès que la fenêtre est réduite ou cachée en arrière-plan (l'app revient alors cachée) ou que l'ordinateur est inactif depuis 5 min, jamais pendant qu'une session travaille ; les sessions sont restaurées. Réglage « Installer la mise à jour et redémarrer tout seul » (activé par défaut). Sur macOS, reste manuel si le remplacement de l'app demande un mot de passe administrateur.
+
 ## [3.9.1] — 2026-09-30
 ### Corrigé
 - Mémoire synchronisée : « version de claude-mem trop ancienne » se répare tout seul. Quand la base de mémoire de l'app a été créée par un claude-mem trop ancien, l'app met claude-mem à jour (commande claude plugin update), relance sa mémoire avec la nouvelle version, qui migre la base, puis reprend la synchro (au plus une tentative toutes les 6 h ; étapes affichées dans Réglages › Synchronisation). La version de claude-mem réellement installée est utilisée en priorité.
