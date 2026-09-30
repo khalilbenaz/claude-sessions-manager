@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.11.0] — 2026-09-30
+### Ajouté
+- **Fréquence de synchronisation réglable** (Réglages › Synchronisation › *Synchroniser automatiquement*) : toutes les 5, 10, 30 minutes ou toutes les heures (5 min par défaut). Les changements faits sur la machine partent toujours tout de suite ; « Synchroniser maintenant » force une synchro. Le nouvel intervalle s'applique sans redémarrer.
+
+### Modifié
+- La synchro automatique passe de toutes les 30 secondes à toutes les 5 minutes par défaut (moins de trafic, moins de réveils).
+
 ## [3.10.0] — 2026-09-30
 ### Ajouté
 - Mises à jour (Windows et macOS) : installation et redémarrage automatiques. Une version prête s'installe seule dès que la fenêtre est réduite ou cachée en arrière-plan (l'app revient alors cachée) ou que l'ordinateur est inactif depuis 5 min, jamais pendant qu'une session travaille ; les sessions sont restaurées. Réglage « Installer la mise à jour et redémarrer tout seul » (activé par défaut). Sur macOS, reste manuel si le remplacement de l'app demande un mot de passe administrateur.

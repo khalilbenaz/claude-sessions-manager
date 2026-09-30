@@ -154,6 +154,10 @@ test('consommation, chronologie, export', async () => {
 test('réglages : validation des valeurs', async () => {
   const r = await api('PUT', '/api/settings', { theme: 'light', fontSize: 16, sound: 'n’importe', inconnu: 1 });
   assert.equal(r.theme, 'light'); assert.equal(r.fontSize, 16); assert.equal(r.sound, 'off', 'valeur invalide → défaut (son coupé)'); assert.equal(r.inconnu, undefined);
+  assert.equal(r.syncMinutes, 5, 'synchro toutes les 5 min par défaut');
+  assert.equal((await api('PUT', '/api/settings', { syncMinutes: 7 })).syncMinutes, 5, 'intervalle hors liste refusé');
+  assert.equal((await api('PUT', '/api/settings', { syncMinutes: 30 })).syncMinutes, 30);
+  await api('PUT', '/api/settings', { syncMinutes: 5 });
   await api('PUT', '/api/templates', [{ name: 'Mon modèle', cwd: WORK, model: 'opus', prompt: 'salut' }]);
   assert.equal((await api('GET', '/api/templates'))[0].name, 'Mon modèle');
 });

@@ -320,6 +320,8 @@
           <label class="check"><input type="checkbox" data-set="syncTemplates"> <span>Modèles de session (chiffrés)</span></label>
           <label class="check"><input type="checkbox" data-set="syncMemory"> <span>Mémoire claude-mem des sessions de l'app (chiffrée, chargée sur chaque machine — celle du terminal reste locale)</span></label>
         </fieldset>
+        <label>Synchroniser automatiquement <select data-set="syncMinutes"><option value="5">toutes les 5 minutes</option><option value="10">toutes les 10 minutes</option><option value="30">toutes les 30 minutes</option><option value="60">toutes les heures</option></select></label>
+        <p class="hint">Ce que tu modifies sur cette machine part tout de suite ; l'intervalle règle la récupération des changements des autres machines. « Synchroniser maintenant » reste disponible.</p>
         <p id="syncStatus" class="hint"></p>
         <details>
           <summary>Avancé</summary>
