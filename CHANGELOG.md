@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.11.1] — 2026-09-30
+### Corrigé
+- **Mise à jour automatique jamais déclenchée sur une app laissée ouverte** : les nouvelles versions n'étaient cherchées qu'au lancement puis toutes les 6 h (ou au retour sur la fenêtre après 1 h), donc une version sortie pendant que l'app tournait en arrière-plan n'était ni téléchargée ni installée. Vérification désormais toutes les 30 minutes, fenêtre cachée comprise.
+
+### Ajouté
+- Journal `update.log` dans le dossier de données : étapes de la mise à jour et raison de l'attente d'une installation automatique.
+
 ## [3.11.0] — 2026-09-30
 ### Ajouté
 - **Fréquence de synchronisation réglable** (Réglages › Synchronisation › *Synchroniser automatiquement*) : toutes les 5, 10, 30 minutes ou toutes les heures (5 min par défaut). Les changements faits sur la machine partent toujours tout de suite ; « Synchroniser maintenant » force une synchro. Le nouvel intervalle s'applique sans redémarrer.

@@ -32,6 +32,16 @@ let quitting = false;
 const prefs = { minimizeToTray: true, closeToTray: true };
 let attention = 0;
 let updates = null; // electron/updater.js
+// Journal des mises à jour (DATA/update.log, 256 Ko max) : dit pourquoi une installation automatique attend.
+let lastWhy = null;
+function updLog(m) {
+  console.log(m);
+  try {
+    const f = path.join(DATA, 'update.log');
+    try { if (fs.statSync(f).size > 256e3) fs.renameSync(f, f + '.1'); } catch { }
+    fs.appendFileSync(f, `${new Date().toISOString()} ${m}\n`);
+  } catch { }
+}
 
 // macOS : sans signature Apple (identifiant d'équipe), le centre de notifications refuse l'app
 // (UNErrorDomain 1 « Notifications are not allowed ») et masque aussi la pastille du Dock — sans
@@ -423,16 +433,22 @@ app.whenReady().then(async () => {
     // redémarrage automatique : réglage actif, aucune session au travail, et fenêtre réduite / cachée
     // en arrière-plan ou ordinateur inactif depuis 5 min
     canRestart: async () => {
-      if (((await serverGet('/api/settings')) || {}).autoRestart === false) return false;
-      if (!windowAway() && powerMonitor.getSystemIdleTime() < 300) return false;
-      const list = await serverGet('/api/sessions');
-      return Array.isArray(list) && !list.some(s => s.alive && s.status === 'working');
+      const why = await (async () => {
+        if (((await serverGet('/api/settings')) || {}).autoRestart === false) return 'réglage désactivé';
+        if (!windowAway() && powerMonitor.getSystemIdleTime() < 300) return 'fenêtre au premier plan et ordinateur utilisé';
+        const list = await serverGet('/api/sessions');
+        if (!Array.isArray(list)) return 'serveur local injoignable';
+        const busy = list.filter(s => s.alive && s.status === 'working');
+        return busy.length ? `session au travail : ${busy.map(s => s.name || s.id).join(', ').slice(0, 200)}` : '';
+      })();
+      if (why !== lastWhy) { lastWhy = why; if (why) updLog(`[maj] installation automatique en attente : ${why}`); }
+      return !why;
     },
     beforeInstall: async ({ auto } = {}) => {
       // installée en arrière-plan : l'app revient cachée, sans passer devant ce que tu fais
       if (auto && windowAway()) { try { fs.writeFileSync(HIDDEN_ONCE, '1'); } catch { } }
       stopServer(); for (let i = 0; i < 75 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200)); },
     onState: st => { refreshTray(); if (win && !win.isDestroyed()) win.webContents.send('csm:update-state', st); },
-    log: m => console.log(m),
+    log: updLog,
   });
 });
