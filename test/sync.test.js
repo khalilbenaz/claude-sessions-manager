@@ -51,3 +51,16 @@ test('dossiers : inconnus ici → null', () => {
   assert.equal(fromPortable('/opt/x', parseRoots('', 'C:\\Users\\l', true), true), null, 'chemin Mac sur Windows');
   assert.equal(fromPortable('/opt/x', mac, false), '/opt/x', 'chemin absolu local gardé');
 });
+
+test('mémoire : base d’un claude-mem trop ancien signalée pour réparation automatique', () => {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const { DatabaseSync } = require('node:sqlite');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'csm-mem-'));
+  fs.mkdirSync(path.join(dir, 'claude-mem'), { recursive: true });
+  const d = new DatabaseSync(path.join(dir, 'claude-mem', 'claude-mem.db'));
+  d.exec('CREATE TABLE sdk_sessions (id INTEGER, memory_session_id TEXT); CREATE TABLE observations (id INTEGER); CREATE TABLE session_summaries (id INTEGER); CREATE TABLE user_prompts (id INTEGER);');
+  d.close();
+  const memsync = require('../lib/memsync');
+  assert.throws(() => memsync.open(dir), e => e.code === 'CLAUDE_MEM_OLD');
+  assert.equal(typeof memsync.repair, 'function');
+});

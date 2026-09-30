@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.9.1] — 2026-09-30
+### Corrigé
+- Mémoire synchronisée : « version de claude-mem trop ancienne » se répare tout seul. Quand la base de mémoire de l'app a été créée par un claude-mem trop ancien, l'app met claude-mem à jour (commande claude plugin update), relance sa mémoire avec la nouvelle version, qui migre la base, puis reprend la synchro (au plus une tentative toutes les 6 h ; étapes affichées dans Réglages › Synchronisation). La version de claude-mem réellement installée est utilisée en priorité.
+
 ## [3.9.0] — 2026-09-29
 ### Ajouté
 - Groupes : boutons ✎ (renommer) et ✕ (supprimer) au survol de l'en-tête, double-clic sur le nom pour renommer, commandes de la palette « Renommer / Supprimer le groupe ». Renommer vers un groupe existant fusionne.
