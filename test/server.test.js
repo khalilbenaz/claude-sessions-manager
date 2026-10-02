@@ -376,6 +376,7 @@ function fakeSyncServer(keys, legacy = []) {
   const { authKey } = require('../lib/sync');
   const sha = x => require('crypto').createHash('sha256').update(x).digest('hex');
   const spaces = new Map(), txs = new Map(), linked = new Map(), bearers = new Set(); let rev = 0;
+  const stats = { lists: 0 }; // GET /transcripts reçus (lectures de la liste complète)
   const txOf = k => { if (!txs.has(k)) txs.set(k, { meta: new Map(), chunks: new Map() }); return txs.get(k); };
   const idOf = k => (keys.includes(k) || legacy.includes(k) ? k : 'reg:' + sha(authKey(k))); // code -> espace
   const spaceOf = b => linked.get(sha(b)) || keys.find(k => authKey(k) === b) || (legacy.includes(b) ? b : null);
@@ -404,6 +405,7 @@ function fakeSyncServer(keys, legacy = []) {
       const t = u.pathname.match(/^\/transcripts(?:\/([^/]+)(?:\/([^/]+)\/([^/]+))?)?$/);
       if (t) {
         const T = txOf(sp), [, uid, ver, n] = t;
+        if (!uid) stats.lists++;
         if (!uid) return send(200, { items: [...T.meta.entries()].map(([uid, m]) => ({ uid, ...m })) });
         if (n !== undefined && q.method === 'PUT') { T.chunks.set(`${uid}/${ver}/${n}`, raw); return send(200, { ok: true }); }
         if (n !== undefined) {
@@ -435,7 +437,7 @@ function fakeSyncServer(keys, legacy = []) {
   const { openJson } = require('../lib/sync');
   const rowsOf = k => spaces.get(idOf(k)) || new Map();
   return new Promise(res => srv.listen(0, '127.0.0.1', () => res({
-    srv, url: `http://127.0.0.1:${srv.address().port}`, rows: rowsOf, tx: k => txOf(idOf(k)), bearers,
+    srv, url: `http://127.0.0.1:${srv.address().port}`, rows: rowsOf, tx: k => txOf(idOf(k)), bearers, stats,
     // contenu en clair d'une ligne (déchiffré avec le code, comme sur une autre machine)
     plain: (k, uid) => { const x = rowsOf(k).get(uid); return x && (x.data?.e ? openJson(k, x.data, `s|${x.uid}|${x.updatedAt}`) : x.data); },
     find: (k, fn) => [...rowsOf(k).values()].find(x => !x.deleted && fn(x.data?.e ? openJson(k, x.data, `s|${x.uid}|${x.updatedAt}`) : x.data)),
@@ -670,6 +672,10 @@ test('synchro : règles, skills, agents et mémoire de Claude partagés entre ma
     assert.ok(!r.blob.includes('français'), 'chiffré sur le serveur');
     assert.equal(Buffer.from(r.e.d, 'base64').toString(), 'toujours en français');
     assert.ok(get('CLAUDE.md'));
+    // conversations, mémoires et configuration partagent une seule lecture de la liste par synchro
+    const before = fake.stats.lists;
+    await api('POST', '/api/sync/now');
+    assert.equal(fake.stats.lists - before, 1, 'liste lue une fois par synchro');
     assert.equal(get('projects/~-proj/memory/MEMORY.md').e.p, 'projects/~-proj/memory/MEMORY.md', 'chemin portable');
     assert.equal(get('skills/deploy/node_modules/x.js'), null);
     assert.ok(![...fake.tx(KEY).meta.values()].some(m => m.cid === 'claude' && m.size > 5e6));

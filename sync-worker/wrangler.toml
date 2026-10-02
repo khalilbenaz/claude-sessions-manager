@@ -2,7 +2,16 @@ name = "csm-sync"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 
+# Métadonnées (sessions, liste des conversations, espaces) dans D1, morceaux chiffrés dans R2.
 [[d1_databases]]
 binding = "DB"
-database_name = "ktv-sync"
-database_id = "3a1025f3-917d-46cb-abdc-3f1b86c03d9a"
+database_name = "csm-sync"
+database_id = "d88de2ad-705f-40ec-988c-5b932b2d21c8"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "csm-sync-chunks"
+
+# Ménage quotidien : morceaux envoyés mais jamais validés.
+[triggers]
+crons = ["17 3 * * *"]

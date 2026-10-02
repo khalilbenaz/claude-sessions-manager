@@ -34,14 +34,24 @@ CREATE TABLE IF NOT EXISTS csm_transcripts (
   PRIMARY KEY (space, uid)
 );
 
--- Morceaux chiffrés (1 Mo au plus, en base64).
-CREATE TABLE IF NOT EXISTS csm_chunks (
+-- Morceaux chiffrés (1 Mo au plus) : le contenu est dans R2 (clé <space>/<uid>/<ver>/<n>) ; ici, seulement
+-- leur liste (pour vérifier qu'une version est complète et effacer les anciennes) et leur taille.
+CREATE TABLE IF NOT EXISTS csm_parts (
   space TEXT NOT NULL,
   uid   TEXT NOT NULL,
   ver   TEXT NOT NULL,
   n     INTEGER NOT NULL,
-  data  TEXT NOT NULL,
+  size  INTEGER NOT NULL,
+  at    INTEGER NOT NULL,       -- date d'envoi : les morceaux jamais validés sont effacés après un jour
   PRIMARY KEY (space, uid, ver, n)
+);
+CREATE INDEX IF NOT EXISTS csm_parts_at ON csm_parts(at);
+
+-- Place occupée par espace (octets des versions en vigueur), tenue à jour à chaque validation :
+-- évite de relire toutes les lignes pour vérifier les limites.
+CREATE TABLE IF NOT EXISTS csm_usage (
+  space TEXT PRIMARY KEY,
+  bytes INTEGER NOT NULL DEFAULT 0
 );
 
 -- Clés d'accès rattachées à un espace créé avant la 3.8 (POST /spaces/link) : empreinte -> espace.

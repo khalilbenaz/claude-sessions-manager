@@ -16,8 +16,10 @@
 // Authorization: Bearer <clé d'accès>, dérivée du code par l'app (le code, qui sert aussi à chiffrer, ne vient
 // jamais ici). Une clé est acceptée si son empreinte est dans csm_auth (rattachée à un espace), dans csm_spaces,
 // ou si elle figure dans le secret SYNC_KEYS. Le serveur ne garde que des empreintes.
+// Stockage : métadonnées dans D1, morceaux chiffrés dans R2 (BUCKET, clé <space>/<uid>/<ver>/<n>), place occupée
+// tenue dans csm_usage (aucune requête ne relit toutes les lignes).
 // Limites : 5 créations d'espace par jour et par adresse (/64 en IPv6), 2000 par jour au total ; par espace
-// 5000 lignes et 200 Mo de conversations ; 6 Go de conversations au total.
+// 5000 lignes et 200 Mo de conversations ; 8 Go de conversations au total (R2 gratuit : 10 Go).
 // Le rev est attribué dans SQL : D1 sérialise les écritures, deux push simultanés n'ont jamais le même rev.
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -40,7 +42,7 @@ const PER_IP_PER_DAY = 5;
 const PER_DAY = 2000;
 const CHUNK_MAX = 1024 * 1024 + 64, MAX_CHUNKS = 40;
 const SPACE_MAX = 200 * 1024 * 1024;       // octets de conversations par espace
-const TOTAL_MAX = 6 * 1024 * 1024 * 1024;  // octets de conversations tous espaces confondus (D1 : 10 Go)
+const TOTAL_MAX = 8 * 1024 * 1024 * 1024;  // octets de conversations tous espaces confondus (R2 gratuit : 10 Go)
 const ROWS_MAX = 5000;                     // sessions / groupes / modèles par espace
 const HEX64 = /^[0-9a-f]{64}$/;
 // IPv6 : on compte par /64 (un attaquant dispose en général de tout un /64)
@@ -49,13 +51,16 @@ function ipKey(req) {
   return ip.includes(':') ? ip.split(':').slice(0, 4).join(':') + '::/64' : ip;
 }
 
-// Morceaux stockés en base64 (TEXT) : évite les particularités des BLOB de D1.
-function toB64(u8) {
-  let s = '';
-  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000));
-  return btoa(s);
+const partKey = (space, uid, ver, n) => `${space}/${uid}/${ver}/${n}`;
+// Efface des morceaux (R2 + liste) ; rows = [{ uid, ver, n }].
+async function dropParts(env, space, rows) {
+  for (let i = 0; i < rows.length; i += 500) await env.BUCKET.delete(rows.slice(i, i + 500).map(r => partKey(space, r.uid, r.ver, r.n)));
 }
-const fromB64 = b => Uint8Array.from(atob(b), c => c.charCodeAt(0));
+const usedBytes = async (env, space) => (await env.DB.prepare('SELECT bytes FROM csm_usage WHERE space = ?').bind(space).first())?.bytes || 0;
+const totalBytes = async env => (await env.DB.prepare('SELECT COALESCE(SUM(bytes), 0) AS t FROM csm_usage').first()).t;
+const addUsage = (env, space, delta) => env.DB.prepare(
+  'INSERT INTO csm_usage (space, bytes) VALUES (?1, MAX(0, ?2)) ON CONFLICT(space) DO UPDATE SET bytes = MAX(0, bytes + ?2)',
+).bind(space, delta);
 
 async function transcripts(req, env, space, parts) {
   const [uid, ver, n] = parts;
@@ -71,20 +76,18 @@ async function transcripts(req, env, space, parts) {
     return json({ items: results });
   }
   if (n !== undefined && req.method === 'GET') {
-    const row = await env.DB.prepare('SELECT data FROM csm_chunks WHERE space = ? AND uid = ? AND ver = ? AND n = ?')
-      .bind(space, uid, ver, idx).first();
-    return row ? new Response(fromB64(row.data), { headers: { 'content-type': 'application/octet-stream' } }) : json({ error: 'not found' }, 404);
+    const obj = await env.BUCKET.get(partKey(space, uid, ver, idx));
+    return obj ? new Response(obj.body, { headers: { 'content-type': 'application/octet-stream' } }) : json({ error: 'not found' }, 404);
   }
   if (n !== undefined && req.method === 'PUT') {
     const body = new Uint8Array(await req.arrayBuffer());
     if (!body.length || body.length > CHUNK_MAX) return json({ error: 'chunk too large' }, 413);
-    const used = await env.DB.prepare('SELECT COALESCE(SUM(LENGTH(data)), 0) AS used FROM csm_chunks WHERE space = ?').bind(space).first();
-    if (used.used * 0.75 + body.length > SPACE_MAX) return json({ error: 'space full' }, 413);
-    const total = await env.DB.prepare('SELECT COALESCE(SUM(size), 0) AS total FROM csm_transcripts').first();
-    if (total.total + body.length > TOTAL_MAX) return json({ error: 'server full' }, 507);
+    if (await usedBytes(env, space) + body.length > SPACE_MAX) return json({ error: 'space full' }, 413);
+    if (await totalBytes(env) + body.length > TOTAL_MAX) return json({ error: 'server full' }, 507);
+    await env.BUCKET.put(partKey(space, uid, ver, idx), body);
     await env.DB.prepare(
-      'INSERT INTO csm_chunks (space, uid, ver, n, data) VALUES (?, ?, ?, ?, ?) ON CONFLICT(space, uid, ver, n) DO UPDATE SET data = excluded.data',
-    ).bind(space, uid, ver, idx, toB64(body)).run();
+      'INSERT INTO csm_parts (space, uid, ver, n, size, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(space, uid, ver, n) DO UPDATE SET size = excluded.size, at = excluded.at',
+    ).bind(space, uid, ver, idx, body.length, Date.now()).run();
     return json({ ok: true });
   }
   if (uid && ver === undefined && req.method === 'PUT') {
@@ -92,9 +95,10 @@ async function transcripts(req, env, space, parts) {
     try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
     const chunks = Number(b.chunks);
     if (!/^[0-9a-f]{32}$/.test(b.ver || '') || !/^[\w-]{1,64}$/.test(b.cid || '') || !(chunks >= 1 && chunks <= MAX_CHUNKS)) return json({ error: 'bad meta' }, 400);
-    const have = await env.DB.prepare('SELECT COUNT(*) AS c FROM csm_chunks WHERE space = ? AND uid = ? AND ver = ? AND n < ?')
+    const have = await env.DB.prepare('SELECT COUNT(*) AS c FROM csm_parts WHERE space = ? AND uid = ? AND ver = ? AND n < ?')
       .bind(space, uid, b.ver, chunks).first();
     if (have.c !== chunks) return json({ error: 'missing chunks' }, 409);
+    const before = await env.DB.prepare('SELECT size FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, uid).first();
     const out = await env.DB.prepare(
       `INSERT INTO csm_transcripts (space, uid, cid, ver, chunks, size, updatedAt, origin) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
        ON CONFLICT(space, uid) DO UPDATE SET cid = excluded.cid, ver = excluded.ver, chunks = excluded.chunks, size = excluded.size,
@@ -102,9 +106,14 @@ async function transcripts(req, env, space, parts) {
        WHERE excluded.updatedAt >= csm_transcripts.updatedAt`,
     ).bind(space, uid, b.cid, b.ver, chunks, Number(b.size) || 0, Number(b.updatedAt) || 0, String(b.origin || '').slice(0, 80)).run();
     const applied = !!out.meta?.changes;
+    if (applied) await addUsage(env, space, (Number(b.size) || 0) - (before?.size || 0)).run();
     // garder seulement la version en vigueur
     const cur = await env.DB.prepare('SELECT ver FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, uid).first();
-    await env.DB.prepare('DELETE FROM csm_chunks WHERE space = ? AND uid = ? AND ver <> ?').bind(space, uid, cur?.ver || '').run();
+    const old = (await env.DB.prepare('SELECT uid, ver, n FROM csm_parts WHERE space = ? AND uid = ? AND ver <> ?').bind(space, uid, cur?.ver || '').all()).results;
+    if (old.length) {
+      await dropParts(env, space, old);
+      await env.DB.prepare('DELETE FROM csm_parts WHERE space = ? AND uid = ? AND ver <> ?').bind(space, uid, cur?.ver || '').run();
+    }
     return json({ applied });
   }
   return json({ error: 'method not allowed' }, 405);
@@ -192,7 +201,7 @@ export default {
         if (items.some(it => !known.has(it?.uid)) && count.c >= ROWS_MAX) return json({ error: 'space full' }, 413);
       }
       const next = '(SELECT COALESCE(MAX(rev), 0) + 1 FROM csm_sessions WHERE space = ?1)';
-      const stmts = [], dels = [];
+      const stmts = [], dels = [], gone = [];
       for (const it of items) {
         if (typeof it?.uid !== 'string' || !/^[\w-]{6,64}$/.test(it.uid)) continue;
         const data = JSON.stringify(it.data || {});
@@ -203,14 +212,32 @@ export default {
              origin = excluded.origin, rev = ${next}
            WHERE excluded.updatedAt > csm_sessions.updatedAt`,
         ).bind(space, it.uid, data, Number(it.updatedAt) || 0, it.deleted ? 1 : 0, String(it.origin || '').slice(0, 80)));
-        if (it.deleted) {
-          dels.push(env.DB.prepare('DELETE FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, it.uid));
-          dels.push(env.DB.prepare('DELETE FROM csm_chunks WHERE space = ? AND uid = ?').bind(space, it.uid));
-        }
+        if (it.deleted) gone.push(it.uid);
+      }
+      // conversation d'une session supprimée : morceaux (R2) et place occupée libérés
+      for (const u of gone) {
+        const t = await env.DB.prepare('SELECT size FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, u).first();
+        const parts = (await env.DB.prepare('SELECT uid, ver, n FROM csm_parts WHERE space = ? AND uid = ?').bind(space, u).all()).results;
+        if (parts.length) await dropParts(env, space, parts);
+        dels.push(env.DB.prepare('DELETE FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, u));
+        dels.push(env.DB.prepare('DELETE FROM csm_parts WHERE space = ? AND uid = ?').bind(space, u));
+        if (t?.size) dels.push(addUsage(env, space, -t.size));
       }
       const out = stmts.length ? (await env.DB.batch([...stmts, ...dels])).slice(0, stmts.length) : [];
       return json({ rev: await currentRev(env, space), applied: out.filter(r => r.meta?.changes).length });
     }
     return json({ error: 'method not allowed' }, 405);
+  },
+
+  // Ménage quotidien : morceaux envoyés il y a plus d'un jour et jamais validés (envoi interrompu).
+  async scheduled(event, env) {
+    const old = (await env.DB.prepare(
+      `SELECT p.space, p.uid, p.ver, p.n FROM csm_parts p LEFT JOIN csm_transcripts t ON t.space = p.space AND t.uid = p.uid AND t.ver = p.ver
+       WHERE p.at < ? AND t.uid IS NULL LIMIT 1000`,
+    ).bind(Date.now() - DAY).all()).results;
+    for (const r of old) {
+      await env.BUCKET.delete(partKey(r.space, r.uid, r.ver, r.n));
+      await env.DB.prepare('DELETE FROM csm_parts WHERE space = ? AND uid = ? AND ver = ? AND n = ?').bind(r.space, r.uid, r.ver, r.n).run();
+    }
   },
 };
