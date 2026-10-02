@@ -269,7 +269,7 @@
           <legend>Mémoire des sessions : laquelle utiliser ?</legend>
           <label class="check"><input type="radio" name="memoryEngine" data-set="memoryEngine" value="native"> <span><b>Mémoire intégrée</b> (recommandé) : rien à installer. À la fin de chaque session, un résumé est gardé ; la session suivante dans le même dossier le reçoit.</span></label>
           <label class="check"><input type="radio" name="memoryEngine" data-set="memoryEngine" value="claude-mem"> <span><b>claude-mem</b> : plugin plus complet (observations détaillées, recherche dans les souvenirs), installé automatiquement si besoin.</span></label>
-          <p class="hint" id="memEngineInfo">Une seule mémoire à la fois, seulement pour les sessions lancées par l'app.</p>
+          <p class="hint" id="memEngineInfo">Une seule mémoire à la fois, seulement pour les sessions lancées par l'app. Avec la synchro, le même choix s'applique à toutes les machines.</p>
         </fieldset>
         <label>Compactage automatique <select data-set="autoCompactWindow"><option value="model">Fenêtre complète du modèle (recommandé)</option><option value="400000">Vers 400 000 tokens</option><option value="200000">Vers 200 000 tokens</option><option value="claude">Réglage de Claude Code</option></select></label>
         <p class="hint">Si Claude compacte la conversation en boucle, c'est souvent une fenêtre trop petite imposée par CLAUDE_CODE_AUTO_COMPACT_WINDOW : « Fenêtre complète » la remplace pour les sessions de l'app.</p>
@@ -326,7 +326,7 @@
           <label class="check"><input type="checkbox" data-set="syncTranscripts"> <span>Synchroniser aussi les conversations (historique et contexte, chiffrés)</span></label>
           <label class="check"><input type="checkbox" data-set="syncGroups"> <span>Liste des groupes (groupes vides compris, dans l'ordre)</span></label>
           <label class="check"><input type="checkbox" data-set="syncTemplates"> <span>Modèles de session (chiffrés)</span></label>
-          <label class="check"><input type="checkbox" data-set="syncSessionMemory"> <span>Mémoire des sessions (celle choisie dans Réglages › Général, chiffrée)</span></label>
+          <label class="check"><input type="checkbox" data-set="syncSessionMemory"> <span>Mémoire des sessions (celle choisie dans Réglages › Général, et ce choix lui-même, chiffrés)</span></label>
         </fieldset>
         <fieldset class="syncWhat">
           <legend>Configuration de Claude (chiffrée, la plus récente gagne)</legend>
