@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.16.0] — 2026-10-02
+### Ajouté
+- **Le choix de la mémoire est synchronisé** : passer de la mémoire intégrée à claude-mem (ou l'inverse) sur une machine fait passer toutes les machines du même espace, et claude-mem s'y installe au besoin. Une machine qui rejoint l'espace prend le choix déjà partagé. Chiffré, avec la case *Mémoire des sessions*.
+
 ## [3.15.0] — 2026-10-02
 ### Modifié
 - **Mémoire des sessions : un seul choix, clair.** Réglages › Général › *Mémoire des sessions : laquelle utiliser ?* propose deux options expliquées : **Mémoire intégrée** (recommandé, rien à installer) ou **claude-mem** (installé automatiquement). Les choix « Les deux » et « Aucune » disparaissent : « Les deux » devient claude-mem, « Aucune » devient la mémoire intégrée.

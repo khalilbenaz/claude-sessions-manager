@@ -87,7 +87,7 @@
     : count(st.memReceived, 'mémoire reçue') + count(st.memSent, 'mémoire envoyée'))
     + count(st.nmReceived, 'résumés reçus') + count(st.nmSent, 'résumés envoyés')
     + count(st.cfReceived, 'fichiers de Claude reçus') + count(st.cfSent, 'fichiers de Claude envoyés');
-  const ENGINE_HINT = "Une seule mémoire à la fois, seulement pour les sessions lancées par l'app.";
+  const ENGINE_HINT = "Une seule mémoire à la fois, seulement pour les sessions lancées par l'app. Avec la synchro, le même choix s'applique à toutes les machines.";
   function renderEngine(st) {
     const el = $('#memEngineInfo');
     if (!el || !st) return;

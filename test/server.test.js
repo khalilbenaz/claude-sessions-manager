@@ -763,6 +763,31 @@ test('synchro : liste des groupes, modèles de session, déplacement entre group
   }
 });
 
+test('synchro : le choix de la mémoire (intégrée ou claude-mem) est le même sur toutes les machines', async () => {
+  const { encodeCode } = require('../lib/sync');
+  const KEY = 'e'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  try {
+    // une machine qui rejoint l'espace prend le choix déjà partagé
+    await api('PUT', '/api/settings', { memoryEngine: 'native', syncSessionMemory: true });
+    const t0 = Date.now();
+    fake.put(KEY, { uid: 'csmcfg-memory', updatedAt: t0, origin: 'mac', data: sealed(KEY, 'csmcfg-memory', t0, { engine: 'claude-mem' }) });
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-engine' });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/settings')).memoryEngine === 'claude-mem'; }, 10000, 'choix reçu');
+    // changé ici : envoyé chiffré aux autres
+    await api('PUT', '/api/settings', { memoryEngine: 'native' });
+    const row = await waitFor(async () => { await api('POST', '/api/sync/now'); const r = fake.rows(KEY).get('csmcfg-memory'); return r && fake.plain(KEY, 'csmcfg-memory').engine === 'native' && r; }, 10000, 'choix envoyé');
+    assert.ok(!JSON.stringify(row.data).includes('native'), 'choix chiffré');
+    // changé ailleurs plus tard : suivi ici
+    const t1 = Date.now() + 1000;
+    fake.put(KEY, { uid: 'csmcfg-memory', updatedAt: t1, origin: 'mac', data: sealed(KEY, 'csmcfg-memory', t1, { engine: 'claude-mem' }) });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/settings')).memoryEngine === 'claude-mem'; }, 10000, 'changement suivi');
+  } finally {
+    await api('PUT', '/api/settings', { syncCode: '', memoryEngine: 'native' });
+    fake.srv.close();
+  }
+});
+
 test('sécurité : jeton des hooks limité, conversation verrouillée non reprenable, essais limités', async () => {
   // le jeton donné aux sessions (hérité par tout ce que Claude exécute) n'ouvre que /api/hook
   const S = await api('POST', '/api/sessions', { cwd: WORK, name: 'jeton' });
