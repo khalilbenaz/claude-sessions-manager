@@ -9,7 +9,7 @@ Une seule fenêtre pour piloter plusieurs sessions [Claude Code](https://docs.cl
 1. [Installation](#1-installation)
 2. [Premiers pas](#2-premiers-pas)
 3. [L'écran principal](#3-lécran-principal)
-4. [Les sessions](#4-les-sessions)
+4. [Les sessions](#4-les-sessions) — et [le menu ⋯ d'une session](#4-bis-le-menu--dune-session)
 5. [Ranger : groupes, épinglage, couleurs](#5-ranger--groupes-épinglage-couleurs)
 6. [Vue partagée](#6-vue-partagée)
 7. [Worktrees git : plusieurs Claude sur le même dépôt](#7-worktrees-git--plusieurs-claude-sur-le-même-dépôt)
@@ -107,6 +107,27 @@ L'état vient directement de Claude Code (des hooks sont ajoutés à chaque sess
 | **Ouvrir dans…** | ↗ Ouvrir, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd> | le dossier dans ton éditeur (VS Code, Cursor, Windsurf, Zed, IntelliJ, Sublime ou commande personnalisée), l'Explorateur / le Finder, un terminal |
 
 **Persistance** : chaque session ouverte (dossier, nom, modèle, groupe, ordre, conversation) est mémorisée. Après un redémarrage de l'ordinateur ou de l'app, toutes celles qui tournaient sont relancées dans leur conversation. Seules celles que tu as arrêtées ou fermées restent arrêtées.
+
+### 4 bis. Le menu ⋯ d'une session
+
+Le bouton **⋯** en haut à droite de la session ouverte (ou clic droit sur une session de la liste) regroupe les actions sur cette session. Sur Mac, <kbd>Ctrl</kbd> devient <kbd>⌘</kbd>.
+
+| Entrée | Raccourci | Ce que ça fait | Détails |
+|---|---|---|---|
+| **File d'attente…** | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Q</kbd> | Des prompts envoyés **un par un, automatiquement**, chaque fois que Claude a fini le précédent. Badge ⏳ = nombre en attente. Pause automatique près de la limite des 5 h (badge ⏸), reprise à la réinitialisation. | [§ 11](#11-palette-recherche-prompts-file-dattente-envoi-groupé) |
+| **Insérer un prompt…** |  | Ouvre ta **bibliothèque de prompts** : *Insérer* place le texte dans la saisie (tu relis, puis Entrée), *Envoyer* le soumet. Variables `{dossier}`, `{branche}`, `{nom}`, `{selection}`. | [§ 11](#11-palette-recherche-prompts-file-dattente-envoi-groupé) |
+| **Envoyer à plusieurs sessions…** | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>B</kbd> | Le **même prompt à plusieurs sessions** cochées : tout de suite si elles sont prêtes, sinon dans leur file d'attente. | [§ 11](#11-palette-recherche-prompts-file-dattente-envoi-groupé) |
+| **Modifications** | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd> | Panneau des **fichiers modifiés** dans le dossier (git) : diff coloré, annuler un fichier, commit avec message proposé, fusion d'un worktree. | [§ 8](#8-panneau-modifications-chronologie-consommation) |
+| **Chronologie** |  | Ce que Claude a fait, dans l'ordre : **fichiers lus et modifiés**, commandes lancées, outils appelés. | [§ 8](#8-panneau-modifications-chronologie-consommation) |
+| **Consommation** |  | **Tokens et coût estimé** de la session, puis de toutes les sessions sur 5 h, aujourd'hui et 7 jours, avec un graphique par jour. | [§ 8](#8-panneau-modifications-chronologie-consommation) |
+| **📱 Accès depuis l'app Claude (téléphone)** |  | Rend la session **pilotable depuis l'app Claude et claude.ai/code** (Remote Control de Claude Code), sans port ouvert. Même entrée pour désactiver. | [§ 14 bis](#14-bis-accès-depuis-lapp-claude-téléphone) |
+| **Exporter la conversation…** |  | La conversation en **Markdown** (fichier ou presse-papiers) ou en **PDF** (impression). Grisé tant que la session n'a pas de conversation. | [§ 8](#8-panneau-modifications-chronologie-consommation) |
+| **Enregistrer comme modèle…** |  | Mémorise **dossier, nom, modèle, mode, worktree, groupe et premier prompt** pour relancer une session identique en un clic (Nouvelle session, palette, demandes programmées). | [§ 12](#12-modèles-de-session) |
+| **Déplacer vers le groupe…** |  | Range la session dans un **groupe** existant ou nouveau (aussi par glisser-déposer dans la liste). | [§ 5](#5-ranger--groupes-épinglage-couleurs) |
+| **Épingler en haut** |  | Garde la session **en tête de la liste**, quel que soit l'ordre. Même entrée pour désépingler. | [§ 5](#5-ranger--groupes-épinglage-couleurs) |
+| **Verrouiller par mot de passe…** |  | **Masque** le contenu et bloque la saisie jusqu'au mot de passe ; la session continue de tourner. Reverrouillage automatique réglable. | [§ 13](#13-verrouiller-une-session-par-mot-de-passe) |
+| **Couper les alertes de cette session** |  | Plus de **notification ni de son** pour cette session (les autres continuent). Même entrée pour les réactiver. | [§ 14](#14-notifications-zone-de-notification-arrière-plan) |
+| **Arrêter** |  | Arrête le processus Claude ; la session **reste dans la liste**, reprenable d'un clic dans la même conversation. *Fermer* (barre du haut) la retire de la liste. | [§ 4](#4-les-sessions) |
 
 ## 5. Ranger : groupes, épinglage, couleurs
 
@@ -232,16 +253,87 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 
 | Onglet | Contenu |
 |---|---|
-| **Général** | thème (système, clair, sombre), langue, modèle et mode par défaut, worktree proposé par défaut, éditeur pour « Ouvrir dans », barre d'état des quotas, mémoire des sessions (§ 16 ter), mises à jour automatiques, barre latérale compacte, réduire / fermer dans la zone de notification |
+| **Général** | thème (système, clair, sombre), langue, modèle et mode par défaut, worktree proposé par défaut, éditeur pour « Ouvrir dans », barre d'état des quotas, mémoire des sessions (§ 16 ter), pause de la file d'attente sur quota, compactage automatique, Remote Control par défaut, mises à jour automatiques, barre latérale compacte, réduire / fermer dans la zone de notification |
 | **Terminal** | taille et police du texte |
 | **Notifications** | notifications système, son (coupé par défaut, avec test), ne pas déranger, rappels d'attente et de longue exécution |
 | **Sécurité** | reverrouiller quand la fenêtre est masquée, après une inactivité |
 | **Modèles de session** | lancer, renommer, supprimer |
 | **Prompts** | ouvrir la bibliothèque de prompts |
+| **Programmées** | demandes programmées (§ 11 bis) |
 | **Synchronisation** | créer ou saisir un code de synchro, le copier, fréquence (5, 10, 30 ou 60 min), état ; Avancé : nom de machine, correspondance des dossiers, serveur (§ 16 bis) |
 | **Diagnostic** | versions, `claude` et `git` trouvés ou non, hooks, dossiers, dernières lignes du journal ; **Copier le rapport** pour une issue |
 | **Journaux** | le journal du serveur, filtrable |
 | **À propos** | version, rechercher des mises à jour, auteur |
+
+#### Chaque réglage, onglet par onglet
+
+**Général**
+
+- **Thème** : Système (suit Windows / macOS en direct), clair ou sombre.
+- **Langue** : Automatique (celle du système), français ou anglais. L'interface se recharge.
+- **Modèle par défaut** : Modèle proposé dans « Nouvelle session » : opus, sonnet, haiku, ou celui de Claude Code.
+- **Mode par défaut** : Mode d'autorisation proposé : par défaut, acceptEdits (modifie sans demander), plan (propose avant d'agir) ou bypassPermissions (aucune confirmation, à réserver aux dossiers sans risque).
+- **Proposer un worktree git par défaut** : Dans un dépôt git, la case « worktree dédié » est cochée d'office : chaque nouvelle session travaille sur sa propre branche (§ 7).
+- **Éditeur pour « Ouvrir dans »** : Automatique (le premier trouvé), VS Code, Cursor, Windsurf, Zed, IntelliJ, Sublime, ou une commande personnalisée avec `{path}`.
+- **Afficher les quotas sous chaque session** : Barre d'état de l'app sous l'invite de Claude : quotas 5 h et 7 jours, heure de réinitialisation, contexte utilisé, modèle. Seulement si tu n'as pas ta propre barre d'état ; elle sert aussi à la pause de la file d'attente.
+- **Mémoire des sessions** : **Mémoire intégrée** (recommandé, rien à installer) ou **claude-mem** (installé automatiquement). Une seule à la fois, pour les sessions de l'app ; avec la synchro, le même choix sur toutes les machines (§ 16 ter).
+- **Pause de la file d'attente près de la limite des 5 h** : La file d'attente n'envoie plus rien au-delà du **seuil** (80, 90, 95 ou 99 %) ou quand la limite est atteinte, et repart à la réinitialisation (§ 11).
+- **Relancer les sessions coupées par la limite** : À la réinitialisation, envoie « continue » aux sessions interrompues en plein travail par la limite.
+- **Compactage automatique** : Moment où Claude Code résume la conversation : **fenêtre complète du modèle** (recommandé, évite les compactages en boucle), vers 400 000 ou 200 000 tokens, ou réglage de Claude Code (§ 16 ter).
+- **Rendre les nouvelles sessions accessibles depuis l'app Claude** : Active d'office le Remote Control pour chaque nouvelle session (pilotage depuis le téléphone et claude.ai/code, § 14 bis).
+- **Mises à jour automatiques** : Recherche et télécharge les nouvelles versions. **Installer et redémarrer tout seul** : seulement fenêtre réduite, en arrière-plan ou après 5 min d'inactivité, jamais pendant qu'une session travaille ; les sessions reviennent (§ 17).
+- **Barre latérale compacte** : Liste des sessions réduite aux pastilles d'état (aussi le bouton ⇤).
+- **Réduire / fermer dans la zone de notification** : L'app se range près de l'horloge au lieu de la barre des tâches ; fermer la fenêtre la garde ouverte (les sessions continuent dans tous les cas).
+
+**Terminal**
+
+- **Taille du texte, police** : Taille et police des terminaux ; <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>−</kbd> / <kbd>0</kbd> pour zoomer.
+
+**Notifications**
+
+- **Notifications système** : Une notification quand une session t'attend ou a fini.
+- **Son** : Aucun (par défaut), discret ou clochette, avec un bouton pour tester.
+- **Ne pas déranger** : Ni notification ni son, pour toutes les sessions (une seule session : ⋯ › Couper les alertes).
+- **Rappel si une session attend depuis…** : Nouvelle alerte si une session attend ta réponse depuis N minutes (0 = jamais).
+- **Alerte si une session travaille depuis plus de…** : Prévient d'un tour anormalement long (0 = jamais).
+
+**Sécurité**
+
+- **Reverrouiller quand la fenêtre est masquée** : Les sessions verrouillées par mot de passe se reverrouillent dès que la fenêtre est réduite ou cachée.
+- **Reverrouiller après une inactivité de…** : Et après N minutes sans action (0 = jamais) (§ 13).
+
+**Modèles de session**
+
+- **Liste des modèles** : Lancer, renommer ou supprimer les modèles créés avec « Enregistrer comme modèle » (§ 12).
+
+**Prompts**
+
+- **Bibliothèque de prompts** : Créer, modifier, supprimer tes prompts réutilisables (§ 11).
+
+**Programmées**
+
+- **Demandes programmées** : Un prompt dans une session, ou un modèle de session lancé, à une heure donnée : une fois ou certains jours. Case pour mettre en pause, **Lancer** pour exécuter tout de suite (§ 11 bis).
+
+**Synchronisation**
+
+- **Créer un code / J'ai déjà un code** : Active la synchro entre tes machines ; le code s'affiche pour le saisir sur les autres. Garde-le secret : qui l'a voit tes sessions (§ 16 bis).
+- **À synchroniser** : Les sessions (toujours), et au choix : leurs **conversations**, la **liste des groupes**, les **modèles de session**, la **mémoire des sessions** (et le choix de la mémoire).
+- **Configuration de Claude** : Règles (`CLAUDE.md`, `~/.claude/rules`), skills, agents et commandes, notes de Claude Code : les mêmes sur toutes les machines, la plus récente gagne.
+- **Me demander avant d'appliquer…** : Recommandé : règles, skills, agents et commandes reçus attendent ton accord dans **Fichiers reçus** (Appliquer, Refuser), avec le journal des changements et **Restaurer**.
+- **Synchroniser automatiquement** : Toutes les 5, 10, 30 ou 60 minutes ; tes modifications partent tout de suite, l'intervalle règle la récupération de celles des autres machines.
+- **Avancé** : Nom de la machine, **racines de dossiers** (alias=chemin, pour retrouver un projet rangé à un autre endroit sur l'autre machine), serveur de synchro (vide = celui du projet).
+
+**Diagnostic**
+
+- **Diagnostic** : Versions, `claude` et `git` trouvés ou non, hooks, dossiers, fin du journal ; **Copier le rapport** pour signaler un problème.
+
+**Journaux**
+
+- **Journaux** : Le journal du serveur, filtrable.
+
+**À propos**
+
+- **À propos** : Version, **Rechercher des mises à jour**, **Redémarrer pour mettre à jour** quand une version est prête, auteur.
 
 ### 16 ter. Mémoire des sessions
 
