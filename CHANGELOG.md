@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.16.1] — 2026-10-02
+### Ajouté
+- Réglages › À propos : bouton **Redémarrer pour mettre à jour** dès qu'une nouvelle version est prête, à côté de *Rechercher des mises à jour*.
+
 ## [3.16.0] — 2026-10-02
 ### Ajouté
 - **Le choix de la mémoire est synchronisé** : passer de la mémoire intégrée à claude-mem (ou l'inverse) sur une machine fait passer toutes les machines du même espace, et claude-mem s'y installe au besoin. Une machine qui rejoint l'espace prend le choix déjà partagé. Chiffré, avec la case *Mémoire des sessions*.

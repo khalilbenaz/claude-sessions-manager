@@ -196,6 +196,10 @@
     $('#aboutVersion').textContent = window.csmNative?.appVersion?.() || document.querySelector('meta[name="csm-version"]').content;
     $('#updateStatus').textContent = upd ? updText(upd) : (window.csmNative ? '' : t('Dans le navigateur : mettre à jour avec git pull puis csm restart.'));
     $('#updateCheck').hidden = !window.csmNative?.update;
+    // version téléchargée : redémarrer tout de suite (sessions relancées avec leur conversation)
+    const rs = $('#updateRestart');
+    rs.hidden = !window.csmNative?.update || !upd || !['ready', 'available'].includes(upd.status);
+    if (!rs.hidden) rs.textContent = upd.status === 'ready' ? t('Redémarrer pour mettre à jour') : t('Télécharger');
   }
   function onUpdate(st) {
     upd = st;
@@ -205,7 +209,7 @@
     $('#btnUpdate').textContent = st.status === 'ready' ? t('Redémarrer pour mettre à jour') : t('Télécharger');
     if (dlg.open) renderAbout();
   }
-  $('#btnUpdate').onclick = () => window.csmNative?.update('install');
+  $('#btnUpdate').onclick = $('#updateRestart').onclick = () => window.csmNative?.update('install');
   $('#updateCheck').onclick = async () => { $('#updateStatus').textContent = t('Recherche de mises à jour…'); onUpdate(await window.csmNative.update('check')); };
   if (window.csmNative?.onUpdate) { window.csmNative.onUpdate(onUpdate); window.csmNative.update('state').then(st => st && onUpdate(st)); }
 
