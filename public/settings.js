@@ -79,9 +79,11 @@
   // ---------------------------------------------------------------- synchronisation (#27)
   // Pas de code : « Créer un code » (le serveur le génère et l'enregistre) ou « J'ai déjà un code ».
   // Avec un code : affiché en clair, copiable, pour le saisir sur les autres machines.
-  const memInfo = st => !st.memory ? ''
+  const count = (n, label) => n ? ` · ${t(label)} : ${n}` : '';
+  const memInfo = st => (!st.memory ? ''
     : st.memAvailable === false ? ` · ${t('claude-mem introuvable sur cette machine')}`
-    : (st.memReceived ? ` · ${t('mémoire reçue')} : ${st.memReceived}` : '') + (st.memSent ? ` · ${t('mémoire envoyée')} : ${st.memSent}` : '');
+    : count(st.memReceived, 'mémoire reçue') + count(st.memSent, 'mémoire envoyée'))
+    + count(st.nmReceived, 'résumés reçus') + count(st.nmSent, 'résumés envoyés');
   function renderSync(st) {
     if (!st) return;
     F.syncMachine = st.machine;

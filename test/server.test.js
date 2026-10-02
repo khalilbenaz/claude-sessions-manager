@@ -94,6 +94,25 @@ test('session : démarrage, hooks, échange, état', async () => {
   c.ws.close();
 });
 
+test('mémoire des sessions : résumé capté, puis donné à la session suivante du même dossier', async () => {
+  const s = await session(S.id);
+  const m = await waitFor(async () => { const r = await api('GET', '/api/memory'); return r.items.find(e => e.id === s.claudeSessionId && e.last) ? r : null; }, 15000, 'fiche mémoire');
+  assert.equal(m.enabled, true);
+  const e = m.items.find(x => x.id === s.claudeSessionId);
+  assert.equal(e.first, 'bonjour');
+  assert.match(e.last, /echo: bonjour/);
+  assert.ok(fs.existsSync(path.join(DATA, 'memory', 'sessions', `${e.id}.json`)));
+  await waitFor(() => fs.readdirSync(path.join(DATA, 'memory', 'projects')).length, 5000, 'mémoire du dossier (.md)');
+  const N = await api('POST', '/api/sessions', { cwd: WORK, name: 'suivante' });
+  const n = await idle(N.id);
+  const file = path.join(HOME, '.claude', 'projects', fs.realpathSync(WORK).replace(/[^a-zA-Z0-9]/g, '-'), `${n.claudeSessionId}.context.txt`);
+  const alt = path.join(HOME, '.claude', 'projects', WORK.replace(/[^a-zA-Z0-9]/g, '-'), `${n.claudeSessionId}.context.txt`);
+  const ctx = await waitFor(() => [file, alt].map(f => fs.existsSync(f) && fs.readFileSync(f, 'utf8')).find(Boolean), 5000, 'contexte au démarrage');
+  assert.match(ctx, /Mémoire partagée/);
+  assert.match(ctx, /bonjour/);
+  await api('DELETE', `/api/sessions/${N.id}`);
+});
+
 test('interruption (Ctrl+C) : la session repasse à « prêt » sans hook Stop', async () => {
   const c = await wsClient();
   c.input(S.id, 'réponse longue\r');
@@ -542,6 +561,53 @@ test('synchro : la conversation suit la session d’une machine à l’autre, ch
     await api('DELETE', `/api/sessions/${remote.id}`);
   } finally {
     c.ws.close();
+    await api('PUT', '/api/settings', { syncCode: '' });
+    fake.srv.close();
+  }
+});
+
+test('synchro : mémoire des sessions partagée entre machines, chiffrée', async () => {
+  const zlib = require('zlib');
+  const { encodeCode, seal, unseal, txVersion } = require('../lib/sync');
+  const { blank } = require('../lib/memory');
+  const KEY = 'n'.repeat(32);
+  const aad = (uid, m) => `n|${uid}|${m.ver}|${m.updatedAt}`;
+  const fake = await fakeSyncServer([KEY]);
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'mac-mem' });
+    // résumé de la session principale : envoyé chiffré
+    const cid = (await session(S.id)).claudeSessionId;
+    const meta = await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.tx(KEY).meta.get('nm-' + cid); }, 15000, 'résumé envoyé');
+    assert.equal(meta.cid, 'memory'); assert.equal(meta.origin, 'mac-mem');
+    const blob = Buffer.concat([...Array(meta.chunks).keys()].map(i => fake.tx(KEY).chunks.get(`nm-${cid}/${meta.ver}/${i}`)));
+    assert.ok(!blob.includes('bonjour'), 'résumé chiffré sur le serveur');
+    const sent = JSON.parse(zlib.gunzipSync(unseal(KEY, blob, aad('nm-' + cid, meta))));
+    assert.equal(sent.first, 'bonjour'); assert.equal(sent.off, undefined, 'offset local non partagé');
+
+    // résumé écrit sur une autre machine : reçu ici, puis donné aux sessions de ce dossier
+    const put = (e, updatedAt) => {
+      const raw = Buffer.from(JSON.stringify(e)), ver = txVersion(KEY, raw), m = { cid: 'memory', ver, chunks: 1, updatedAt, origin: 'pc-bureau' };
+      const b = seal(KEY, zlib.gzipSync(raw), aad('nm-' + e.id, m));
+      fake.tx(KEY).chunks.set(`nm-${e.id}/${ver}/0`, b); fake.tx(KEY).meta.set('nm-' + e.id, { ...m, size: b.length });
+    };
+    const t = Date.now();
+    const pc = Object.assign(blank('pc-memoire-1'), { project: '{home}/projmem', machine: 'pc-bureau', updated: t, first: 'refonte faite sur le PC', last: 'migration terminée' });
+    put(pc, t);
+    const got = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/memory')).items.find(e => e.id === 'pc-memoire-1'); }, 15000, 'résumé reçu');
+    assert.equal(got.machine, 'pc-bureau'); assert.equal(got.last, 'migration terminée');
+    assert.equal((await api('GET', '/api/sync')).nmReceived, 1);
+    // version plus ancienne : ignorée
+    put({ ...pc, last: 'ancienne', updated: t - 60000 }, t - 60000);
+    await api('POST', '/api/sync/now');
+    assert.equal((await api('GET', '/api/memory')).items.find(e => e.id === 'pc-memoire-1').last, 'migration terminée');
+    fs.mkdirSync(path.join(HOME, 'projmem'), { recursive: true });
+    const N = await api('POST', '/api/sessions', { cwd: path.join(HOME, 'projmem'), name: 'mem-pc' });
+    const n = await idle(N.id);
+    const ctxFile = path.join(HOME, '.claude', 'projects', fs.realpathSync(path.join(HOME, 'projmem')).replace(/[^a-zA-Z0-9]/g, '-'), `${n.claudeSessionId}.context.txt`);
+    await waitFor(() => fs.existsSync(ctxFile), 5000, 'contexte au démarrage');
+    assert.match(fs.readFileSync(ctxFile, 'utf8'), /refonte faite sur le PC[\s\S]*migration terminée/);
+    await api('DELETE', `/api/sessions/${N.id}`);
+  } finally {
     await api('PUT', '/api/settings', { syncCode: '' });
     fake.srv.close();
   }

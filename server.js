@@ -254,6 +254,7 @@ function spawnSession(s, { resume, fork } = {}) {
     }, 8000);
     appendOut(s, `\r\n\x1b[90m[csm] session terminée (code ${exitCode})\x1b[0m\r\n`);
     setStatus(s, 'exited', `code ${exitCode}`);
+    emit('exit', s);
   });
 }
 
@@ -594,7 +595,14 @@ const server = http.createServer(async (req, res) => {
       const s = sessions.get(csm);
       if (!s) return json(res, 404, {});
       if (data && data.session_id && s.claudeSessionId !== data.session_id) { s.claudeSessionId = data.session_id; persist(); }
-      if (event === 'start') { setStatus(s, 'idle'); emit('start', s); }
+      if (event === 'start') {
+        setStatus(s, 'idle'); emit('start', s);
+        // mémoire native (lib/memory.js) : contexte des sessions précédentes du dossier, affiché à Claude par hook.js
+        const context = ctx.memoryContext?.(s, data && data.session_id) || '';
+        broadcast({ t: 'session', s: publicView(s) });
+        return json(res, 200, context ? { context } : {});
+      }
+      else if (event === 'end') emit('end', s);
       else if (event === 'working') setStatus(s, 'working', data && data.tool_name ? data.tool_name : '');
       else if (event === 'attention') setStatus(s, 'attention', (data && data.message) || 'attend une réponse');
       else if (event === 'idle') {
@@ -734,7 +742,7 @@ const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
   renameSession, history, transcriptPath, setStatus, lockedResume, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
 };
-for (const mod of ['lock', 'git', 'settings', 'usage', 'tools', 'queue', 'remote', 'sync']) {
+for (const mod of ['lock', 'git', 'settings', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync']) {
   try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }
 }
 

@@ -75,6 +75,9 @@ const EN = {
   "toutes les heures": "every hour",
   "Ce que tu modifies sur cette machine part tout de suite ; l'intervalle règle la récupération des changements des autres machines. « Synchroniser maintenant » reste disponible.": "What you change on this machine is sent right away; the interval sets how often changes from other machines are fetched. “Sync now” is still available.",
   "Mémoire claude-mem des sessions de l'app (chiffrée, chargée sur chaque machine — celle du terminal reste locale)": "claude-mem memory of the app's sessions (encrypted, loaded on every machine — the terminal's stays local)",
+  "Mémoire des sessions : résumer chaque session (demandes, réponses, fichiers modifiés) et donner à Claude, au démarrage, ce qui a été fait avant dans le même dossier": "Session memory: summarize each session (requests, answers, edited files) and give Claude, at startup, what was done before in the same folder",
+  "Mémoire des sessions (résumés de chaque session, chiffrés, partagés entre les machines — sans claude-mem)": "Session memory (summaries of each session, encrypted, shared between machines — no claude-mem)",
+  "résumés reçus": "summaries received", "résumés envoyés": "summaries sent",
   "mémoire reçue": "memory received", "mémoire envoyée": "memory sent", "claude-mem introuvable sur cette machine": "claude-mem not found on this machine",
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
