@@ -17,7 +17,7 @@ const HOME = path.join(TMP, 'home'), DATA = path.join(TMP, 'data'), WORK = path.
 for (const d of [HOME, DATA, WORK, path.join(TMP, 'mem')]) fs.mkdirSync(d, { recursive: true });
 const ENV = {
   ...process.env, CSM_PORT: String(PORT), CSM_DATA: DATA, HOME, USERPROFILE: HOME,
-  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300', CSM_MEM_DB: path.join(TMP, 'mem', 'claude-mem.db'),
+  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300', CSM_MEM_DB: path.join(TMP, 'mem', 'claude-mem.db'), CSM_NO_PLUGIN_INSTALL: '1',
   CSM_CLAUDE: process.execPath, CSM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-claude.js')}"`,
   GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com',
 };
@@ -111,6 +111,31 @@ test('mémoire des sessions : résumé capté, puis donné à la session suivant
   assert.match(ctx, /Mémoire partagée/);
   assert.match(ctx, /bonjour/);
   await api('DELETE', `/api/sessions/${N.id}`);
+});
+
+test('réglages des sessions : moteur de mémoire (claude-mem activé ou non) et fenêtre du compactage', async () => {
+  const read = async id => {
+    const n = await idle(id);
+    const f = [fs.realpathSync(WORK), WORK].map(w => path.join(HOME, '.claude', 'projects', w.replace(/[^a-zA-Z0-9]/g, '-'), `${n.claudeSessionId}.settings.json`)).find(fs.existsSync);
+    return JSON.parse(fs.readFileSync(f, 'utf8'));
+  };
+  const A = await api('POST', '/api/sessions', { cwd: WORK, name: 'réglages-a' });
+  const a = await read(A.id);
+  assert.ok(a.hooks.SessionStart);
+  assert.equal(a.enabledPlugins['claude-mem@thedotmack'], false); // mémoire native par défaut
+  assert.equal(a.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW, '1000000');
+  await api('PUT', '/api/settings', { memoryEngine: 'claude-mem', autoCompactWindow: 'claude' });
+  try {
+    const B = await api('POST', '/api/sessions', { cwd: WORK, name: 'réglages-b' });
+    const b = await read(B.id);
+    assert.equal(b.enabledPlugins['claude-mem@thedotmack'], true);
+    assert.equal(b.env, undefined);
+    assert.equal((await api('GET', '/api/memory')).enabled, false);
+    await api('DELETE', `/api/sessions/${B.id}`);
+  } finally {
+    await api('PUT', '/api/settings', { memoryEngine: 'native', autoCompactWindow: 'model' });
+    await api('DELETE', `/api/sessions/${A.id}`);
+  }
 });
 
 test('interruption (Ctrl+C) : la session repasse à « prêt » sans hook Stop', async () => {
@@ -729,7 +754,7 @@ test('synchro : mémoire claude-mem envoyée chiffrée et chargée depuis les au
   db.prepare("INSERT INTO session_summaries (memory_session_id, project, request, created_at, created_at_epoch) VALUES ('ms-local', 'proj', 'résumé-du-mac', ?, ?)").run(now, ep);
   db.prepare("INSERT INTO user_prompts (session_db_id, content_session_id, prompt_number, prompt_text, created_at, created_at_epoch) VALUES (1, 'cs-local', 1, 'prompt-du-mac', ?, ?)").run(now, ep);
   try {
-    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'mac-mem' });
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'mac-mem', memoryEngine: 'both' });
     // envoyée : un lot chiffré « mem-<machine>-1 »
     const [uid, meta] = await waitFor(async () => { await api('POST', '/api/sync/now'); return [...fake.tx(KEY).meta.entries()].find(([u]) => u.startsWith('mem-')); }, 15000, 'mémoire envoyée');
     assert.match(uid, /^mem-[0-9a-f]{12}-1$/); assert.equal(meta.cid, 'claude-mem');
@@ -788,7 +813,7 @@ test('synchro : mémoire claude-mem envoyée chiffrée et chargée depuis les au
     assert.equal((await api('POST', '/api/sync/now')).memory, false);
   } finally {
     db.close();
-    await api('PUT', '/api/settings', { syncCode: '', syncMemory: true });
+    await api('PUT', '/api/settings', { syncCode: '', syncMemory: true, memoryEngine: 'native' });
     fake.srv.close();
     fs.rmSync(file, { force: true });
   }

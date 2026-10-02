@@ -13,6 +13,7 @@
     if (name === 'templates') renderTemplates();
     if (name === 'about') renderAbout();
     if (name === 'sync') loadSync();
+    if (name === 'general') api('GET', '/api/sync').then(renderEngine).catch(() => { });
   }
   dlg.querySelectorAll('.setNav [data-st]').forEach(b => { b.onclick = () => page(b.dataset.st); });
   $('#setClose').onclick = () => dlg.close();
@@ -84,8 +85,19 @@
     : st.memAvailable === false ? ` · ${t('claude-mem introuvable sur cette machine')}`
     : count(st.memReceived, 'mémoire reçue') + count(st.memSent, 'mémoire envoyée'))
     + count(st.nmReceived, 'résumés reçus') + count(st.nmSent, 'résumés envoyés');
+  const ENGINE_HINT = "Au démarrage, Claude reçoit ce qui a été fait avant dans le même dossier. Ne concerne que les sessions lancées par l'app ; le terminal garde ses propres réglages.";
+  function renderEngine(st) {
+    const el = $('#memEngineInfo');
+    if (!el || !st) return;
+    const mi = st.memInstall || '';
+    el.textContent = t(ENGINE_HINT) + (!['claude-mem', 'both'].includes(st.memEngine) ? ''
+      : mi === 'installing' ? ' · ' + t('installation de claude-mem…')
+      : mi.startsWith('error') ? ' · ' + t('installation de claude-mem impossible') + mi.slice(5)
+      : st.memInstalled ? ' · ' + t('claude-mem installé') : '');
+  }
   function renderSync(st) {
     if (!st) return;
+    renderEngine(st);
     F.syncMachine = st.machine;
     $('#syncMachine').placeholder = st.machine;
     $('#syncServer').placeholder = st.server;

@@ -22,6 +22,7 @@ const transcript = path.join(dir, `${sessionId}.jsonl`);
 if (resume && fork) { const src = fs.readdirSync(path.dirname(dir)).map(d => path.join(path.dirname(dir), d, `${resume}.jsonl`)).find(fs.existsSync); if (src) fs.copyFileSync(src, transcript); }
 // variables claude-mem reçues (test de la mémoire synchronisée)
 if (process.env.CSM_ID && process.env.CLAUDE_MEM_DATA_DIR) fs.writeFileSync(path.join(process.env.CLAUDE_MEM_DATA_DIR, `env-${process.env.CSM_ID}.json`), JSON.stringify({ CLAUDE_MEM_DATA_DIR: process.env.CLAUDE_MEM_DATA_DIR, CLAUDE_MEM_WORKER_PORT: process.env.CLAUDE_MEM_WORKER_PORT }));
+fs.writeFileSync(path.join(dir, `${sessionId}.settings.json`), JSON.stringify(settings)); // réglages reçus par --settings (test)
 const log = o => fs.appendFileSync(transcript, JSON.stringify({ ...o, sessionId, cwd, timestamp: new Date().toISOString() }) + '\n');
 
 function hook(ev, data = {}) {

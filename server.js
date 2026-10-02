@@ -86,18 +86,35 @@ const HOOKS = {
   Stop: hookCmd('idle'),
   SessionEnd: hookCmd('end'),
 };
+// Réglages passés à chaque session par --settings (prioritaires sur ceux de l'utilisateur, sans les modifier) :
+// hooks, barre d'état de CSM (seulement si l'utilisateur n'a pas la sienne), claude-mem activé ou non selon
+// le moteur de mémoire choisi, et fenêtre du compactage automatique.
 const HOOK_SETTINGS = path.join(DATA, 'hooks-settings.json');
-fs.writeFileSync(HOOK_SETTINGS, JSON.stringify({ hooks: HOOKS }, null, 2));
-// Variante avec la barre d'état de CSM (statusline.js : quotas, heure du reset, contexte, modèle), utilisée
-// seulement si l'utilisateur n'a pas déjà sa propre barre dans ses réglages Claude Code.
-const HOOK_SETTINGS_SL = path.join(DATA, 'hooks-settings-statusline.json');
-fs.writeFileSync(HOOK_SETTINGS_SL, JSON.stringify({ hooks: HOOKS, statusLine: { type: 'command', command: nodeRunner('statusline.js'), padding: 0 } }, null, 2));
+fs.writeFileSync(HOOK_SETTINGS, JSON.stringify({ hooks: HOOKS }, null, 2)); // version minimale (diagnostic, lib/tools.js)
+const STATUS_LINE = { type: 'command', command: nodeRunner('statusline.js'), padding: 0 };
+// « model » : Claude Code borne la valeur à la fenêtre du modèle (min), donc 1M = fenêtre complète, et cette
+// valeur prime sur un CLAUDE_CODE_AUTO_COMPACT_WINDOW trop bas dans ~/.claude/settings.json (compactage en boucle).
+const COMPACT_WINDOW = { model: '1000000', '200000': '200000', '400000': '400000' };
+function sessionSettings(withStatusLine) {
+  const st = ctx.getSettings?.() || {};
+  const engine = st.memoryEngine || 'native';
+  const o = { hooks: HOOKS };
+  if (withStatusLine) o.statusLine = STATUS_LINE;
+  o.enabledPlugins = { 'claude-mem@thedotmack': engine === 'claude-mem' || engine === 'both' };
+  const w = COMPACT_WINDOW[st.autoCompactWindow || 'model'];
+  if (w) o.env = { CLAUDE_CODE_AUTO_COMPACT_WINDOW: w };
+  const txt = JSON.stringify(o, null, 2);
+  const file = path.join(DATA, `session-settings-${crypto.createHash('sha1').update(txt).digest('hex').slice(0, 10)}.json`);
+  try { if (fs.readFileSync(file, 'utf8') === txt) return file; } catch { }
+  fs.writeFileSync(file, txt);
+  return file;
+}
 function userHasStatusLine(cwd) {
   const files = [path.join(os.homedir(), '.claude', 'settings.json'), path.join(os.homedir(), '.claude', 'settings.local.json')];
   if (cwd) files.push(path.join(cwd, '.claude', 'settings.json'), path.join(cwd, '.claude', 'settings.local.json'));
   return files.some(f => { try { return !!JSON.parse(fs.readFileSync(f, 'utf8')).statusLine; } catch { return false; } });
 }
-const settingsFor = s => (ctx.getSettings?.().statusLine !== false && !userHasStatusLine(s.cwd) ? HOOK_SETTINGS_SL : HOOK_SETTINGS);
+const settingsFor = s => sessionSettings(ctx.getSettings?.().statusLine !== false && !userHasStatusLine(s.cwd));
 
 // ---------------------------------------------------------------- sessions gérées
 const STORE = path.join(DATA, 'sessions.json');
@@ -597,8 +614,9 @@ const server = http.createServer(async (req, res) => {
       if (data && data.session_id && s.claudeSessionId !== data.session_id) { s.claudeSessionId = data.session_id; persist(); }
       if (event === 'start') {
         setStatus(s, 'idle'); emit('start', s);
-        // mémoire native (lib/memory.js) : contexte des sessions précédentes du dossier, affiché à Claude par hook.js
-        const context = ctx.memoryContext?.(s, data && data.session_id) || '';
+        // mémoire native (lib/memory.js) : contexte des sessions précédentes du dossier, affiché à Claude par hook.js.
+        // Pas après un compactage : le résumé l'inclut déjà, le réinjecter remplirait le contexte pour rien.
+        const context = data && data.source === 'compact' ? '' : ctx.memoryContext?.(s, data && data.session_id) || '';
         broadcast({ t: 'session', s: publicView(s) });
         return json(res, 200, context ? { context } : {});
       }
