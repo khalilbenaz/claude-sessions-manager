@@ -20,12 +20,16 @@ const THEMES = {
 };
 const themeName = () => SETTINGS.theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : SETTINGS.theme;
 const termTheme = () => THEMES[themeName()] || THEMES.dark;
+// Claude Code colore le code et les diffs en RVB pour son thème sombre : en thème clair, le terminal éclaircit ou
+// fonce toute couleur trop proche du fond (contraste minimal WCAG AA), sans toucher au thème de Claude Code.
+const termContrast = () => (themeName() === 'light' ? 4.5 : 1);
 function applySettings() {
   document.documentElement.dataset.theme = themeName();
   document.body.classList.toggle('compact', !!SETTINGS.compactSidebar);
   window.csmNative?.setPrefs?.({ minimizeToTray: SETTINGS.minimizeToTray !== false, closeToTray: SETTINGS.closeToTray !== false });
   for (const tt of terms.values()) {
     tt.term.options.theme = termTheme();
+    tt.term.options.minimumContrastRatio = termContrast();
     if (SETTINGS.fontFamily) tt.term.options.fontFamily = SETTINGS.fontFamily;
   }
   fitAll(false);
@@ -61,7 +65,7 @@ function ensureTerm(id) {
   const term = new Terminal({
     fontFamily: SETTINGS.fontFamily || '"Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", Menlo, monospace', fontSize: LS.get('csm.font', SETTINGS.fontSize || 14),
     cursorBlink: true, scrollback: 10000, allowProposedApi: true, macOptionIsMeta: true,
-    theme: termTheme(),
+    theme: termTheme(), minimumContrastRatio: termContrast(),
   });
   const fit = new FitAddon.FitAddon();
   term.loadAddon(fit);

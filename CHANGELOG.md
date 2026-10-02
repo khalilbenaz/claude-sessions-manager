@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.19.1] — 2026-10-02
+### Corrigé
+- **Thème clair** : le code et les diffs de Claude Code (couleurs prévues pour un fond sombre, y compris en RVB) restent lisibles : le terminal ajuste tout texte trop proche du fond (contraste minimal 4,5:1). Panneau Modifications : couleurs des lignes ajoutées / supprimées et du texte adaptées au thème clair ; barres de défilement aussi.
+- Réglages › Synchronisation : le bouton s'appelle « Changer de code (couper l'accès d'une machine)… ».
+
 ## [3.19.0] — 2026-10-02
 ### Ajouté
 - **Écran Mémoire** (Réglages › Mémoire) : recherche plein texte et filtres (dossier, machine) dans la mémoire intégrée, les notes de Claude Code et claude-mem (lecture seule). Une fiche se renomme, reçoit une note **« À retenir »** (donnée à Claude en premier au démarrage dans ce dossier), perd une demande ou une réponse fausse (elle ne revient pas), ou s'**oublie** (plus jamais donnée ni recréée) ; les corrections suivent la synchro. Les notes de Claude Code se modifient ou se suppriment (copie gardée 30 jours).
