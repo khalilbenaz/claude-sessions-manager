@@ -21,7 +21,7 @@ Une seule fenêtre pour piloter plusieurs sessions [Claude Code](https://docs.cl
 13. [Verrouiller une session par mot de passe](#13-verrouiller-une-session-par-mot-de-passe)
 14. [Notifications, zone de notification, arrière-plan](#14-notifications-zone-de-notification-arrière-plan) — et [accès depuis l'app Claude (téléphone)](#14-bis-accès-depuis-lapp-claude-téléphone)
 15. [Thème clair / sombre, langue](#15-thème-clair--sombre-langue)
-16. [Réglages](#16-réglages) — et [synchroniser les sessions entre machines](#16-bis-synchroniser-les-sessions-entre-machines)
+16. [Réglages](#16-réglages) — [mémoire des sessions](#16-ter-mémoire-des-sessions) et [synchroniser les sessions entre machines](#16-bis-synchroniser-les-sessions-entre-machines)
 17. [Mises à jour](#17-mises-à-jour)
 18. [Raccourcis clavier](#18-raccourcis-clavier)
 19. [Données, sécurité, confidentialité](#19-données-sécurité-confidentialité)
@@ -223,7 +223,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 
 | Onglet | Contenu |
 |---|---|
-| **Général** | thème (système, clair, sombre), langue, modèle et mode par défaut, worktree proposé par défaut, éditeur pour « Ouvrir dans », barre d'état des quotas, mises à jour automatiques, barre latérale compacte, réduire / fermer dans la zone de notification |
+| **Général** | thème (système, clair, sombre), langue, modèle et mode par défaut, worktree proposé par défaut, éditeur pour « Ouvrir dans », barre d'état des quotas, mémoire des sessions (§ 16 ter), mises à jour automatiques, barre latérale compacte, réduire / fermer dans la zone de notification |
 | **Terminal** | taille et police du texte |
 | **Notifications** | notifications système, son (coupé par défaut, avec test), ne pas déranger, rappels d'attente et de longue exécution |
 | **Sécurité** | reverrouiller quand la fenêtre est masquée, après une inactivité |
@@ -234,6 +234,17 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 | **Journaux** | le journal du serveur, filtrable |
 | **À propos** | version, rechercher des mises à jour |
 
+### 16 ter. Mémoire des sessions
+
+Claude repart de zéro à chaque session. **La mémoire des sessions** (Réglages › Général, activée par défaut) lui rappelle ce qui a déjà été fait, **sans plugin et sans claude-mem**.
+
+- **Ce qui est retenu** : pour chaque session lancée par l'app, une fiche avec son titre, ses demandes, la fin de chaque réponse de Claude (« où on en est »), les fichiers modifiés, la branche git et la machine. La fiche est mise à jour à la fin de chaque tour : seule la suite du transcript est lue. Les sorties d'outils, les sous-agents et les messages système sont ignorés.
+- **Ce que Claude reçoit au démarrage** : un résumé des 6 sessions les plus récentes **du même dossier**, toutes machines confondues (première demande, dernières demandes, où on en est, fichiers modifiés), puis la liste des autres dossiers récents. C'est environ 9 000 caractères au plus. La session en cours n'est jamais incluse. Claude est invité à vérifier dans le code avant de s'y fier.
+- **Mémoire complète, lisible et cherchable** : `memory/projects/<dossier>.md` dans les données de l'app contient un fichier Markdown par dossier, avec toutes les demandes et réponses de chaque session. Le chemin est donné à Claude, qui peut le lire ou y chercher (`grep`) s'il a besoin de plus de détails. Les fiches brutes sont dans `memory/sessions/<id>.json`.
+- **Partagée entre les machines** : si la synchronisation est active (§ 16 bis), option *Mémoire des sessions*, cochée par défaut. Les fiches partent chiffrées de bout en bout, et celles des autres machines sont ajoutées ici. Une session du Mac donne donc son contexte à la session suivante du PC dans le même projet, puisque les dossiers sont traduits comme pour les sessions. Si une fiche a changé des deux côtés, la plus récente gagne.
+- **Sessions concernées** : celles lancées par Claude Sessions. Au premier lancement, les sessions de l'app existantes sont rattrapées. Un `claude` lancé dans un terminal n'est ni lu ni modifié. Une case décochée arrête la capture et l'injection ; les fiches déjà écrites restent sur le disque, et on peut supprimer le dossier `memory` pour les effacer.
+- **API locale** : `GET /api/memory` liste les fiches.
+
 <a id="16-bis-synchroniser-la-liste-entre-machines"></a>
 
 ### 16 bis. Synchroniser les sessions entre machines
@@ -241,6 +252,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 Retrouver sur le PC les sessions créées sur le Mac, et inversement : **nom, dossier, modèle et options, groupe, épinglage, couleur, accès téléphone**, et **leur conversation** (historique et contexte), pour continuer sur une machine ce qui a été commencé sur l'autre.
 
 - **Quoi synchroniser** (Réglages › Synchronisation › *À synchroniser*) : la liste des sessions (toujours), et au choix **les conversations**, **la liste des groupes** (groupes vides compris, dans l'ordre ; déplacer une session d'un groupe à l'autre sur une machine la déplace aussi sur les autres) et **les modèles de session** (chiffrés, dossier traduit comme pour les sessions). À la première synchro, les groupes des deux machines sont réunis. Une option décochée n'envoie ni n'applique rien ; recochée, tout ce qui a changé entre-temps est rattrapé.
+- **Mémoire des sessions** (option *Mémoire des sessions*, cochée par défaut) : les résumés de chaque session (§ 16 ter) partent chiffrés, et ceux des autres machines sont donnés à Claude au démarrage des sessions du même dossier. Cette option est indépendante de claude-mem.
 - **Mémoire claude-mem** (option *Mémoire claude-mem des sessions de l'app*, cochée par défaut, si le plugin [claude-mem](https://github.com/thedotmack/claude-mem) est installé) : les sessions lancées par Claude Sessions ont **leur propre mémoire claude-mem** (dossier `claude-mem` des données de l'app, worker sur son propre port). Ses observations, résumés et prompts partent chiffrés dans l'espace de synchro, et ceux des autres machines sont chargés ici : une machine qui saisit le code **récupère toute la mémoire à sa première synchro**, avant même sa première session. **Le terminal du système est séparé** : `claude` lancé dans Terminal, iTerm ou PowerShell garde sa mémoire locale (`~/.claude-mem`), jamais lue, envoyée ni modifiée. Limites : ajout seulement (un souvenir effacé sur une machine ne l'est pas ailleurs) ; la recherche sémantique (Chroma) ne voit les souvenirs reçus qu'après sa réindexation, la recherche plein texte tout de suite.
 - **Tout est chiffré de bout en bout** : sessions, groupes, modèles et conversations sont chiffrés sur ta machine (AES-256-GCM, clé dérivée de ton code) avant l'envoi. Le code ne quitte jamais tes machines : le serveur ne reçoit qu'une clé d'accès dérivée (il n'en garde que l'empreinte) et ne peut ni lire ni modifier ce qu'il stocke. Seuls le modèle, le mode (hors bypassPermissions) et l'effort d'une session passent d'une machine à l'autre : aucun autre argument de `claude` n'est repris.
 
@@ -300,6 +312,7 @@ Sur Mac, <kbd>Ctrl</kbd>+<kbd>Alt</kbd> = <kbd>Ctrl</kbd>+<kbd>Option</kbd>. Dan
 - **Tout reste sur ta machine.** Le serveur de l'app écoute uniquement sur `127.0.0.1` (inaccessible depuis le réseau), exige un jeton aléatoire et vérifie l'en-tête Host. Aucune télémétrie : seules tes sessions Claude Code parlent à l'API d'Anthropic, comme d'habitude. Seule exception, si tu l'actives : la synchronisation (§ 16 bis) envoie la liste des sessions (noms, dossiers, groupes, options) et, sauf si tu le désactives, leurs conversations chiffrées de bout en bout, au serveur de synchro (celui du projet ou le tien). [Politique de confidentialité](https://khalilbenaz.github.io/claude-sessions-manager/privacy.html).
 - **Fenêtre isolée** : pas d'accès système depuis la page, navigation limitée au serveur local, liens externes ouverts dans ton navigateur, permissions limitées aux notifications et au presse-papiers, aucun script extérieur (CSP).
 - **Données de l'app** : `%APPDATA%\claude-sessions` (Windows), `~/Library/Application Support/claude-sessions` (macOS) — sessions, réglages, modèles, prompts, jeton, journal. Désinstaller l'app ne les supprime pas.
+- **Mémoire des sessions** : `memory/` dans les données de l'app (§ 16 ter). Elle reste locale, sauf si la synchro et son option *Mémoire des sessions* sont actives ; elle est alors envoyée chiffrée.
 - **Conversations** : ce sont celles de Claude Code, dans `~/.claude/projects` ; l'app les lit (historique, consommation, export) et n'y écrit que le nom d'une session renommée, ou la conversation reçue d'une autre machine quand la synchro est active (envoyée chiffrée, voir § 16 bis).
 
 ## 20. Dépannage

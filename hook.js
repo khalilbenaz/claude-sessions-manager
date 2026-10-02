@@ -23,7 +23,19 @@ function send() {
   const req = http.request({
     host: '127.0.0.1', port: Number(CSM_PORT), path: '/api/hook', method: 'POST', timeout: 8000,
     headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-CSM-Token': CSM_TOKEN, Host: `127.0.0.1:${CSM_PORT}` },
-  }, res => { res.resume(); res.on('end', () => process.exit(0)); });
+  }, res => {
+    // SessionStart : le serveur renvoie la mémoire des sessions précédentes, donnée à Claude comme contexte
+    let out = '';
+    res.setEncoding('utf8');
+    res.on('data', c => { if (event === 'start') out += c; });
+    res.on('end', () => {
+      try {
+        const { context } = JSON.parse(out || '{}');
+        if (context) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context } }));
+      } catch { }
+      process.exit(0);
+    });
+  });
   req.on('error', () => process.exit(0));
   req.on('timeout', () => { req.destroy(); process.exit(0); });
   req.end(body);

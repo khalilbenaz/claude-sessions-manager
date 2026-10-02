@@ -26,7 +26,11 @@ const log = o => fs.appendFileSync(transcript, JSON.stringify({ ...o, sessionId,
 
 function hook(ev, data = {}) {
   return Promise.all((settings.hooks[ev] || []).flatMap(h => h.hooks).map(h => new Promise(res => {
-    const p = exec(h.command, { env: process.env }, () => res());
+    // comme Claude Code : le contexte renvoyé par le hook SessionStart est donné à Claude (ici, gardé dans un fichier)
+    const p = exec(h.command, { env: process.env }, (err, stdout) => {
+      try { const c = ev === 'SessionStart' && stdout.trim() && JSON.parse(stdout).hookSpecificOutput?.additionalContext; if (c) fs.writeFileSync(path.join(dir, `${sessionId}.context.txt`), c); } catch { }
+      res();
+    });
     p.stdin.end(JSON.stringify({ session_id: sessionId, hook_event_name: ev, cwd, ...data }));
   })));
 }

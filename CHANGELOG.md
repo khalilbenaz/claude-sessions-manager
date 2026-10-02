@@ -2,6 +2,19 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.12.0] — 2026-10-02
+### Ajouté
+- **Mémoire des sessions, sans claude-mem** (Réglages › Général, activée par défaut).
+  - Chaque session lancée par l'app est résumée au fil de l'eau : demandes, fin des réponses de Claude, fichiers modifiés, branche et machine.
+  - Au démarrage d'une session, Claude reçoit (hook `SessionStart`) les 6 sessions les plus récentes du même dossier, puis la liste des autres dossiers récents.
+  - La mémoire complète est gardée en Markdown, un fichier par dossier (`memory/projects/`), que Claude peut lire et fouiller.
+  - Aucun plugin ni appel d'API : seule la suite du transcript est lue à la fin de chaque tour.
+- **Mémoire partagée entre machines** (Réglages › Synchronisation › *Mémoire des sessions*, cochée par défaut).
+  - Les résumés sont chiffrés de bout en bout, comme les conversations.
+  - Une session commencée sur le Mac donne son contexte à la suivante sur le PC, dans le même projet.
+  - Si un résumé a changé des deux côtés, la version la plus récente gagne.
+- `GET /api/memory` : liste des fiches mémoire.
+
 ## [3.11.1] — 2026-09-30
 ### Corrigé
 - **Mise à jour automatique jamais déclenchée sur une app laissée ouverte** : les nouvelles versions n'étaient cherchées qu'au lancement puis toutes les 6 h (ou au retour sur la fenêtre après 1 h), donc une version sortie pendant que l'app tournait en arrière-plan n'était ni téléchargée ni installée. Vérification désormais toutes les 30 minutes, fenêtre cachée comprise.
