@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.19.2] — 2026-10-02
+### Corrigé
+- Menu clic droit (terminal, session) : il ne déborde plus en bas d'une fenêtre basse ; il reste dans la fenêtre et défile (molette ou flèches) jusqu'au dernier élément.
+
 ## [3.19.1] — 2026-10-02
 ### Corrigé
 - **Thème clair** : le code et les diffs de Claude Code (couleurs prévues pour un fond sombre, y compris en RVB) restent lisibles : le terminal ajuste tout texte trop proche du fond (contraste minimal 4,5:1). Panneau Modifications : couleurs des lignes ajoutées / supprimées et du texte adaptées au thème clair ; barres de défilement aussi.
