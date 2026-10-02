@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.17.0] — 2026-10-02
+### Modifié
+- **Serveur de synchro** : les conversations chiffrées sont stockées dans **Cloudflare R2** (10 Go gratuits) au lieu de la base D1 (500 Mo), qui ne garde plus que les métadonnées. La place occupée est tenue dans un compteur : plus aucune requête ne relit toutes les lignes. Les morceaux envoyés mais jamais validés sont effacés chaque nuit. Espaces existants migrés, rien à faire dans l'app.
+- **Moins de lectures** : la liste du serveur est lue une seule fois par synchronisation (au lieu de 4 : conversations, claude-mem, mémoire intégrée, configuration de Claude).
+- Héberger son propre serveur : créer aussi le bucket R2 (`npx wrangler r2 bucket create csm-sync-chunks`).
+
 ## [3.16.1] — 2026-10-02
 ### Ajouté
 - Réglages › À propos : bouton **Redémarrer pour mettre à jour** dès qu'une nouvelle version est prête, à côté de *Rechercher des mises à jour*.

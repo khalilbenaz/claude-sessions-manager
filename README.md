@@ -285,12 +285,13 @@ Retrouver sur le PC les sessions créées sur le Mac, et inversement : **nom, do
 - Renommer, regrouper ou supprimer une session se propage aux autres machines à leur synchro suivante (selon leur fréquence) ; en cas de modifications simultanées, la plus récente gagne. Une session supprimée ailleurs mais **en cours ici** n'est pas arrêtée.
 - **Ne partage ton code qu'avec tes propres machines** : il donne accès à tes sessions et à leurs conversations. **Désactiver** l'efface de cette machine.
 
-**Serveur de synchro** : par défaut, l'app utilise le serveur public du projet (Worker Cloudflare + base D1). Il ne voit jamais le code ni le contenu en clair, et limite la création d'espaces et la place occupée. **Code créé avant la 3.8** : il avait été tiré par le serveur ; il continue de fonctionner (rattaché automatiquement à la nouvelle clé d'accès), mais pour un chiffrement de bout en bout strict, crée un nouveau code (Désactiver, puis Créer un code) et saisis-le sur tes autres machines. Tu peux héberger le tien (gratuit) avec [`sync-worker/`](sync-worker), puis mettre son adresse dans Réglages › Synchronisation › Avancé › **Serveur** :
+**Serveur de synchro** : par défaut, l'app utilise le serveur public du projet (Worker Cloudflare : métadonnées dans une base D1, conversations chiffrées dans R2, jusqu'à 200 Mo par espace). Il ne voit jamais le code ni le contenu en clair, et limite la création d'espaces et la place occupée. **Code créé avant la 3.8** : il avait été tiré par le serveur ; il continue de fonctionner (rattaché automatiquement à la nouvelle clé d'accès), mais pour un chiffrement de bout en bout strict, crée un nouveau code (Désactiver, puis Créer un code) et saisis-le sur tes autres machines. Tu peux héberger le tien (gratuit) avec [`sync-worker/`](sync-worker), puis mettre son adresse dans Réglages › Synchronisation › Avancé › **Serveur** :
 
 ```bash
 cd sync-worker
 npx wrangler d1 create csm-sync          # puis mets son database_id dans wrangler.toml
 npx wrangler d1 execute csm-sync --remote --file schema.sql
+npx wrangler r2 bucket create csm-sync-chunks   # morceaux chiffrés des conversations (R2 gratuit : 10 Go)
 npx wrangler deploy                       # affiche l'adresse https://csm-sync.<toi>.workers.dev
 ```
 
