@@ -122,7 +122,7 @@ const STORE = path.join(DATA, 'sessions.json');
 const sessions = new Map();
 
 // Champs ajoutés par les modules (lib/*) : mémorisés et envoyés à l'interface tels quels.
-const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'alerts', 'remote', 'syncId', 'origin', 'syncCwd'];
+const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'quotaWait', 'alerts', 'remote', 'syncId', 'origin', 'syncCwd'];
 const extra = s => Object.fromEntries(EXTRA_FIELDS.filter(k => s[k] !== undefined).map(k => [k, s[k]]));
 
 // Appelés après chaque écriture de sessions.json (lib/sync : repère les changements à envoyer).
@@ -260,7 +260,7 @@ function spawnSession(s, { resume, fork } = {}) {
   s.pty = p;
   if (s.wantRun !== true) { s.wantRun = true; persist(); }
   setStatus(s, 'starting');
-  p.onData(d => { s.lastActivity = Date.now(); appendOut(s, d); });
+  p.onData(d => { s.lastActivity = Date.now(); appendOut(s, d); emit('data', s, d); });
   p.onExit(({ exitCode }) => {
     if (s.pty !== p || !sessions.has(s.id)) return; // relancée entre-temps, ou fermée
     s.pty = null;
@@ -621,6 +621,7 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, context ? { context } : {});
       }
       else if (event === 'end') emit('end', s);
+      else if (event === 'quota') { emit('quota', s, data || {}); return json(res, 200, {}); } // barre d'état : quotas (lib/queue.js)
       else if (event === 'working') setStatus(s, 'working', data && data.tool_name ? data.tool_name : '');
       else if (event === 'attention') setStatus(s, 'attention', (data && data.message) || 'attend une réponse');
       else if (event === 'idle') {
@@ -760,7 +761,7 @@ const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
   renameSession, history, transcriptPath, setStatus, lockedResume, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
 };
-for (const mod of ['lock', 'git', 'settings', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync']) {
+for (const mod of ['lock', 'git', 'settings', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync', 'schedule']) {
   try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }
 }
 

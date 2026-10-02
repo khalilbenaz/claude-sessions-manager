@@ -4,7 +4,7 @@
 // POST /sessions { items }    -> { rev, applied }   (une ligne n'écrase que si updatedAt est plus récent)
 // POST /spaces { auth }       -> { ok }             (crée un espace ; auth = SHA-256 de la clé d'accès, calculée
 //                                                   par l'app à partir d'un code qu'elle a tiré : le code ne vient jamais ici)
-// POST /spaces                -> { code }           (ancien format : code tiré ici, applis < 3.8)
+// POST /spaces sans auth       -> 410               (ancien format d'avant la 3.8 : le serveur tirait le code)
 // POST /spaces/link { auth }  (Bearer ancien code)  rattache une clé d'accès à un espace créé avant la 3.8
 // GET  /transcripts           -> { items: [{ uid, cid, ver, chunks, size, updatedAt, origin }] }
 // PUT  /transcripts/<uid>/<ver>/<n>   octets        (morceau n de la version ver, 1 Mo au plus)
@@ -34,9 +34,6 @@ function sameString(a, b) {
 const sha256 = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))]
   .map(b => b.toString(16).padStart(2, '0')).join('');
 
-// Base32 de Crockford (sans I, L, O, U) : lisible, sans ambiguïté à la dictée. 20 caractères = 100 bits.
-const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-const newCode = () => [...crypto.getRandomValues(new Uint8Array(20))].map(b => ALPHABET[b & 31]).join('');
 const DAY = 86400000;
 const PER_IP_PER_DAY = 5;
 const PER_DAY = 2000;
@@ -52,15 +49,28 @@ function ipKey(req) {
 }
 
 const partKey = (space, uid, ver, n) => `${space}/${uid}/${ver}/${n}`;
-// Efface des morceaux (R2 + liste) ; rows = [{ uid, ver, n }].
-async function dropParts(env, space, rows) {
-  for (let i = 0; i < rows.length; i += 500) await env.BUCKET.delete(rows.slice(i, i + 500).map(r => partKey(space, r.uid, r.ver, r.n)));
-}
+const PENDING_MAX = 200;                   // morceaux envoyés mais pas encore validés, par espace
+// Place occupée = octets de tous les morceaux présents (validés ou en attente), comptés par le serveur à la
+// réception (jamais la taille annoncée par l'app) ; recalculée chaque nuit (scheduled) contre toute dérive.
 const usedBytes = async (env, space) => (await env.DB.prepare('SELECT bytes FROM csm_usage WHERE space = ?').bind(space).first())?.bytes || 0;
 const totalBytes = async env => (await env.DB.prepare('SELECT COALESCE(SUM(bytes), 0) AS t FROM csm_usage').first()).t;
 const addUsage = (env, space, delta) => env.DB.prepare(
   'INSERT INTO csm_usage (space, bytes) VALUES (?1, MAX(0, ?2)) ON CONFLICT(space) DO UPDATE SET bytes = MAX(0, bytes + ?2)',
 ).bind(space, delta);
+// Efface des morceaux : objets R2 d'abord (par lots), puis lignes D1 et place occupée (requêtes groupées).
+// Si R2 échoue, les lignes restent et le prochain ménage réessaie : aucun objet ne reste sans sa ligne.
+// rows = [{ space, uid, ver, n, size }]
+async function dropParts(env, rows) {
+  if (!rows.length) return;
+  for (let i = 0; i < rows.length; i += 1000) await env.BUCKET.delete(rows.slice(i, i + 1000).map(r => partKey(r.space, r.uid, r.ver, r.n)));
+  const del = env.DB.prepare('DELETE FROM csm_parts WHERE space = ? AND uid = ? AND ver = ? AND n = ?');
+  const freed = new Map();
+  for (const r of rows) freed.set(r.space, (freed.get(r.space) || 0) + (r.size || 0));
+  for (let i = 0; i < rows.length; i += 400) {
+    await env.DB.batch(rows.slice(i, i + 400).map(r => del.bind(r.space, r.uid, r.ver, r.n)));
+  }
+  await env.DB.batch([...freed].map(([sp, b]) => addUsage(env, sp, -b)));
+}
 
 async function transcripts(req, env, space, parts) {
   const [uid, ver, n] = parts;
@@ -82,38 +92,49 @@ async function transcripts(req, env, space, parts) {
   if (n !== undefined && req.method === 'PUT') {
     const body = new Uint8Array(await req.arrayBuffer());
     if (!body.length || body.length > CHUNK_MAX) return json({ error: 'chunk too large' }, 413);
-    if (await usedBytes(env, space) + body.length > SPACE_MAX) return json({ error: 'space full' }, 413);
-    if (await totalBytes(env) + body.length > TOTAL_MAX) return json({ error: 'server full' }, 507);
+    const prev = await env.DB.prepare('SELECT size FROM csm_parts WHERE space = ? AND uid = ? AND ver = ? AND n = ?').bind(space, uid, ver, idx).first();
+    const delta = body.length - (prev?.size || 0);
+    if (!prev) {
+      // envois en attente récents seulement (ceux de plus d'une heure sont abandonnés, retirés la nuit)
+      const pend = await env.DB.prepare('SELECT COUNT(*) AS c FROM csm_parts WHERE space = ? AND ok = 0 AND at > ?').bind(space, Date.now() - 3600e3).first();
+      if (pend.c >= PENDING_MAX) return json({ error: 'too many pending chunks' }, 429);
+    }
+    if (await usedBytes(env, space) + delta > SPACE_MAX) return json({ error: 'space full' }, 413);
+    if (await totalBytes(env) + delta > TOTAL_MAX) return json({ error: 'server full' }, 507);
+    // la ligne d'abord (en attente) : si l'écriture R2 échoue, le ménage nocturne la retire
+    await env.DB.batch([
+      env.DB.prepare(
+        'INSERT INTO csm_parts (space, uid, ver, n, size, at, ok) VALUES (?, ?, ?, ?, ?, ?, 0) ON CONFLICT(space, uid, ver, n) DO UPDATE SET size = excluded.size, at = excluded.at',
+      ).bind(space, uid, ver, idx, body.length, Date.now()),
+      addUsage(env, space, delta),
+    ]);
     await env.BUCKET.put(partKey(space, uid, ver, idx), body);
-    await env.DB.prepare(
-      'INSERT INTO csm_parts (space, uid, ver, n, size, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(space, uid, ver, n) DO UPDATE SET size = excluded.size, at = excluded.at',
-    ).bind(space, uid, ver, idx, body.length, Date.now()).run();
     return json({ ok: true });
   }
   if (uid && ver === undefined && req.method === 'PUT') {
     let b;
     try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
     const chunks = Number(b.chunks);
-    if (!/^[0-9a-f]{32}$/.test(b.ver || '') || !/^[\w-]{1,64}$/.test(b.cid || '') || !(chunks >= 1 && chunks <= MAX_CHUNKS)) return json({ error: 'bad meta' }, 400);
-    const have = await env.DB.prepare('SELECT COUNT(*) AS c FROM csm_parts WHERE space = ? AND uid = ? AND ver = ? AND n < ?')
+    if (!/^[0-9a-f]{32}$/.test(b.ver || '') || !/^[\w-]{1,64}$/.test(b.cid || '') || !(Number.isInteger(chunks) && chunks >= 1 && chunks <= MAX_CHUNKS)) return json({ error: 'bad meta' }, 400);
+    // taille comptée ici, à partir des morceaux reçus (0..chunks-1 tous présents)
+    const have = await env.DB.prepare('SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS size FROM csm_parts WHERE space = ? AND uid = ? AND ver = ? AND n < ?')
       .bind(space, uid, b.ver, chunks).first();
     if (have.c !== chunks) return json({ error: 'missing chunks' }, 409);
-    const before = await env.DB.prepare('SELECT size FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, uid).first();
     const out = await env.DB.prepare(
       `INSERT INTO csm_transcripts (space, uid, cid, ver, chunks, size, updatedAt, origin) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
        ON CONFLICT(space, uid) DO UPDATE SET cid = excluded.cid, ver = excluded.ver, chunks = excluded.chunks, size = excluded.size,
          updatedAt = excluded.updatedAt, origin = excluded.origin
        WHERE excluded.updatedAt >= csm_transcripts.updatedAt`,
-    ).bind(space, uid, b.cid, b.ver, chunks, Number(b.size) || 0, Number(b.updatedAt) || 0, String(b.origin || '').slice(0, 80)).run();
+    ).bind(space, uid, b.cid, b.ver, chunks, have.size, Number(b.updatedAt) || 0, String(b.origin || '').slice(0, 80)).run();
     const applied = !!out.meta?.changes;
-    if (applied) await addUsage(env, space, (Number(b.size) || 0) - (before?.size || 0)).run();
-    // garder seulement la version en vigueur
     const cur = await env.DB.prepare('SELECT ver FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, uid).first();
-    const old = (await env.DB.prepare('SELECT uid, ver, n FROM csm_parts WHERE space = ? AND uid = ? AND ver <> ?').bind(space, uid, cur?.ver || '').all()).results;
-    if (old.length) {
-      await dropParts(env, space, old);
-      await env.DB.prepare('DELETE FROM csm_parts WHERE space = ? AND uid = ? AND ver <> ?').bind(space, uid, cur?.ver || '').run();
-    }
+    if (cur) await env.DB.prepare('UPDATE csm_parts SET ok = 1 WHERE space = ? AND uid = ? AND ver = ?').bind(space, uid, cur.ver).run();
+    // anciennes versions validées, et celle-ci si elle a été refusée (plus ancienne) ; les envois en cours
+    // d'une autre version restent (le ménage nocturne retire ceux qui ne sont jamais validés)
+    const old = (await env.DB.prepare(
+      'SELECT space, uid, ver, n, size FROM csm_parts WHERE space = ? AND uid = ? AND ver <> ? AND (ok = 1 OR ver = ?)',
+    ).bind(space, uid, cur?.ver || '', b.ver).all()).results;
+    try { await dropParts(env, old); } catch { } // version validée quoi qu'il arrive ; le ménage nocturne finira
     return json({ applied });
   }
   return json({ error: 'method not allowed' }, 405);
@@ -148,10 +169,8 @@ async function createSpace(req, env) {
       .bind(body.auth, Date.now(), ipHash).run();
     return out.meta?.changes ? json({ ok: true }) : json({ error: 'espace déjà existant' }, 409);
   }
-  const code = newCode();
-  await env.DB.prepare('INSERT INTO csm_spaces (space, createdAt, ipHash) VALUES (?, ?, ?)')
-    .bind(await sha256(code), Date.now(), ipHash).run();
-  return json({ code });
+  // création d'un code par le serveur (applis < 3.8) : retirée, le serveur ne doit jamais connaître le code
+  return json({ error: 'mets à jour Claude Sessions (3.8 ou plus récent) pour créer un code' }, 410);
 }
 
 // Rattache une clé d'accès (empreinte) à l'espace d'un code créé avant la 3.8, sur preuve de l'ancien accès.
@@ -187,7 +206,9 @@ export default {
       const { results } = await env.DB.prepare(
         'SELECT uid, data, updatedAt, deleted, origin, rev FROM csm_sessions WHERE space = ? AND rev > ? ORDER BY rev LIMIT 1000',
       ).bind(space, since).all();
-      return json({ rev: await currentRev(env, space), items: results.map(r => ({ ...r, data: JSON.parse(r.data), deleted: !!r.deleted })) });
+      // page pleine : le curseur s'arrête à la dernière ligne lue, la suite viendra au prochain appel
+      const rev = results.length === 1000 ? results[results.length - 1].rev : await currentRev(env, space);
+      return json({ rev, items: results.map(r => ({ ...r, data: JSON.parse(r.data), deleted: !!r.deleted })) });
     }
 
     if (req.method === 'POST') {
@@ -198,10 +219,11 @@ export default {
       if (count.c + items.length > ROWS_MAX) {
         // au-delà : seules les mises à jour de lignes existantes passent
         const known = new Set((await env.DB.prepare('SELECT uid FROM csm_sessions WHERE space = ?').bind(space).all()).results.map(r => r.uid));
-        if (items.some(it => !known.has(it?.uid)) && count.c >= ROWS_MAX) return json({ error: 'space full' }, 413);
+        const fresh = new Set(items.map(it => it?.uid).filter(u => typeof u === 'string' && !known.has(u)));
+        if (count.c + fresh.size > ROWS_MAX) return json({ error: 'space full' }, 413);
       }
       const next = '(SELECT COALESCE(MAX(rev), 0) + 1 FROM csm_sessions WHERE space = ?1)';
-      const stmts = [], dels = [], gone = [];
+      const stmts = [], gone = [];
       for (const it of items) {
         if (typeof it?.uid !== 'string' || !/^[\w-]{6,64}$/.test(it.uid)) continue;
         const data = JSON.stringify(it.data || {});
@@ -214,30 +236,30 @@ export default {
         ).bind(space, it.uid, data, Number(it.updatedAt) || 0, it.deleted ? 1 : 0, String(it.origin || '').slice(0, 80)));
         if (it.deleted) gone.push(it.uid);
       }
-      // conversation d'une session supprimée : morceaux (R2) et place occupée libérés
+      const out = stmts.length ? (await env.DB.batch(stmts)).slice(0, stmts.length) : [];
+      // conversation d'une session supprimée : liste, morceaux (R2) et place occupée libérés
       for (const u of gone) {
-        const t = await env.DB.prepare('SELECT size FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, u).first();
-        const parts = (await env.DB.prepare('SELECT uid, ver, n FROM csm_parts WHERE space = ? AND uid = ?').bind(space, u).all()).results;
-        if (parts.length) await dropParts(env, space, parts);
-        dels.push(env.DB.prepare('DELETE FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, u));
-        dels.push(env.DB.prepare('DELETE FROM csm_parts WHERE space = ? AND uid = ?').bind(space, u));
-        if (t?.size) dels.push(addUsage(env, space, -t.size));
+        const parts = (await env.DB.prepare('SELECT space, uid, ver, n, size FROM csm_parts WHERE space = ? AND uid = ?').bind(space, u).all()).results;
+        await env.DB.prepare('DELETE FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, u).run();
+        await dropParts(env, parts);
       }
-      const out = stmts.length ? (await env.DB.batch([...stmts, ...dels])).slice(0, stmts.length) : [];
       return json({ rev: await currentRev(env, space), applied: out.filter(r => r.meta?.changes).length });
     }
     return json({ error: 'method not allowed' }, 405);
   },
 
-  // Ménage quotidien : morceaux envoyés il y a plus d'un jour et jamais validés (envoi interrompu).
+  // Ménage quotidien : morceaux jamais validés (envoi interrompu, plus d'une heure), puis recalcul de la place
+  // occupée. Par lots (suppressions groupées) pour rester sous la limite d'appels d'une exécution.
   async scheduled(event, env) {
-    const old = (await env.DB.prepare(
-      `SELECT p.space, p.uid, p.ver, p.n FROM csm_parts p LEFT JOIN csm_transcripts t ON t.space = p.space AND t.uid = p.uid AND t.ver = p.ver
-       WHERE p.at < ? AND t.uid IS NULL LIMIT 1000`,
-    ).bind(Date.now() - DAY).all()).results;
-    for (const r of old) {
-      await env.BUCKET.delete(partKey(r.space, r.uid, r.ver, r.n));
-      await env.DB.prepare('DELETE FROM csm_parts WHERE space = ? AND uid = ? AND ver = ? AND n = ?').bind(r.space, r.uid, r.ver, r.n).run();
+    for (let round = 0; round < 10; round++) {
+      const stale = (await env.DB.prepare('SELECT space, uid, ver, n, size FROM csm_parts WHERE ok = 0 AND at < ? LIMIT 1000')
+        .bind(Date.now() - 3600e3).all()).results;
+      await dropParts(env, stale);
+      if (stale.length < 1000) break;
     }
+    await env.DB.batch([
+      env.DB.prepare('UPDATE csm_usage SET bytes = (SELECT COALESCE(SUM(size), 0) FROM csm_parts WHERE csm_parts.space = csm_usage.space)'),
+      env.DB.prepare('INSERT INTO csm_usage (space, bytes) SELECT space, SUM(size) FROM csm_parts GROUP BY space ON CONFLICT(space) DO NOTHING'),
+    ]);
   },
 };

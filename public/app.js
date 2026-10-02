@@ -35,6 +35,8 @@ async function loadSettings() {
   try { SETTINGS = { ...SETTINGS, ...(await api('GET', '/api/settings')) }; } catch { }
   setLang(SETTINGS.lang); applySettings();
 }
+// heure courte (reprise après la limite de quota)
+const hm = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 async function saveSettings(patch) {
   SETTINGS = { ...SETTINGS, ...patch };
   applySettings();
@@ -250,7 +252,10 @@ function connect() {
     } else if (m.t === 'settings') {
       const langChanged = m.settings.lang !== SETTINGS.lang;
       SETTINGS = { ...SETTINGS, ...m.settings }; applySettings(); render(); // groupes créés dans une autre fenêtre
+      window.dispatchEvent(new CustomEvent('csm:settings')); // Réglages ouverts : champs remis à jour (changement venu d'une autre machine)
       if (langChanged) location.reload();
+    } else if (m.t === 'schedules') {
+      window.dispatchEvent(new CustomEvent('csm:schedules'));
     } else if (m.t === 'sync') {
       window.dispatchEvent(new CustomEvent('csm:sync', { detail: m.status }));
     } else if (m.t === 'templates' || m.t === 'prompts') {
@@ -463,7 +468,7 @@ function render() {
     li.querySelector('.n').textContent = (s.locked ? (window.csmFeatures.isLockedHere?.(s.id) ? '🔒 ' : '🔓 ') : '') + s.name;
     li.querySelector('.dot').textContent = '';
     li.querySelector('.dot').dataset.initial = (s.name || '?').trim().charAt(0).toUpperCase();
-    li.querySelector('.sub').textContent = (isRemote(s) ? '📱 ' : '') + (s.origin && window.csmFeatures?.syncMachine && s.origin !== window.csmFeatures.syncMachine ? `⇄ ${s.origin} · ` : '') + (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
+    li.querySelector('.sub').textContent = (isRemote(s) ? '📱 ' : '') + (s.origin && window.csmFeatures?.syncMachine && s.origin !== window.csmFeatures.syncMachine ? `⇄ ${s.origin} · ` : '') + (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.quotaWait ? `⏸ ${t('quota')} ${hm(s.quotaWait)} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
     li.onclick = () => select(s.id);
     li.ondblclick = () => renameSession(s.id);
     li.querySelector('.ren').onclick = e => { e.stopPropagation(); renameSession(s.id); };
@@ -516,8 +521,8 @@ function renderBar() {
   $('#curBranch').hidden = !s.worktree;
   $('#curBranch').textContent = s.worktree ? `⎇ ${s.worktree.branch}` : '';
   $('#curBranch').title = s.worktree ? `${t('Worktree')} : ${s.worktree.path}\n${t('base')} : ${s.worktree.base}` : '';
-  $('#curQueue').hidden = !s.queue?.length;
-  $('#curQueue').textContent = s.queue?.length ? `⏳ ${s.queue.length}` : '';
+  $('#curQueue').hidden = !s.queue?.length && !s.quotaWait;
+  $('#curQueue').textContent = (s.quotaWait ? `⏸ ${t('quota — reprise à')} ${hm(s.quotaWait)} ` : '') + (s.queue?.length ? `⏳ ${s.queue.length}` : '');
   window.dispatchEvent(new CustomEvent('csm:active', { detail: s }));
 }
 

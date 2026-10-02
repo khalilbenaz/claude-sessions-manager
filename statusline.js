@@ -46,13 +46,45 @@ function render(p, now) {
   return parts.join(` ${GRAY}·${RST} `);
 }
 
+// Quotas transmis au serveur de l'app (file d'attente en pause près de la limite, lib/queue.js) : au plus
+// toutes les 30 s par session, sans jamais retarder l'affichage.
+function quotaOf(p) {
+  const w = p.rate_limits?.five_hour;
+  const pct = num(w, 'used_percentage', 'usedPercentage', 'utilization');
+  if (pct === undefined) return null;
+  const r = resetAt(w);
+  return { pct, resetAt: r ? r.getTime() : 0 };
+}
+function report(p, cb) {
+  const { CSM_ID, CSM_PORT, CSM_TOKEN } = process.env;
+  const q = CSM_ID && CSM_PORT && quotaOf(p);
+  if (!q) return cb();
+  const mark = require('path').join(require('os').tmpdir(), `csm-quota-${CSM_PORT}-${CSM_ID}`);
+  try { if (Date.now() - require('fs').statSync(mark).mtimeMs < 30e3) return cb(); } catch { }
+  try { require('fs').writeFileSync(mark, ''); } catch { }
+  const body = JSON.stringify({ csm: CSM_ID, event: 'quota', data: q });
+  const req = require('http').request({
+    host: '127.0.0.1', port: Number(CSM_PORT), path: '/api/hook', method: 'POST', timeout: 1500,
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-CSM-Token': CSM_TOKEN, Host: `127.0.0.1:${CSM_PORT}` },
+  }, res => { res.resume(); res.on('end', cb); });
+  req.on('error', cb); req.on('timeout', () => { req.destroy(); cb(); });
+  req.end(body);
+}
+
 if (require.main === module) {
-  let input = '';
-  const done = () => { let p = {}; try { p = JSON.parse(input || '{}'); } catch { } try { process.stdout.write(render(p) + '\n'); } catch { } process.exit(0); };
+  let input = '', finished = false;
+  const done = () => {
+    if (finished) return; finished = true;
+    let p = {}; try { p = JSON.parse(input || '{}'); } catch { }
+    try { process.stdout.write(render(p) + '\n'); } catch { }
+    let out = false; const exit = () => { if (!out) { out = true; process.exit(0); } };
+    try { report(p, exit); } catch { exit(); }
+    setTimeout(exit, 1800);
+  };
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', c => { input += c; });
   process.stdin.on('end', done);
   setTimeout(done, 3000);
 }
 
-module.exports = { render, fmtReset, resetAt };
+module.exports = { render, fmtReset, resetAt, quotaOf };

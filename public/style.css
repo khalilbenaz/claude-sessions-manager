@@ -324,3 +324,12 @@ ul.results li > div .tag { align-self: flex-start; margin-left: 0; }
 #palList li.hint { display: block; padding: 12px 14px; }
 /* pas de barre de défilement dans les terminaux : la molette suffit (et en plein écran, c'est Claude qui défile) */
 .term .xterm-scrollable-element > .scrollbar { display: none !important; }
+.hint.warn { color: var(--warn); }
+#cfReview { margin: 8px 0; }
+#cfReview summary { cursor: pointer; font-size: 13px; }
+#cfReview .cfActs { margin: 6px 0; }
+#cfReview ul.results { max-height: 30vh; }
+#cfReview ul.results li { cursor: default; }
+.schForm { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.schForm textarea { width: 100%; resize: vertical; }
+.schDays { display: flex; flex-wrap: wrap; gap: 4px 12px; }

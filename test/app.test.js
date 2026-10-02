@@ -133,6 +133,32 @@ test('synchro : créer un code l’affiche en clair, prêt à copier', async () 
   }
 });
 
+test('réglages : mémoire au choix, demandes programmées, fichiers reçus', async () => {
+  try {
+    await win.evaluate(() => window.csmFeatures.openSettings('general'));
+    await win.waitForSelector('input[name=memoryEngine][value=native]');
+    assert.equal(await win.isChecked('input[name=memoryEngine][value=native]'), true, 'mémoire intégrée cochée');
+    assert.equal(await win.isChecked('[data-set=queueQuotaPause]'), true);
+    await win.click('.setNav [data-st=schedules]');
+    await win.waitForSelector('#schForm');
+    await win.fill('#schForm [name=name]', 'Revue du matin');
+    await win.fill('#schForm [name=text]', 'relis le dépôt');
+    await win.fill('#schForm [name=time]', '08:15');
+    await win.check('#schForm [name=day][value="1"]');
+    assert.equal(await win.isHidden('#schForm [data-for=once]'), true, 'date masquée quand des jours sont choisis');
+    await win.click('#schForm button[type=submit]');
+    await win.waitForFunction(() => /Revue du matin/.test(document.querySelector('#schList').textContent));
+    assert.match(await win.textContent('#schList'), /08:15 · lun/);
+    if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT.replace(/(\.png)?$/, '-programmees.png') });
+    await win.click('#schList [data-a=del]');
+    await win.waitForFunction(() => /Aucune demande/.test(document.querySelector('#schList').textContent));
+    await win.click('.setNav [data-st=sync]');
+    assert.equal(await win.isChecked('[data-set=claudeSyncReview]'), true, 'validation demandée par défaut');
+  } finally {
+    await win.evaluate(() => document.querySelector('#dlgSettings').close());
+  }
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));

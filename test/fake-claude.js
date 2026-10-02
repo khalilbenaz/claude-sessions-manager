@@ -56,6 +56,7 @@ async function prompt(text) {
   if (/touch (\S+)/.test(text)) fs.writeFileSync(path.join(cwd, RegExp.$1), `créé par le faux claude (${turn})\n`);
   out(`\r\n● ${reply}\r\n`);
   if (/attends/.test(text)) await hook('Notification', { message: 'Claude attend ta permission' });
+  if (/quota-limite/.test(text)) out('\r\n  ⎿  5-hour limit reached ∙ resets 3am\r\n'); // message de Claude Code à la limite
   await hook('Stop');
   out('\r\n❯ ');
 }

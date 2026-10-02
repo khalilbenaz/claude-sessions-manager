@@ -1,4 +1,4 @@
--- Une ligne par session synchronisée. Les conversations (tables csm_transcripts / csm_chunks) arrivent
+-- Une ligne par session synchronisée. Les conversations (csm_transcripts, morceaux dans R2) arrivent
 -- chiffrées par l'app : le serveur ne peut pas les lire.
 -- space = empreinte SHA-256 du code de synchro : chaque code est un espace isolé.
 CREATE TABLE IF NOT EXISTS csm_sessions (
@@ -42,12 +42,14 @@ CREATE TABLE IF NOT EXISTS csm_parts (
   ver   TEXT NOT NULL,
   n     INTEGER NOT NULL,
   size  INTEGER NOT NULL,
-  at    INTEGER NOT NULL,       -- date d'envoi : les morceaux jamais validés sont effacés après un jour
+  at    INTEGER NOT NULL,       -- date d'envoi : les morceaux jamais validés sont effacés après une heure
+  ok    INTEGER NOT NULL DEFAULT 0, -- 1 = version validée (PUT /transcripts/<uid>), 0 = en attente
   PRIMARY KEY (space, uid, ver, n)
 );
 CREATE INDEX IF NOT EXISTS csm_parts_at ON csm_parts(at);
+CREATE INDEX IF NOT EXISTS csm_parts_pending ON csm_parts(space, ok);
 
--- Place occupée par espace (octets des versions en vigueur), tenue à jour à chaque validation :
+-- Place occupée par espace (octets de tous les morceaux présents), tenue à jour à chaque morceau reçu :
 -- évite de relire toutes les lignes pour vérifier les limites.
 CREATE TABLE IF NOT EXISTS csm_usage (
   space TEXT PRIMARY KEY,
