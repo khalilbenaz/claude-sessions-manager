@@ -325,6 +325,14 @@
           <label class="check"><input type="checkbox" data-set="syncNativeMemory"> <span>Mémoire des sessions (résumés de chaque session, chiffrés, partagés entre les machines — sans claude-mem)</span></label>
           <label class="check"><input type="checkbox" data-set="syncMemory"> <span>Mémoire claude-mem des sessions de l'app (chiffrée, chargée sur chaque machine — celle du terminal reste locale)</span></label>
         </fieldset>
+        <fieldset class="syncWhat">
+          <legend>Configuration de Claude (chiffrée, la plus récente gagne)</legend>
+          <label class="check"><input type="checkbox" data-set="syncClaudeRules"> <span>Règles : ~/.claude/CLAUDE.md et les fichiers .md à côté (importés avec @), ~/.claude/rules</span></label>
+          <label class="check"><input type="checkbox" data-set="syncClaudeSkills"> <span>Skills : ~/.claude/skills</span></label>
+          <label class="check"><input type="checkbox" data-set="syncClaudeAgents"> <span>Agents et commandes : ~/.claude/agents, ~/.claude/commands</span></label>
+          <label class="check"><input type="checkbox" data-set="syncClaudeMemory"> <span>Mémoire de Claude : les dossiers memory/ de ~/.claude/projects (projets situés au même endroit sous le dossier personnel)</span></label>
+          <p class="hint">Un fichier remplacé ou supprimé sur cette machine est d'abord copié dans le dossier de données de l'app (claude-sync-backup). Les skills installées par des plugins ne sont pas concernées.</p>
+        </fieldset>
         <label>Synchroniser automatiquement <select data-set="syncMinutes"><option value="5">toutes les 5 minutes</option><option value="10">toutes les 10 minutes</option><option value="30">toutes les 30 minutes</option><option value="60">toutes les heures</option></select></label>
         <p class="hint">Ce que tu modifies sur cette machine part tout de suite ; l'intervalle règle la récupération des changements des autres machines. « Synchroniser maintenant » reste disponible.</p>
         <p id="syncStatus" class="hint"></p>

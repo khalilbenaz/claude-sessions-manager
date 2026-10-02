@@ -84,6 +84,13 @@ const EN = {
   "Mémoire des sessions : résumer chaque session (demandes, réponses, fichiers modifiés) et donner à Claude, au démarrage, ce qui a été fait avant dans le même dossier": "Session memory: summarize each session (requests, answers, edited files) and give Claude, at startup, what was done before in the same folder",
   "Mémoire des sessions (résumés de chaque session, chiffrés, partagés entre les machines — sans claude-mem)": "Session memory (summaries of each session, encrypted, shared between machines — no claude-mem)",
   "résumés reçus": "summaries received", "résumés envoyés": "summaries sent",
+  "fichiers de Claude reçus": "Claude files received", "fichiers de Claude envoyés": "Claude files sent",
+  "Configuration de Claude (chiffrée, la plus récente gagne)": "Claude configuration (encrypted, most recent wins)",
+  "Règles : ~/.claude/CLAUDE.md et les fichiers .md à côté (importés avec @), ~/.claude/rules": "Rules: ~/.claude/CLAUDE.md and the .md files next to it (imported with @), ~/.claude/rules",
+  "Skills : ~/.claude/skills": "Skills: ~/.claude/skills",
+  "Agents et commandes : ~/.claude/agents, ~/.claude/commands": "Agents and commands: ~/.claude/agents, ~/.claude/commands",
+  "Mémoire de Claude : les dossiers memory/ de ~/.claude/projects (projets situés au même endroit sous le dossier personnel)": "Claude memory: the memory/ folders in ~/.claude/projects (projects at the same place under the home folder)",
+  "Un fichier remplacé ou supprimé sur cette machine est d'abord copié dans le dossier de données de l'app (claude-sync-backup). Les skills installées par des plugins ne sont pas concernées.": "A file replaced or deleted on this machine is first copied to the app's data folder (claude-sync-backup). Skills installed by plugins are not included.",
   "mémoire reçue": "memory received", "mémoire envoyée": "memory sent", "claude-mem introuvable sur cette machine": "claude-mem not found on this machine",
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
