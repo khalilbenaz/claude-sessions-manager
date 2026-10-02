@@ -16,7 +16,7 @@ Une seule fenêtre pour piloter plusieurs sessions [Claude Code](https://docs.cl
 8. [Panneau Modifications, Chronologie, Consommation](#8-panneau-modifications-chronologie-consommation)
 9. [Historique et sessions ouvertes dans un terminal](#9-historique-et-sessions-ouvertes-dans-un-terminal)
 10. [Images et fichiers](#10-images-et-fichiers)
-11. [Palette, recherche, prompts, file d'attente, envoi groupé](#11-palette-recherche-prompts-file-dattente-envoi-groupé)
+11. [Palette, recherche, prompts, file d'attente, envoi groupé](#11-palette-recherche-prompts-file-dattente-envoi-groupé) — et [demandes programmées](#11-bis-demandes-programmées)
 12. [Modèles de session](#12-modèles-de-session)
 13. [Verrouiller une session par mot de passe](#13-verrouiller-une-session-par-mot-de-passe)
 14. [Notifications, zone de notification, arrière-plan](#14-notifications-zone-de-notification-arrière-plan) — et [accès depuis l'app Claude (téléphone)](#14-bis-accès-depuis-lapp-claude-téléphone)
@@ -171,7 +171,16 @@ Le fichier est copié dans un dossier temporaire et son chemin collé dans ta li
 - **Rechercher dans les sessions** (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Maj</kbd>+<kbd>F</kbd>) : un texte dans le contenu de tous les terminaux ouverts ; clic = y aller.
 - **Bibliothèque de prompts** (⋯ › Insérer un prompt…, palette, Réglages › Prompts) : tes demandes réutilisables. Elle démarre avec 8 prompts prêts à l'emploi (relire les modifications, écrire les tests, expliquer du code, préparer un commit, corriger un bug, proposer un plan, documenter, résumer), modifiables et supprimables ; **+ Nouveau** pour ajouter les tiens. **Insérer** les place dans la ligne de saisie (tu relis, puis Entrée) ; **Envoyer** les soumet. Variables : `{dossier}`, `{branche}`, `{nom}`, `{selection}` (texte sélectionné dans le terminal).
 - **File d'attente** (⋯ › File d'attente…, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Q</kbd>) : des prompts envoyés **un par un, automatiquement, chaque fois que Claude a fini** le précédent — « implémente », puis « ajoute les tests », puis « relis ». Le badge ⏳ indique le nombre en attente.
+  - **Quota** (Réglages › Général, activé par défaut) : près de la limite des 5 heures (seuil réglable, 95 % par défaut, lu dans la barre d'état de l'app) ou quand Claude Code affiche « 5-hour limit reached ∙ resets 3pm », la file **se met en pause** (badge **⏸ quota 15:00**) et **repart seule à la réinitialisation**, une minute après. Les sessions coupées en plein travail par la limite reçoivent alors « continue » (option *Relancer les sessions coupées par la limite*). Rien n'est envoyé pour rien pendant la nuit.
 - **Envoi groupé** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>B</kbd>) : le même prompt à plusieurs sessions cochées, tout de suite ou en file d'attente si elles travaillent.
+
+### 11 bis. Demandes programmées
+
+Réglages › **Programmées** : envoyer un prompt à une session, ou lancer un modèle de session (avec son premier prompt, plus celui de la demande), **à une heure donnée** : une seule fois (date) ou certains jours de la semaine (par exemple « relis les modifications d'hier » chaque matin à 9 h). Chaque ligne indique la prochaine échéance et le résultat de la dernière ; une case la met en pause, **Lancer** l'exécute tout de suite.
+
+- Session occupée, arrêtée ou en pause de quota : le prompt est mis dans **sa file d'attente** et part dès que possible.
+- L'app doit être ouverte (même réduite). Une échéance manquée il y a moins de 2 heures (ordinateur en veille, app fermée) est rattrapée au démarrage ; plus ancienne, elle est sautée.
+- Les demandes restent sur cette machine (`schedules.json` dans les données de l'app), elles ne sont pas synchronisées.
 
 ## 12. Modèles de session
 
@@ -273,7 +282,11 @@ Retrouver sur le PC les sessions créées sur le Mac, et inversement : **nom, do
   - *Agents et commandes* : `~/.claude/agents` et `~/.claude/commands`.
   - *Notes de Claude Code* : les dossiers `memory/` de `~/.claude/projects`, que Claude Code écrit lui-même (rien à voir avec la mémoire des sessions ci-dessus), pour les projets placés au même endroit sous le dossier personnel (`~/Projects/x` sur Mac correspond à `C:\Users\…\Projects\x` sous Windows).
 
-  Chaque fichier part chiffré, avec son chemin. Les créations, modifications et **suppressions** suivent, et **la version la plus récente gagne**. Un fichier remplacé ou supprimé sur une machine est d'abord copié dans `claude-sync-backup/<date>/` du dossier de données de l'app. Ne sont pas envoyés : les fichiers de plus de 2 Mo, les dossiers cachés, `node_modules` et `__pycache__`. Les conversations et les réglages (`settings.json`) restent locaux.
+  Chaque fichier part chiffré, avec son chemin. Les créations, modifications et **suppressions** suivent, et **la version la plus récente gagne**.
+
+  - **Validation** (case *Me demander avant d'appliquer…*, cochée par défaut) : les règles, skills, agents et commandes reçus **ne sont écrits qu'après ton accord** (Réglages › Synchronisation › *Fichiers reçus* : Appliquer, Refuser, Tout appliquer). Les notes de Claude Code s'appliquent seules. Pourquoi : ces fichiers guident Claude et peuvent lui faire exécuter des commandes ; **quiconque a ton code de synchro pourrait en envoyer**. Garde le code secret comme un mot de passe.
+  - **Journal et restauration** : chaque fichier reçu (créé, remplacé, supprimé, refusé) est noté avec la machine d'origine ; **Restaurer** remet la version d'avant (la version actuelle est copiée d'abord), qui repart vers les autres machines. Les copies sont dans `claude-sync-backup/<date>/` du dossier de données de l'app, gardées 30 jours ; rien n'est remplacé si la copie échoue.
+  - **Garde-fous** : jamais d'écriture à travers un lien symbolique (skill relié à un dépôt), ni hors de `~/.claude`, ni dans un dossier caché ; le bit exécutable n'est pas synchronisé ; une suppression n'est envoyée que si le fichier n'existe vraiment plus (un fichier devenu trop gros ou illisible n'est pas pris pour supprimé), et si plus de 20 % des fichiers disparaissent d'un coup, rien n'est supprimé ailleurs (avertissement dans Réglages). Ne sont pas envoyés : les fichiers de plus de 2 Mo, les dossiers cachés, `node_modules` et `__pycache__`. Les conversations et les réglages (`settings.json`) restent locaux.
 - **Tout est chiffré de bout en bout** : sessions, groupes, modèles et conversations sont chiffrés sur ta machine (AES-256-GCM, clé dérivée de ton code) avant l'envoi. Le code ne quitte jamais tes machines : le serveur ne reçoit qu'une clé d'accès dérivée (il n'en garde que l'empreinte) et ne peut ni lire ni modifier ce qu'il stocke. Seuls le modèle, le mode (hors bypassPermissions) et l'effort d'une session passent d'une machine à l'autre : aucun autre argument de `claude` n'est repris.
 
 - **Désactivée par défaut.** Rien n'est synchronisé tant qu'aucun **code de synchro** n'est actif. Chaque code est un espace isolé : sans ton code, personne ne voit tes sessions, et tu ne vois pas les leurs.
@@ -294,6 +307,8 @@ npx wrangler d1 execute csm-sync --remote --file schema.sql
 npx wrangler r2 bucket create csm-sync-chunks   # morceaux chiffrés des conversations (R2 gratuit : 10 Go)
 npx wrangler deploy                       # affiche l'adresse https://csm-sync.<toi>.workers.dev
 ```
+
+Mise à jour d'un serveur existant : `npx wrangler d1 execute csm-sync --remote --file migrations/2026-10-02-parts-ok.sql` une fois, puis `npx wrangler deploy`. Les tests du Worker : `cd sync-worker && npm install && npm test` (serveur local, D1 et R2 locaux) ; GitHub Actions les lance à chaque modification et déploie au tag si le secret `CLOUDFLARE_API_TOKEN` est configuré.
 
 Chaque code a son propre espace. Le serveur refuse tout code qu'il n'a pas créé et ne stocke que les champs listés plus haut.
 
@@ -332,7 +347,7 @@ Sur Mac, <kbd>Ctrl</kbd>+<kbd>Alt</kbd> = <kbd>Ctrl</kbd>+<kbd>Option</kbd>. Dan
 
 - **Tout reste sur ta machine.** Le serveur de l'app écoute uniquement sur `127.0.0.1` (inaccessible depuis le réseau), exige un jeton aléatoire et vérifie l'en-tête Host. Aucune télémétrie : seules tes sessions Claude Code parlent à l'API d'Anthropic, comme d'habitude. Seule exception, si tu l'actives : la synchronisation (§ 16 bis) envoie la liste des sessions (noms, dossiers, groupes, options) et, sauf si tu le désactives, leurs conversations chiffrées de bout en bout, au serveur de synchro (celui du projet ou le tien). [Politique de confidentialité](https://khalilbenaz.github.io/claude-sessions-manager/privacy.html).
 - **Fenêtre isolée** : pas d'accès système depuis la page, navigation limitée au serveur local, liens externes ouverts dans ton navigateur, permissions limitées aux notifications et au presse-papiers, aucun script extérieur (CSP).
-- **Données de l'app** : `%APPDATA%\claude-sessions` (Windows), `~/Library/Application Support/claude-sessions` (macOS) — sessions, réglages, modèles, prompts, jeton, journal. Désinstaller l'app ne les supprime pas.
+- **Données de l'app** : `%APPDATA%\claude-sessions` (Windows), `~/Library/Application Support/claude-sessions` (macOS) — sessions, réglages, modèles, prompts, demandes programmées, jeton, journal, copies et journal de la synchro de `~/.claude`. Désinstaller l'app ne les supprime pas.
 - **Mémoire des sessions** : `memory/` dans les données de l'app (§ 16 ter). Elle reste locale, sauf si la synchro et son option *Mémoire des sessions* sont actives ; elle est alors envoyée chiffrée.
 - **Conversations** : ce sont celles de Claude Code, dans `~/.claude/projects` ; l'app les lit (historique, consommation, export) et n'y écrit que le nom d'une session renommée, ou la conversation reçue d'une autre machine quand la synchro est active (envoyée chiffrée, voir § 16 bis).
 
@@ -374,9 +389,10 @@ npm test            # serveur de bout en bout (faux claude, profil temporaire, a
 npm run test:app    # application Electron (Playwright, fenêtre invisible)
 npm run app         # lancer l'app en développement (CSM_PORT=7891 pour une instance séparée)
 npm run dist:win    # installeur Windows → dist/   (npm run dist:mac sur un Mac)
+cd sync-worker && npm install && npm test   # Worker de synchro (wrangler dev local)
 ```
 
-Architecture : `server.js` (serveur local, un pseudo-terminal node-pty par session, hooks Claude Code pour l'état) + modules `lib/` (git, verrouillage, réglages, consommation, outils, file d'attente) ; interface `public/` (xterm.js) ; application `electron/`. Un tag `v*` lance les tests puis construit et publie les installeurs Windows et macOS (`.github/workflows/release.yml`).
+Architecture : `server.js` (serveur local, un pseudo-terminal node-pty par session, hooks Claude Code pour l'état) + modules `lib/` (git, verrouillage, réglages, consommation, outils, file d'attente et quota, demandes programmées, mémoire, synchro) ; interface `public/` (xterm.js) ; application `electron/`. Un tag `v*` lance les tests puis construit et publie les installeurs Windows et macOS (`.github/workflows/release.yml`) ; le Worker est testé à chaque modification et déployé au tag (`.github/workflows/worker.yml`).
 
 ## Licence
 

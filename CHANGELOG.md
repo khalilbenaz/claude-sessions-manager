@@ -2,6 +2,23 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.18.0] — 2026-10-02
+### Ajouté
+- **La file d'attente suit le quota** : près de la limite des 5 h (seuil réglable, 95 % par défaut, lu par la barre d'état de l'app) ou au message « 5-hour limit reached ∙ resets … » de Claude Code, la file se met en pause (badge ⏸) et repart seule à la réinitialisation ; les sessions coupées par la limite reçoivent « continue ». Réglages › Général.
+- **Demandes programmées** (Réglages › Programmées) : un prompt dans une session, ou un modèle de session lancé, à heure fixe, une fois ou certains jours ; passe par la file d'attente si la session est occupée ; échéance manquée de moins de 2 h rattrapée.
+- **Fichiers de ~/.claude reçus : validation, journal, restauration.** Règles, skills, agents et commandes reçus attendent ton accord (case cochée par défaut) ; chaque changement reçu est noté avec sa machine d'origine, **Restaurer** remet la version d'avant ; copies effacées après 30 jours.
+- **Worker testé et déployé automatiquement** : `sync-worker/` a ses tests (`npm test`, D1 et R2 locaux) et un workflow GitHub Actions qui les lance et déploie au tag (secret `CLOUDFLARE_API_TOKEN`).
+### Sécurité
+- Synchro de ~/.claude : plus aucune écriture à travers un lien symbolique, hors de ~/.claude (chemin réel vérifié) ni dans un dossier caché ; bit exécutable non synchronisé ; taille et décompression bornées à la réception.
+- Choix de mémoire reçu d'une autre machine : claude-mem n'est plus installé sans accord (proposition dans Réglages) ; le choix n'est publié qu'après un choix fait sur la machine.
+- Worker : place occupée comptée par le serveur à chaque morceau (plus la taille annoncée par l'app), au plus 200 morceaux en attente par espace, ménage nocturne par lots et recalcul de la place ; ancienne création de code par le serveur (applis < 3.8) retirée.
+### Corrigé
+- Synchro de ~/.claude : un fichier devenu trop gros, illisible ou un dossier momentanément inaccessible n'est plus pris pour supprimé (ni propagé) ; suppressions massives bloquées avec avertissement ; une copie par remplacement (la version d'origine n'est plus écrasée), rien remplacé si la copie échoue ; envoi refusé par le serveur (autre machine plus rapide) repris au cycle suivant, aussi pour la mémoire intégrée ; dossier de configuration avec « / » final (Windows) ; préfixe du dossier personnel comparé exactement ; fichiers temporaires ignorés.
+- Une conversation introuvable n'empêche plus la synchro des suivantes ; « Reprendre » relit toujours la liste du serveur.
+- Nouvelle installation : le partage de la mémoire ne se recoche plus au 2ᵉ démarrage ; une mémoire désactivée (3.13-3.14) reste désactivée.
+- Réglages ouverts : les choix changés par une autre machine s'affichent ; installation de claude-mem en échec retentée toutes les 30 min.
+- Worker : pagination des sessions au-delà de 1 000 lignes modifiées ; plafond de lignes par espace exact.
+
 ## [3.17.0] — 2026-10-02
 ### Modifié
 - **Serveur de synchro** : les conversations chiffrées sont stockées dans **Cloudflare R2** (10 Go gratuits) au lieu de la base D1 (500 Mo), qui ne garde plus que les métadonnées. La place occupée est tenue dans un compteur : plus aucune requête ne relit toutes les lignes. Les morceaux envoyés mais jamais validés sont effacés chaque nuit. Espaces existants migrés, rien à faire dans l'app.

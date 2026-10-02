@@ -17,7 +17,7 @@ const HOME = path.join(TMP, 'home'), DATA = path.join(TMP, 'data'), WORK = path.
 for (const d of [HOME, DATA, WORK, path.join(TMP, 'mem')]) fs.mkdirSync(d, { recursive: true });
 const ENV = {
   ...process.env, CSM_PORT: String(PORT), CSM_DATA: DATA, HOME, USERPROFILE: HOME,
-  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300', CSM_MEM_DB: path.join(TMP, 'mem', 'claude-mem.db'), CSM_NO_PLUGIN_INSTALL: '1',
+  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300', CSM_MEM_DB: path.join(TMP, 'mem', 'claude-mem.db'), CSM_NO_PLUGIN_INSTALL: '1', CSM_QUOTA_MARGIN: '300', CSM_SCHEDULE_EVERY: '300',
   CSM_CLAUDE: process.execPath, CSM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-claude.js')}"`,
   GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com',
 };
@@ -180,6 +180,65 @@ test('file d’attente : prompts envoyés un par un quand la session a fini', as
   await waitFor(() => (c.out[S.id] || '').includes('echo: second'), 15000, 'deux prompts traités');
   assert.ok(c.out[S.id].indexOf('echo: premier') < c.out[S.id].indexOf('echo: second'));
   assert.equal((await session(S.id)).queue, undefined);
+  c.ws.close();
+});
+
+test('file d’attente : en pause près de la limite des 5 h, reprise à la réinitialisation, « continue » après une coupure', async () => {
+  const Q = await api('POST', '/api/sessions', { cwd: WORK, name: 'quota' });
+  await idle(Q.id);
+  const c = await wsClient();
+  const quota = (pct, resetAt) => api('POST', '/api/hook', { csm: Q.id, event: 'quota', data: { pct, resetAt } });
+  try {
+    // barre d'état : 96 % utilisés → la file attend la réinitialisation
+    await quota(96, Date.now() + 1500);
+    await api('PUT', `/api/sessions/${Q.id}/queue`, [{ text: 'apres-quota' }]);
+    const w = await waitFor(async () => (await session(Q.id)).quotaWait, 5000, 'pause');
+    assert.ok(w > Date.now() - 1000);
+    await new Promise(r => setTimeout(r, 600));
+    assert.ok(!(c.out[Q.id] || '').includes('echo: apres-quota'), 'rien envoyé pendant la pause');
+    await waitFor(() => (c.out[Q.id] || '').includes('echo: apres-quota'), 8000, 'reprise après la réinitialisation');
+    await idle(Q.id);
+    assert.equal((await session(Q.id)).quotaWait, undefined);
+
+    // limite atteinte en plein travail (message de Claude Code) : session en attente, puis « continue »
+    await quota(97, 0);
+    c.input(Q.id, 'quota-limite\r');
+    await waitFor(async () => (await session(Q.id)).quotaWait, 8000, 'coupée par la limite');
+    assert.ok(!(c.out[Q.id] || '').includes('echo: continue'));
+    await quota(5, Date.now() + 30 * 3600e3); // nouvelle fenêtre de quota (après la reprise prévue) : la limite est passée
+    await waitFor(() => (c.out[Q.id] || '').includes('echo: continue'), 8000, '« continue » envoyé');
+  } finally {
+    await quota(0, 0);
+    c.ws.close();
+    await api('DELETE', `/api/sessions/${Q.id}`);
+  }
+});
+
+test('demandes programmées : échéances, envoi à une session, rattrapage, une seule fois', async () => {
+  const { nextRun, lastDue } = require('../lib/schedule');
+  const base = new Date('2026-10-05T08:00:00'); // lundi
+  assert.equal(new Date(nextRun({ time: '09:30', days: [1, 3] }, base.getTime())).toString().slice(0, 21), 'Mon Oct 05 2026 09:30');
+  assert.equal(new Date(nextRun({ time: '07:00', days: [1, 3] }, base.getTime())).getDay(), 3, 'heure passée : mercredi');
+  assert.equal(nextRun({ time: '07:00', days: [], date: '2026-10-05' }, base.getTime()), 0, 'une fois, déjà passée');
+  assert.equal(new Date(lastDue({ time: '07:00', days: [0, 1, 2, 3, 4, 5, 6] }, base.getTime())).getHours(), 7);
+
+  const c = await wsClient();
+  const now = new Date(), hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // enregistrée après son heure : pas lancée tout de suite
+  const [x] = await api('PUT', '/api/schedules', [{ name: 'revue', time: hhmm, date: today, target: 'session', session: S.id, text: 'programme-du-matin' }]);
+  await new Promise(r => setTimeout(r, 900));
+  assert.ok(!(c.out[S.id] || '').includes('echo: programme-du-matin'), 'pas de lancement à l’enregistrement');
+  // échéance manquée (app fermée) il y a moins de 2 h : rattrapée, puis désactivée (une seule fois)
+  const F = path.join(DATA, 'schedules.json');
+  fs.writeFileSync(F, JSON.stringify(JSON.parse(fs.readFileSync(F, 'utf8')).map(y => ({ ...y, lastRun: 0 }))));
+  await waitFor(() => (c.out[S.id] || '').includes('echo: programme-du-matin'), 8000, 'envoyée');
+  const after = (await api('GET', '/api/schedules'))[0];
+  assert.equal(after.enabled, false);
+  assert.match(after.lastResult, /envoyé|file/);
+  // « Lancer maintenant »
+  assert.ok((await api('POST', `/api/schedules/${x.id}/run`)).result);
+  await api('PUT', '/api/schedules', []);
   c.ws.close();
 });
 
@@ -686,21 +745,54 @@ test('synchro : règles, skills, agents et mémoire de Claude partagés entre ma
     put({ p: 'REGLES.md', d: b64('règles du PC'), x: 0 }, later);
     put({ p: 'skills/deploy/SKILL.md', del: 1 }, later);
     put({ p: '../evil.md', d: b64('non'), x: 0 }, later);
-    await waitFor(async () => { await api('POST', '/api/sync/now'); return fs.existsSync(path.join(C, 'agents', 'revue.md')); }, 15000, 'agent reçu');
+    put({ p: 'projects/~-proj/memory/note.md', d: b64('note du PC'), x: 0 }, later);
+    // règles, skills et agents reçus attendent une validation ; les notes de Claude Code s'appliquent seules
+    const pend = await waitFor(async () => { await api('POST', '/api/sync/now'); const d = await api('GET', '/api/claude-sync'); return d.pending.length === 3 && d; }, 15000, 'fichiers à valider');
+    assert.deepEqual(pend.pending.map(x => x.p).sort(), ['REGLES.md', 'agents/revue.md', 'skills/deploy/SKILL.md']);
+    assert.ok(!fs.existsSync(path.join(C, 'agents', 'revue.md')), 'rien écrit avant validation');
+    assert.equal(fs.readFileSync(path.join(C, `projects/${enc(HOME)}-proj/memory/note.md`), 'utf8'), 'note du PC');
+    await api('POST', '/api/claude-sync/decide', { apply: true });
+    assert.equal(fs.readFileSync(path.join(C, 'agents', 'revue.md'), 'utf8'), 'agent de revue');
     assert.equal(fs.readFileSync(path.join(C, 'REGLES.md'), 'utf8'), 'règles du PC');
     assert.ok(!fs.existsSync(path.join(C, 'skills/deploy/SKILL.md')), 'skill supprimée ailleurs');
     assert.ok(!fs.existsSync(path.join(HOME, 'evil.md')));
     const bk = path.join(DATA, 'claude-sync-backup');
     const saved = fs.readdirSync(bk).map(d => path.join(bk, d, 'REGLES.md')).find(f => fs.existsSync(f));
     assert.equal(fs.readFileSync(saved, 'utf8'), 'toujours en français');
-    assert.ok((await api('GET', '/api/sync')).cfReceived >= 3);
+    // journal + restauration : l'ancienne règle revient et repart vers les autres machines
+    const entry = (await api('GET', '/api/claude-sync')).log.find(x => x.p === 'REGLES.md' && x.action === 'replaced');
+    assert.ok(entry?.backup, 'remplacement noté avec sa copie');
+    await api('POST', '/api/claude-sync/restore', { id: entry.id });
+    assert.equal(fs.readFileSync(path.join(C, 'REGLES.md'), 'utf8'), 'toujours en français');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return Buffer.from(get('REGLES.md').e.d, 'base64').toString() === 'toujours en français'; }, 15000, 'restauration envoyée');
+    assert.equal((await req('POST', '/api/claude-sync/restore', { id: 'inconnu' })).status, 400);
+
+    // lien symbolique : jamais d'écriture à travers lui (dépôt relié dans les skills)
+    const repo = path.join(HOME, 'depot-relie'); fs.mkdirSync(repo, { recursive: true });
+    fs.symlinkSync(repo, path.join(C, 'skills', 'relie'));
+    put({ p: 'skills/relie/evil.sh', d: b64('rm -rf'), x: 1 }, Date.now() + 9000);
+    put({ p: 'skills/relie/.git/hooks/pre-commit', d: b64('rm -rf'), x: 1 }, Date.now() + 9000);
+    await api('POST', '/api/sync/now');
+    await api('POST', '/api/claude-sync/decide', { apply: true });
+    assert.ok(!fs.existsSync(path.join(repo, 'evil.sh')), 'refusé à travers le lien');
+    assert.ok(!fs.existsSync(path.join(repo, '.git')), 'dossier caché refusé');
+    fs.unlinkSync(path.join(C, 'skills', 'relie'));
+
+    // fichier devenu trop gros : pas pris pour une suppression
+    w('agents/gros.md', 'petit');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return get('agents/gros.md'); }, 15000, 'envoyé');
+    w('agents/gros.md', 'x'.repeat(2.2 * 1024 * 1024));
+    await api('POST', '/api/sync/now');
+    assert.ok(!get('agents/gros.md').e.del, 'pas de suppression envoyée');
+    assert.ok((await api('GET', '/api/sync')).cfReceived >= 4);
 
     // version plus ancienne : ignorée ; modification locale : envoyée ; suppression locale : propagée
     put({ p: 'REGLES.md', d: b64('ancienne'), x: 0 }, Date.now() - 60000);
     fs.rmSync(path.join(C, memRel));
     w('CLAUDE.md', '@REGLES.md\nmodifié ici\n');
     await waitFor(async () => { await api('POST', '/api/sync/now'); return get('projects/~-proj/memory/MEMORY.md')?.e.del; }, 15000, 'suppression envoyée');
-    assert.equal(fs.readFileSync(path.join(C, 'REGLES.md'), 'utf8'), 'règles du PC');
+    assert.equal(fs.readFileSync(path.join(C, 'REGLES.md'), 'utf8'), 'toujours en français', 'version ancienne ignorée');
+    assert.equal((await api('GET', '/api/claude-sync')).pending.length, 0, 'ni mise en attente');
     assert.match(Buffer.from(get('CLAUDE.md').e.d, 'base64').toString(), /modifié ici/);
 
     // option décochée : plus rien n'est envoyé pour cette catégorie
@@ -774,24 +866,45 @@ test('synchro : le choix de la mémoire (intégrée ou claude-mem) est le même 
   const KEY = 'e'.repeat(32);
   const fake = await fakeSyncServer([KEY]);
   try {
-    // une machine qui rejoint l'espace prend le choix déjà partagé
+    // une machine qui rejoint un espace où claude-mem est choisi : proposé, jamais installé sans accord
     await api('PUT', '/api/settings', { memoryEngine: 'native', syncSessionMemory: true });
-    const t0 = Date.now();
+    const t0 = Date.now() + 2000;
     fake.put(KEY, { uid: 'csmcfg-memory', updatedAt: t0, origin: 'mac', data: sealed(KEY, 'csmcfg-memory', t0, { engine: 'claude-mem' }) });
     await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-engine' });
-    await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/settings')).memoryEngine === 'claude-mem'; }, 10000, 'choix reçu');
-    // changé ici : envoyé chiffré aux autres
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/sync')).memSuggest === 'claude-mem'; }, 10000, 'proposition');
+    assert.equal((await api('GET', '/api/settings')).memoryEngine, 'native', 'choix local gardé');
+    assert.equal(fake.plain(KEY, 'csmcfg-memory').engine, 'claude-mem', 'rien renvoyé sans choix fait ici');
+    // choix fait ici : envoyé chiffré aux autres
+    await new Promise(r => setTimeout(r, 2100));
     await api('PUT', '/api/settings', { memoryEngine: 'native' });
-    const row = await waitFor(async () => { await api('POST', '/api/sync/now'); const r = fake.rows(KEY).get('csmcfg-memory'); return r && fake.plain(KEY, 'csmcfg-memory').engine === 'native' && r; }, 10000, 'choix envoyé');
+    const row = await waitFor(async () => { await api('POST', '/api/sync/now'); const r = fake.rows(KEY).get('csmcfg-memory'); return fake.plain(KEY, 'csmcfg-memory').engine === 'native' && r; }, 10000, 'choix envoyé');
     assert.ok(!JSON.stringify(row.data).includes('native'), 'choix chiffré');
-    // changé ailleurs plus tard : suivi ici
-    const t1 = Date.now() + 1000;
-    fake.put(KEY, { uid: 'csmcfg-memory', updatedAt: t1, origin: 'mac', data: sealed(KEY, 'csmcfg-memory', t1, { engine: 'claude-mem' }) });
-    await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/settings')).memoryEngine === 'claude-mem'; }, 10000, 'changement suivi');
+    await api('PUT', '/api/settings', { memoryEngine: 'claude-mem' });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.plain(KEY, 'csmcfg-memory').engine === 'claude-mem'; }, 10000, 'nouveau choix envoyé');
+    // changé ailleurs plus tard vers la mémoire intégrée : suivi ici
+    const t1 = Date.now() + 5000;
+    fake.put(KEY, { uid: 'csmcfg-memory', updatedAt: t1, origin: 'mac', data: sealed(KEY, 'csmcfg-memory', t1, { engine: 'native' }) });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/settings')).memoryEngine === 'native'; }, 10000, 'changement suivi');
   } finally {
     await api('PUT', '/api/settings', { syncCode: '', memoryEngine: 'native' });
     fake.srv.close();
   }
+});
+
+test('configuration de Claude : copies de plus de 30 jours effacées', () => {
+  const claudesync = require('../lib/claudesync');
+  const D = fs.mkdtempSync(path.join(require('os').tmpdir(), 'csm-purge-'));
+  const old = path.join(D, 'claude-sync-backup', '2020-01-01'), recent = path.join(D, 'claude-sync-backup', 'recent');
+  for (const d of [old, recent]) { fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'CLAUDE.md'), 'x'); }
+  const past = new Date(Date.now() - 31 * 86400e3); fs.utimesSync(old, past, past);
+  const sc = claudesync({ DATA: D, settings: () => ({}), status: {} });
+  sc.purge(true);
+  assert.ok(!fs.existsSync(old) && fs.existsSync(recent));
+  fs.rmSync(D, { recursive: true, force: true });
+  // chemins reçus : pas de dossier caché, pas de sortie de ~/.claude
+  assert.equal(claudesync.toLocal('skills/a/.git/hooks/x', '/c', '/h'), null);
+  assert.equal(claudesync.toLocal('../x.md', '/c', '/h'), null);
+  assert.ok(claudesync.toLocal('skills/a/SKILL.md', '/c/', '/h'), 'dossier avec / final accepté');
 });
 
 test('sécurité : jeton des hooks limité, conversation verrouillée non reprenable, essais limités', async () => {

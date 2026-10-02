@@ -250,6 +250,7 @@
       <button data-st="security">Sécurité</button>
       <button data-st="templates">Modèles de session</button>
       <button data-st="prompts">Prompts</button>
+      <button data-st="schedules">Programmées</button>
       <button data-st="sync">Synchronisation</button>
       <button data-st="diag">Diagnostic</button>
       <button data-st="logs">Journaux</button>
@@ -269,8 +270,12 @@
           <legend>Mémoire des sessions : laquelle utiliser ?</legend>
           <label class="check"><input type="radio" name="memoryEngine" data-set="memoryEngine" value="native"> <span><b>Mémoire intégrée</b> (recommandé) : rien à installer. À la fin de chaque session, un résumé est gardé ; la session suivante dans le même dossier le reçoit.</span></label>
           <label class="check"><input type="radio" name="memoryEngine" data-set="memoryEngine" value="claude-mem"> <span><b>claude-mem</b> : plugin plus complet (observations détaillées, recherche dans les souvenirs), installé automatiquement si besoin.</span></label>
+          <p class="hint" id="memSuggest" hidden><span>Tes autres machines utilisent claude-mem.</span> <button type="button" id="memSuggestBtn">Installer et utiliser claude-mem</button></p>
           <p class="hint" id="memEngineInfo">Une seule mémoire à la fois, seulement pour les sessions lancées par l'app. Avec la synchro, le même choix s'applique à toutes les machines.</p>
         </fieldset>
+        <label class="check"><input type="checkbox" data-set="queueQuotaPause"> <span>Mettre la file d'attente en pause près de la limite des 5 h et la reprendre à la réinitialisation</span></label>
+        <label>Seuil de la pause <select data-set="queueQuotaThreshold"><option value="80">80 %</option><option value="90">90 %</option><option value="95">95 %</option><option value="99">99 %</option></select></label>
+        <label class="check"><input type="checkbox" data-set="queueResumeAfterLimit"> <span>À la réinitialisation, relancer (« continue ») les sessions coupées par la limite</span></label>
         <label>Compactage automatique <select data-set="autoCompactWindow"><option value="model">Fenêtre complète du modèle (recommandé)</option><option value="400000">Vers 400 000 tokens</option><option value="200000">Vers 200 000 tokens</option><option value="claude">Réglage de Claude Code</option></select></label>
         <p class="hint">Si Claude compacte la conversation en boucle, c'est souvent une fenêtre trop petite imposée par CLAUDE_CODE_AUTO_COMPACT_WINDOW : « Fenêtre complète » la remplace pour les sessions de l'app.</p>
         <label class="check"><input type="checkbox" data-set="remoteAll"> <span>📱 Rendre les nouvelles sessions accessibles depuis l'app Claude (Remote Control)</span></label>
@@ -301,6 +306,21 @@
       <section data-st="templates" hidden>
         <p class="hint">Un modèle mémorise dossier, nom, modèle, mode, worktree, groupe et premier prompt. Créer : « Enregistrer comme modèle » dans la fenêtre Nouvelle session.</p>
         <ul id="tplList" class="results"></ul>
+      </section>
+      <section data-st="schedules" hidden>
+        <p class="hint">Envoyer un prompt à une session, ou lancer un modèle de session, à une heure donnée. Session occupée ou en pause de quota : le prompt attend dans sa file. L'app doit être ouverte (une échéance manquée depuis moins de 2 h est rattrapée au démarrage).</p>
+        <ul id="schList" class="results"></ul>
+        <form id="schForm" class="schForm">
+          <label>Nom <input name="name" maxlength="80" placeholder="Revue du matin"></label>
+          <label>Quoi <select name="target"><option value="session">Prompt dans une session</option><option value="template">Lancer un modèle de session</option></select></label>
+          <label data-for="session">Session <select name="session"></select></label>
+          <label data-for="template" hidden>Modèle de session <select name="template"></select></label>
+          <label>Prompt <textarea name="text" rows="3" maxlength="20000" placeholder="Relis les modifications d'hier et résume ce qui reste à faire."></textarea></label>
+          <label>Heure <input name="time" type="time" value="09:00" required></label>
+          <fieldset class="syncWhat schDays"><legend>Jours (aucun = une seule fois)</legend></fieldset>
+          <label data-for="once">Date <input name="date" type="date"></label>
+          <button type="submit" class="primary">Ajouter</button>
+        </form>
       </section>
       <section data-st="prompts" hidden>
         <p class="hint">Snippets réutilisables, insérés dans la session active depuis la palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) ou le menu ⋯.</p>
@@ -334,7 +354,16 @@
           <label class="check"><input type="checkbox" data-set="syncClaudeSkills"> <span>Skills : ~/.claude/skills</span></label>
           <label class="check"><input type="checkbox" data-set="syncClaudeAgents"> <span>Agents et commandes : ~/.claude/agents, ~/.claude/commands</span></label>
           <label class="check"><input type="checkbox" data-set="syncClaudeMemory"> <span>Notes de Claude Code : les dossiers memory/ de ~/.claude/projects, que Claude écrit lui-même (projets situés au même endroit sous le dossier personnel)</span></label>
-          <p class="hint">Un fichier remplacé ou supprimé sur cette machine est d'abord copié dans le dossier de données de l'app (claude-sync-backup). Les skills installées par des plugins ne sont pas concernées.</p>
+          <label class="check"><input type="checkbox" data-set="claudeSyncReview"> <span>Me demander avant d'appliquer les règles, skills, agents et commandes reçus (recommandé : ils guident et peuvent faire exécuter du code par Claude)</span></label>
+          <p class="hint">Un fichier remplacé ou supprimé sur cette machine est d'abord copié dans le dossier de données de l'app (claude-sync-backup, gardé 30 jours). Jamais d'écriture à travers un lien ni hors de ~/.claude. Les skills installées par des plugins ne sont pas concernées.</p>
+          <p class="hint warn" id="cfWarning" hidden></p>
+          <details id="cfReview">
+            <summary>Fichiers reçus <span id="cfPendingCount"></span></summary>
+            <div class="cfActs"><button type="button" id="cfApplyAll" class="primary">Tout appliquer</button> <button type="button" id="cfRejectAll">Tout refuser</button></div>
+            <ul id="cfPendingList" class="results"></ul>
+            <p class="hint">Derniers changements reçus (avec la copie de la version remplacée) :</p>
+            <ul id="cfLogList" class="results"></ul>
+          </details>
         </fieldset>
         <label>Synchroniser automatiquement <select data-set="syncMinutes"><option value="5">toutes les 5 minutes</option><option value="10">toutes les 10 minutes</option><option value="30">toutes les 30 minutes</option><option value="60">toutes les heures</option></select></label>
         <p class="hint">Ce que tu modifies sur cette machine part tout de suite ; l'intervalle règle la récupération des changements des autres machines. « Synchroniser maintenant » reste disponible.</p>

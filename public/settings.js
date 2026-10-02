@@ -11,6 +11,7 @@
     if (name === 'diag') loadDiag();
     if (name === 'logs') loadLogs();
     if (name === 'templates') renderTemplates();
+    if (name === 'schedules') renderSchedules();
     if (name === 'about') renderAbout();
     if (name === 'sync') loadSync();
     if (name === 'general') api('GET', '/api/sync').then(renderEngine).catch(() => { });
@@ -91,6 +92,8 @@
   function renderEngine(st) {
     const el = $('#memEngineInfo');
     if (!el || !st) return;
+    $('#memSuggest').hidden = st.memSuggest !== 'claude-mem' || SETTINGS.memoryEngine === 'claude-mem';
+    if (SETTINGS.memoryEngine === 'off') { el.textContent = t('Mémoire désactivée : choisis-en une pour l’activer.'); return; }
     const mi = st.memInstall || '';
     el.textContent = t(ENGINE_HINT) + (st.memEngine !== 'claude-mem' ? ''
       : mi === 'installing' ? ' · ' + t('installation de claude-mem…')
@@ -100,6 +103,11 @@
   function renderSync(st) {
     if (!st) return;
     renderEngine(st);
+    $('#cfWarning').hidden = !st.cfWarning;
+    $('#cfWarning').textContent = st.cfWarning ? t('{n} fichiers de Claude ont disparu d’un coup : leur suppression n’est pas envoyée aux autres machines. Vérifie ~/.claude.').replace('{n}', st.cfWarning) : '';
+    $('#cfPendingCount').textContent = st.cfPending ? `(${st.cfPending} ${t('à valider')})` : '';
+    if (st.cfPending && !$('#cfReview').open) $('#cfReview').open = true;
+    if ($('#cfReview').open) renderClaudeSync();
     F.syncMachine = st.machine;
     $('#syncMachine').placeholder = st.machine;
     $('#syncServer').placeholder = st.server;
@@ -182,6 +190,81 @@
   }
   $('#logFilter').oninput = renderLogs;
   $('#logRefresh').onclick = loadLogs;
+
+  // ---------------------------------------------------------------- demandes programmées (lib/schedule.js)
+  const DAYS = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+  const schF = $('#schForm');
+  schF.querySelector('.schDays').insertAdjacentHTML('beforeend', [1, 2, 3, 4, 5, 6, 0].map(d => `<label class="check"><input type="checkbox" name="day" value="${d}"> <span>${t(DAYS[d])}</span></label>`).join(''));
+  const schToggle = () => {
+    const tpl = schF.target.value === 'template';
+    schF.querySelector('[data-for=session]').hidden = tpl;
+    schF.querySelector('[data-for=template]').hidden = !tpl;
+    schF.querySelector('[data-for=once]').hidden = [...schF.querySelectorAll('[name=day]:checked')].length > 0;
+  };
+  schF.target.onchange = schToggle;
+  schF.addEventListener('change', e => { if (e.target.name === 'day') schToggle(); });
+  let schedules = [];
+  async function renderSchedules() {
+    schedules = await api('GET', '/api/schedules');
+    const tpls = await loadTemplates();
+    schF.session.innerHTML = [...sessions.values()].map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    schF.template.innerHTML = tpls.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+    const d = new Date(); // date locale (pas UTC)
+    if (!schF.date.value) schF.date.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    schToggle();
+    const what = x => x.target === 'template' ? `▶ ${esc(tpls.find(y => y.id === x.template)?.name || t('modèle supprimé'))}` : `→ ${esc(sessions.get(x.session)?.name || t('session supprimée'))}`;
+    const when = x => `${x.time} · ${x.days.length ? x.days.map(d => t(DAYS[d])).join(' ') : x.date}`;
+    $('#schList').innerHTML = schedules.length ? schedules.map((x, i) => `<li data-i="${i}"><div><b>${esc(x.name || x.text.slice(0, 60) || t('Sans nom'))}</b><small>${when(x)} · ${what(x)}${x.next ? ' · ' + t('prochaine') + ' ' + esc(new Date(x.next).toLocaleString()) : ''}${x.lastResult ? ' · ' + esc(t(x.lastResult)) : ''}</small></div>
+      <span class="acts"><label class="check"><input type="checkbox" data-a="on" ${x.enabled ? 'checked' : ''}></label><button data-a="run">${t('Lancer')}</button><button data-a="del" class="danger">${t('Supprimer')}</button></span></li>`).join('')
+      : `<li class="empty"><small>${t('Aucune demande programmée.')}</small></li>`;
+    $('#schList').querySelectorAll('li[data-i]').forEach(li => {
+      const i = +li.dataset.i;
+      li.querySelector('[data-a=on]').onchange = e => saveSchedules(schedules.map((x, j) => j === i ? { ...x, enabled: e.target.checked } : x));
+      li.querySelector('[data-a=run]').onclick = async () => { await api('POST', `/api/schedules/${schedules[i].id}/run`); renderSchedules(); };
+      li.querySelector('[data-a=del]').onclick = () => saveSchedules(schedules.filter((_, j) => j !== i));
+    });
+  }
+  async function saveSchedules(list) { schedules = await api('PUT', '/api/schedules', list); renderSchedules(); }
+  schF.onsubmit = e => {
+    e.preventDefault();
+    const days = [...schF.querySelectorAll('[name=day]:checked')].map(c => +c.value);
+    const x = { name: schF.name.value.trim(), target: schF.target.value, session: schF.session.value, template: schF.template.value, text: schF.text.value, time: schF.time.value, days, date: schF.date.value, enabled: true };
+    if (x.target === 'session' && !x.text.trim()) return alert(t('Écris le prompt à envoyer.'));
+    saveSchedules([...schedules, x]);
+    schF.name.value = ''; schF.text.value = '';
+  };
+  window.addEventListener('csm:schedules', () => { if (dlg.open && !dlg.querySelector('section[data-st=schedules]').hidden) renderSchedules(); });
+
+  // ---------------------------------------------------------------- configuration de Claude reçue
+  // À valider (appliquer / refuser) et journal des changements reçus (restaurer la version remplacée).
+  const ACTION = { created: 'créé', replaced: 'remplacé', deleted: 'supprimé', pending: 'en attente', rejected: 'refusé', restored: 'restauré', refused: 'refusé (chemin interdit)', linked: 'ignoré (lien)' };
+  async function renderClaudeSync() {
+    let d; try { d = await api('GET', '/api/claude-sync'); } catch { return; }
+    const when = x => new Date(x).toLocaleString();
+    $('#cfApplyAll').hidden = $('#cfRejectAll').hidden = !d.pending.length;
+    $('#cfPendingList').innerHTML = d.pending.length ? d.pending.map(x => `<li data-uid="${esc(x.uid)}"><div><b>${esc(x.p)}</b><small>${x.del ? t('suppression') : `${Math.ceil(x.size / 1024)} Ko`} · ${esc(x.from || '?')} · ${esc(when(x.at))}</small></div>
+      <span class="acts"><button data-a="ok" class="primary">${t('Appliquer')}</button><button data-a="no">${t('Refuser')}</button></span></li>`).join('')
+      : `<li class="empty"><small>${t('Rien à valider.')}</small></li>`;
+    $('#cfPendingList').querySelectorAll('li[data-uid]').forEach(li => li.querySelectorAll('button').forEach(b => {
+      b.onclick = async () => { try { await api('POST', '/api/claude-sync/decide', { uids: [li.dataset.uid], apply: b.dataset.a === 'ok' }); } catch (e) { alert(t(e.message)); } renderClaudeSync(); };
+    }));
+    $('#cfLogList').innerHTML = d.log.slice(0, 50).map(x => `<li data-id="${esc(x.id)}"><div><b>${esc(x.p)}</b><small>${t(ACTION[x.action] || x.action)}${x.from ? ' · ' + esc(x.from) : ''} · ${esc(when(x.at))}</small></div>
+      ${x.backup ? `<span class="acts"><button data-a="restore">${t('Restaurer')}</button></span>` : ''}</li>`).join('') || `<li class="empty"><small>${t('Aucun changement reçu pour l’instant.')}</small></li>`;
+    $('#cfLogList').querySelectorAll('button[data-a=restore]').forEach(b => {
+      b.onclick = async () => {
+        const li = b.closest('li');
+        if (!confirm(t('Remettre la version d’avant ce changement ? (la version actuelle est copiée d’abord)'))) return;
+        try { await api('POST', '/api/claude-sync/restore', { id: li.dataset.id }); } catch (e) { alert(e.message); }
+        renderClaudeSync();
+      };
+    });
+  }
+  $('#cfReview').addEventListener('toggle', () => { if ($('#cfReview').open) renderClaudeSync(); });
+  $('#cfApplyAll').onclick = async () => { try { await api('POST', '/api/claude-sync/decide', { apply: true }); } catch (e) { alert(t(e.message)); } renderClaudeSync(); };
+  $('#cfRejectAll').onclick = async () => { if (confirm(t('Refuser tous les fichiers reçus ? Les versions de cette machine restent.'))) { await api('POST', '/api/claude-sync/decide', { apply: false }); renderClaudeSync(); } };
+  $('#memSuggestBtn').onclick = () => { saveSettings({ memoryEngine: 'claude-mem' }); SETTINGS.memoryEngine = 'claude-mem'; fill(); };
+  // réglages changés ailleurs (autre machine, autre fenêtre) pendant que la boîte est ouverte
+  window.addEventListener('csm:settings', () => { if (dlg.open) { fill(); api('GET', '/api/sync').then(renderEngine).catch(() => { }); } });
 
   // ---------------------------------------------------------------- à propos / mises à jour
   let upd = null;
