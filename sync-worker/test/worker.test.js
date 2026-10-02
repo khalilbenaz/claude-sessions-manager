@@ -114,3 +114,19 @@ test('sessions : pagination par 1000, plafond de lignes exact', async () => {
   const p2 = (await s.j('GET', `/sessions?since=${p1.rev}`)).body;
   assert.equal(p2.items.length, 200, 'la suite arrive');
 });
+
+test('espace : place occupée, puis effacement complet (changement de code)', async () => {
+  const s = await space(), blob = crypto.randomBytes(5000);
+  await s.putPart('sess-dddddd', V('a'), 0, blob);
+  await s.j('PUT', '/transcripts/sess-dddddd', { cid: 'c', ver: V('a'), chunks: 1, updatedAt: 1 });
+  await s.j('POST', '/sessions', { items: [{ uid: 'sess-dddddd', data: {}, updatedAt: 1 }] });
+  const u = (await s.j('GET', '/usage')).body;
+  assert.deepEqual([u.bytes, u.sessions, u.transcripts], [5000, 1, 1]);
+  assert.ok(u.max >= 100e6);
+  const other = await space();
+  await other.putPart('sess-eeeeee', V('a'), 0, blob);
+  assert.equal((await s.j('DELETE', '/space')).status, 200);
+  assert.equal((await s.j('GET', '/usage')).status, 401, 'ancien code refusé');
+  assert.equal(sql(`SELECT COUNT(*) c FROM csm_parts WHERE space = '${sha(s.key)}'`)[0].c, 0);
+  assert.equal((await other.getPart('sess-eeeeee', V('a'), 0)).status, 200, 'les autres espaces ne bougent pas');
+});

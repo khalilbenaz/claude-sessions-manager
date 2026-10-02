@@ -251,6 +251,7 @@
       <button data-st="templates">Modèles de session</button>
       <button data-st="prompts">Prompts</button>
       <button data-st="schedules">Programmées</button>
+      <button data-st="memory">Mémoire</button>
       <button data-st="sync">Synchronisation</button>
       <button data-st="diag">Diagnostic</button>
       <button data-st="logs">Journaux</button>
@@ -322,6 +323,17 @@
           <button type="submit" class="primary">Ajouter</button>
         </form>
       </section>
+      <section data-st="memory" hidden>
+        <p class="hint">Ce que Claude retient d'une session à l'autre. Corrige une fiche fausse, ajoute une note « À retenir » (donnée à Claude en premier dans ce dossier), ou oublie une fiche : les changements suivent la synchro.</p>
+        <div class="memBar">
+          <select id="memSrc"><option value="cards">Mémoire intégrée</option><option value="notes">Notes de Claude Code</option><option value="cm">claude-mem</option></select>
+          <input id="memQ" type="search" placeholder="Chercher…" spellcheck="false">
+          <select id="memProject"><option value="">Tous les dossiers</option></select>
+          <select id="memMachine"><option value="">Toutes les machines</option></select>
+        </div>
+        <ul id="memList" class="results"></ul>
+        <div id="memEdit" hidden></div>
+      </section>
       <section data-st="prompts" hidden>
         <p class="hint">Snippets réutilisables, insérés dans la session active depuis la palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) ou le menu ⋯.</p>
         <button type="button" id="openPrompts">Ouvrir la bibliothèque de prompts</button>
@@ -364,6 +376,13 @@
             <p class="hint">Derniers changements reçus (avec la copie de la version remplacée) :</p>
             <ul id="cfLogList" class="results"></ul>
           </details>
+        </fieldset>
+        <fieldset class="syncWhat" id="machinesBox">
+          <legend>Machines</legend>
+          <div id="usageBar" class="usageBar" hidden><div><span></span></div><small></small></div>
+          <ul id="machineList" class="results"></ul>
+          <p class="hint">« Retirer » enlève une machine de la liste, mais elle garde le code : pour lui couper vraiment l'accès, change de code. L'ancien espace est alors effacé du serveur, et tu saisis le nouveau code sur tes autres machines.</p>
+          <button type="button" id="syncRotate" class="danger">Changer de code…</button>
         </fieldset>
         <label>Synchroniser automatiquement <select data-set="syncMinutes"><option value="5">toutes les 5 minutes</option><option value="10">toutes les 10 minutes</option><option value="30">toutes les 30 minutes</option><option value="60">toutes les heures</option></select></label>
         <p class="hint">Ce que tu modifies sur cette machine part tout de suite ; l'intervalle règle la récupération des changements des autres machines. « Synchroniser maintenant » reste disponible.</p>

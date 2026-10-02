@@ -17,7 +17,7 @@ const HOME = path.join(TMP, 'home'), DATA = path.join(TMP, 'data'), WORK = path.
 for (const d of [HOME, DATA, WORK, path.join(TMP, 'mem')]) fs.mkdirSync(d, { recursive: true });
 const ENV = {
   ...process.env, CSM_PORT: String(PORT), CSM_DATA: DATA, HOME, USERPROFILE: HOME,
-  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300', CSM_MEM_DB: path.join(TMP, 'mem', 'claude-mem.db'), CSM_NO_PLUGIN_INSTALL: '1', CSM_QUOTA_MARGIN: '300', CSM_SCHEDULE_EVERY: '300',
+  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300', CSM_MEM_DB: path.join(TMP, 'mem', 'claude-mem.db'), CSM_NO_PLUGIN_INSTALL: '1', CSM_DEFAULT_SYNC_SERVER: 'http://127.0.0.1:9', CSM_QUOTA_MARGIN: '300', CSM_SCHEDULE_EVERY: '300',
   CSM_CLAUDE: process.execPath, CSM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-claude.js')}"`,
   GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com',
 };
@@ -111,6 +111,54 @@ test('mémoire des sessions : résumé capté, puis donné à la session suivant
   assert.match(ctx, /Mémoire partagée/);
   assert.match(ctx, /bonjour/);
   await api('DELETE', `/api/sessions/${N.id}`);
+});
+
+test('mémoire : chercher, note « À retenir », retirer une réponse, oublier une fiche ; notes de Claude Code', async () => {
+  const s = await session(S.id);
+  const found = await api('GET', '/api/memory/cards?q=bonjour');
+  const card = found.items.find(e => e.id === s.claudeSessionId);
+  assert.ok(card, 'trouvée par la recherche');
+  assert.equal((await api('GET', '/api/memory/cards?q=introuvable-xyz')).items.length, 0);
+  const full = await api('GET', `/api/memory/cards/${card.id}`);
+  assert.ok(full.answers.some(a => /echo: bonjour/.test(a)));
+  await api('PATCH', `/api/memory/cards/${card.id}`, { title: 'Titre corrigé', note: 'toujours répondre en français', dropAnswer: full.answers.find(a => /echo: bonjour/.test(a)) });
+  const after = await api('GET', `/api/memory/cards/${card.id}`);
+  assert.equal(after.title, 'Titre corrigé');
+  assert.ok(!after.answers.some(a => /echo: bonjour/.test(a)), 'réponse retirée');
+  // la note est donnée en premier au démarrage suivant
+  const N = await api('POST', '/api/sessions', { cwd: WORK, name: 'avec-note' });
+  const n = await idle(N.id);
+  const dirs = [fs.realpathSync(WORK), WORK].map(w => path.join(HOME, '.claude', 'projects', w.replace(/[^a-zA-Z0-9]/g, '-'), `${n.claudeSessionId}.context.txt`));
+  const ctxt = await waitFor(() => dirs.map(f => fs.existsSync(f) && fs.readFileSync(f, 'utf8')).find(Boolean), 5000, 'contexte');
+  assert.match(ctxt, /À retenir[\s\S]*toujours répondre en français/);
+  // un nouveau tour ne remet pas la réponse retirée
+  const c = await wsClient(); c.input(S.id, 'encore\r');
+  await waitFor(async () => (await api('GET', `/api/memory/cards/${card.id}`)).answers.some(a => /echo: encore/.test(a)), 15000, 'fiche à jour');
+  assert.ok(!(await api('GET', `/api/memory/cards/${card.id}`)).answers.some(a => /echo: bonjour/.test(a)), 'toujours retirée');
+  c.ws.close();
+  // oublier : plus listée, plus donnée, pas recréée
+  const nCard = (await api('GET', '/api/memory/cards')).items.find(e => e.id === n.claudeSessionId);
+  if (nCard) {
+    await api('PATCH', `/api/memory/cards/${nCard.id}`, { forget: true });
+    assert.ok(!(await api('GET', '/api/memory/cards')).items.some(e => e.id === nCard.id));
+    assert.equal((await req('GET', `/api/memory/cards/${nCard.id}`)).status, 404);
+  }
+  await api('DELETE', `/api/sessions/${N.id}`);
+  assert.ok(!(await api('GET', '/api/memory/cards')).items.some(e => e.id === n.claudeSessionId), 'pas recréée');
+
+  // notes de Claude Code : liste, modification (copie avant), suppression ; chemin hors memory/ refusé
+  const enc = p => p.replace(/[^a-zA-Z0-9]/g, '-');
+  const nd = path.join(HOME, '.claude', 'projects', enc(HOME) + '-notes', 'memory'); fs.mkdirSync(nd, { recursive: true });
+  fs.writeFileSync(path.join(nd, 'MEMORY.md'), '- préférer pnpm');
+  const notes = await api('GET', '/api/memory/notes?q=pnpm');
+  assert.equal(notes.length, 1);
+  await api('PUT', '/api/memory/notes', { p: notes[0].p, text: '- préférer npm' });
+  assert.equal(fs.readFileSync(path.join(nd, 'MEMORY.md'), 'utf8'), '- préférer npm');
+  assert.equal((await req('PUT', '/api/memory/notes', { p: 'CLAUDE.md', text: 'x' })).status, 400);
+  assert.equal((await req('PUT', '/api/memory/notes', { p: notes[0].p.replace('MEMORY.md', '../../x.md'), text: 'x' })).status, 400);
+  await api('PUT', '/api/memory/notes', { p: notes[0].p, delete: true });
+  assert.ok(!fs.existsSync(path.join(nd, 'MEMORY.md')));
+  assert.equal((await api('GET', '/api/memory/claude-mem?q=x')).available !== undefined, true);
 });
 
 test('réglages des sessions : moteur de mémoire (claude-mem activé ou non) et fenêtre du compactage', async () => {
@@ -461,6 +509,13 @@ function fakeSyncServer(keys, legacy = []) {
       if (!spaces.has(sp)) spaces.set(sp, new Map());
       const rows = spaces.get(sp);
       const u = new URL(q.url, 'http://x');
+      if (u.pathname === '/usage') return send(200, { bytes: [...(txs.get(sp)?.chunks.values() || [])].reduce((n, c) => n + c.length, 0), max: 200e6, sessions: rows.size, transcripts: txs.get(sp)?.meta.size || 0 });
+      if (u.pathname === '/space' && q.method === 'DELETE') { // changement de code : l'espace et ses accès disparaissent
+        spaces.delete(sp); txs.delete(sp);
+        for (const [a, v] of linked) if (v === sp) linked.delete(a);
+        if (keys.includes(sp)) keys.splice(keys.indexOf(sp), 1);
+        return send(200, { ok: true });
+      }
       const t = u.pathname.match(/^\/transcripts(?:\/([^/]+)(?:\/([^/]+)\/([^/]+))?)?$/);
       if (t) {
         const T = txOf(sp), [, uid, ver, n] = t;
@@ -887,6 +942,43 @@ test('synchro : le choix de la mémoire (intégrée ou claude-mem) est le même 
     await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/settings')).memoryEngine === 'native'; }, 10000, 'changement suivi');
   } finally {
     await api('PUT', '/api/settings', { syncCode: '', memoryEngine: 'native' });
+    fake.srv.close();
+  }
+});
+
+test('synchro : machines de l’espace, place occupée, retirer une machine, changer de code', async () => {
+  const { encodeCode, authKey } = require('../lib/sync');
+  const KEY = 'k'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  try {
+    const t0 = Date.now();
+    fake.put(KEY, { uid: 'csmcfg-machine-aaaaaaaaaaaa', updatedAt: t0, origin: 'pc-bureau', data: sealed(KEY, 'csmcfg-machine-aaaaaaaaaaaa', t0, { name: 'pc-bureau', platform: 'win32', version: '3.17.0', engine: 'native', seen: t0 }) });
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'mac-rot' });
+    const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'a-garder' });
+    const list = await waitFor(async () => { await api('POST', '/api/sync/now'); const r = await api('GET', '/api/sync/machines'); return r.machines.length === 2 && r; }, 10000, 'machines');
+    assert.equal(list.machines[0].me, true);
+    assert.equal(list.machines[0].name, 'mac-rot');
+    assert.equal(list.machines[1].name, 'pc-bureau');
+    assert.ok(list.usage && list.usage.max > 0, 'place occupée');
+    await waitFor(() => [...fake.rows(KEY).keys()].some(u => u.startsWith('csmcfg-machine-') && u !== 'csmcfg-machine-aaaaaaaaaaaa'), 10000, 'notre machine publiée');
+    // retirer : tombstone envoyée, et la fiche des autres n'est pas effacée par les synchros suivantes
+    await api('DELETE', '/api/sync/machines/csmcfg-machine-aaaaaaaaaaaa');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get('csmcfg-machine-aaaaaaaaaaaa').deleted; }, 10000, 'retirée');
+    assert.equal((await api('GET', '/api/sync/machines')).machines.length, 1);
+    // changer de code : ancien espace effacé (ancien code refusé), données renvoyées dans le nouvel espace
+    const { code } = await api('POST', '/api/sync/rotate', {});
+    const dec = require('../lib/sync').decodeCode(code);
+    assert.equal(dec.url, fake.url, 'même serveur que l’espace actuel');
+    assert.equal((await api('GET', '/api/settings')).syncCode, code);
+    const raw = dec.key;
+    const old = await fetch(fake.url + '/sessions?since=0', { headers: { authorization: 'Bearer ' + authKey(KEY) } });
+    assert.equal(old.status, 401, 'ancien code refusé');
+    const sid = (await session(s.id)).syncId;
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return [...fake.rows(raw).values()].some(r => !r.deleted && fake.plain(raw, r.uid)?.name === 'a-garder'); }, 15000, 'session dans le nouvel espace');
+    assert.ok(sid);
+    await api('DELETE', `/api/sessions/${s.id}`);
+  } finally {
+    await api('PUT', '/api/settings', { syncCode: '' });
     fake.srv.close();
   }
 });

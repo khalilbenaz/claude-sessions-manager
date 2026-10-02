@@ -12,6 +12,7 @@
     if (name === 'logs') loadLogs();
     if (name === 'templates') renderTemplates();
     if (name === 'schedules') renderSchedules();
+    if (name === 'memory') renderMemory();
     if (name === 'about') renderAbout();
     if (name === 'sync') loadSync();
     if (name === 'general') api('GET', '/api/sync').then(renderEngine).catch(() => { });
@@ -103,6 +104,8 @@
   function renderSync(st) {
     if (!st) return;
     renderEngine(st);
+    $('#machinesBox').hidden = !st.enabled;
+    if (st.enabled && !dlg.querySelector('section[data-st=sync]').hidden) renderMachines();
     $('#cfWarning').hidden = !st.cfWarning;
     $('#cfWarning').textContent = st.cfWarning ? t('{n} fichiers de Claude ont disparu d’un coup : leur suppression n’est pas envoyée aux autres machines. Vérifie ~/.claude.').replace('{n}', st.cfWarning) : '';
     $('#cfPendingCount').textContent = st.cfPending ? `(${st.cfPending} ${t('à valider')})` : '';
@@ -234,6 +237,100 @@
     schF.name.value = ''; schF.text.value = '';
   };
   window.addEventListener('csm:schedules', () => { if (dlg.open && !dlg.querySelector('section[data-st=schedules]').hidden) renderSchedules(); });
+
+  // ---------------------------------------------------------------- machines de l'espace de synchro
+  const OS = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' };
+  const fmtMB = b => b >= 1e9 ? (b / 1e9).toFixed(1) + ' Go' : Math.max(0.1, b / 1e6).toFixed(1) + ' Mo';
+  let machinesAt = 0;
+  async function renderMachines(force) {
+    if (!force && Date.now() - machinesAt < 5000) return;
+    machinesAt = Date.now();
+    let d; try { d = await api('GET', '/api/sync/machines'); } catch { return; }
+    const u = d.usage;
+    $('#usageBar').hidden = !u;
+    if (u) {
+      $('#usageBar span').style.width = Math.min(100, u.bytes / u.max * 100).toFixed(1) + '%';
+      $('#usageBar small').textContent = `${fmtMB(u.bytes)} ${t('sur')} ${fmtMB(u.max)} · ${u.sessions} ${t('sessions')} · ${u.transcripts} ${t('éléments')}`;
+    }
+    $('#machineList').innerHTML = d.machines.map(m => `<li data-id="${esc(m.id)}"><div><b>${esc(m.name)}${m.me ? ' · ' + t('cette machine') : ''}</b><small>${esc(OS[m.platform] || m.platform || '?')} · v${esc(m.version || '?')} · ${t('mémoire')} ${esc(m.engine === 'claude-mem' ? 'claude-mem' : m.engine === 'off' ? t('désactivée') : t('intégrée'))}${m.seen ? ' · ' + t('vue') + ' ' + esc(new Date(m.seen).toLocaleString()) : ''}</small></div>
+      ${m.me ? '' : `<span class="acts"><button data-a="del">${t('Retirer')}</button></span>`}</li>`).join('');
+    $('#machineList').querySelectorAll('[data-a=del]').forEach(b => {
+      b.onclick = async () => { await api('DELETE', `/api/sync/machines/${b.closest('li').dataset.id}`); renderMachines(true); };
+    });
+  }
+  $('#syncRotate').onclick = async () => {
+    if (!confirm(t('Changer de code ? Un nouveau code est créé, tout part de cette machine vers le nouvel espace, et l’ancien est effacé du serveur : les machines restées sur l’ancien code ne se synchronisent plus jusqu’à ce que tu y saisisses le nouveau.'))) return;
+    const b = $('#syncRotate'); b.disabled = true; b.textContent = t('Changement en cours…');
+    try {
+      const r = await api('POST', '/api/sync/rotate', {});
+      SETTINGS.syncCode = r.code;
+      alert(t('Nouveau code (à saisir sur tes autres machines, Réglages › Synchronisation › J’ai déjà un code) :') + '\n\n' + r.code);
+      loadSync();
+    } catch (e) { alert(e.message); }
+    finally { b.disabled = false; b.textContent = t('Changer de code…'); renderMachines(true); }
+  };
+
+  // ---------------------------------------------------------------- mémoire (fiches, notes de Claude Code, claude-mem)
+  let memTimer = null;
+  ['#memQ', '#memProject', '#memMachine', '#memSrc'].forEach(sel => $(sel).addEventListener(sel === '#memQ' ? 'input' : 'change', () => { clearTimeout(memTimer); memTimer = setTimeout(renderMemory, 250); }));
+  const when = x => x ? new Date(x).toLocaleString() : '';
+  async function renderMemory() {
+    const src = $('#memSrc').value, q = encodeURIComponent($('#memQ').value.trim());
+    $('#memProject').hidden = $('#memMachine').hidden = src !== 'cards';
+    $('#memEdit').hidden = true;
+    const ul = $('#memList');
+    try {
+      if (src === 'cards') {
+        const d = await api('GET', `/api/memory/cards?q=${q}&project=${encodeURIComponent($('#memProject').value)}&machine=${encodeURIComponent($('#memMachine').value)}`);
+        const keep = (sel, list, all) => { const v = $(sel).value; $(sel).innerHTML = `<option value="">${t(all)}</option>` + list.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join(''); $(sel).value = list.includes(v) ? v : ''; };
+        keep('#memProject', d.projects, 'Tous les dossiers'); keep('#memMachine', d.machines, 'Toutes les machines');
+        ul.innerHTML = d.items.length ? d.items.map(e => `<li data-id="${esc(e.id)}"><div><b>${esc(e.title)}</b><small>${e.note ? '📌 ' + esc(e.note.slice(0, 80)) + ' · ' : ''}${esc(e.project || '?')} · ${esc(e.machine || '?')} · ${esc(when(e.updated))} · ${e.prompts} ${t('demandes')}</small></div></li>`).join('')
+          : `<li class="empty"><small>${d.enabled ? t('Aucune fiche.') : t('La mémoire intégrée n’est pas la mémoire choisie (Réglages › Général).')}</small></li>`;
+        ul.querySelectorAll('li[data-id]').forEach(li => { li.onclick = () => editCard(li.dataset.id); });
+      } else if (src === 'notes') {
+        const d = await api('GET', `/api/memory/notes?q=${q}`);
+        ul.innerHTML = d.length ? d.map((n, i) => `<li data-i="${i}"><div><b>${esc(n.p.split('/').slice(3).join('/'))}</b><small>${esc(n.project)} · ${esc(when(n.mtime))} · ${esc(n.text.slice(0, 100))}</small></div></li>`).join('')
+          : `<li class="empty"><small>${t('Aucune note de Claude Code.')}</small></li>`;
+        ul.querySelectorAll('li[data-i]').forEach(li => { li.onclick = () => editNote(d[+li.dataset.i]); });
+      } else {
+        const d = await api('GET', `/api/memory/claude-mem?q=${q}`);
+        ul.innerHTML = d.items.length ? d.items.map(o => `<li><div><b>${esc(o.title || o.type || '')}</b><small>${esc(o.project || '')} · ${esc(when(o.at))} · ${esc(o.text)}</small></div></li>`).join('')
+          : `<li class="empty"><small>${d.available ? t('Rien trouvé.') : t('claude-mem n’est pas utilisé par l’app sur cette machine.')}</small></li>`;
+      }
+    } catch (e) { ul.innerHTML = `<li class="empty"><small>${esc(e.message)}</small></li>`; }
+  }
+  async function editCard(id) {
+    const e = await api('GET', `/api/memory/cards/${id}`), box = $('#memEdit');
+    box.hidden = false;
+    box.innerHTML = `<label>${t('Titre')} <input name="title" maxlength="120" value="${esc(e.title)}"></label>
+      <label>${t('À retenir (donné à Claude en premier dans ce dossier)')} <textarea name="note" rows="3" maxlength="4000">${esc(e.note)}</textarea></label>
+      <div class="acts"><button data-a="save" class="primary">${t('Enregistrer')}</button><button data-a="forget" class="danger">${t('Oublier cette fiche')}</button><button data-a="close">${t('Fermer')}</button></div>
+      <small>${esc(e.project || '')} · ${esc(e.machine || '')}${e.branch ? ' · ' + esc(e.branch) : ''} · ${esc(when(e.updated))}</small>
+      <b>${t('Demandes')}</b><ul data-k="p">${e.prompts.map((p, i) => `<li><span>${esc(p.text)}</span><button data-i="${i}" title="${t('Retirer')}">✕</button></li>`).join('')}</ul>
+      <b>${t('Réponses de Claude')}</b><ul data-k="a">${e.answers.map((a, i) => `<li><span>${esc(a)}</span><button data-i="${i}" title="${t('Retirer')}">✕</button></li>`).join('')}</ul>
+      ${e.files.length ? `<b>${t('Fichiers modifiés')}</b><small>${e.files.map(esc).join(', ')}</small>` : ''}`;
+    box.querySelector('[data-a=save]').onclick = async () => { await api('PATCH', `/api/memory/cards/${id}`, { title: box.querySelector('[name=title]').value, note: box.querySelector('[name=note]').value }); renderMemory(); };
+    box.querySelector('[data-a=forget]').onclick = async () => { if (!confirm(t('Oublier cette fiche ? Elle ne sera plus donnée à Claude, ici ni sur tes autres machines.'))) return; await api('PATCH', `/api/memory/cards/${id}`, { forget: true }); renderMemory(); };
+    box.querySelector('[data-a=close]').onclick = () => { box.hidden = true; };
+    box.querySelectorAll('ul[data-k] button').forEach(b => {
+      b.onclick = async () => {
+        const k = b.closest('ul').dataset.k, i = +b.dataset.i;
+        await api('PATCH', `/api/memory/cards/${id}`, k === 'p' ? { dropPrompt: e.prompts[i].text } : { dropAnswer: e.answers[i] });
+        editCard(id);
+      };
+    });
+    box.scrollIntoView({ block: 'nearest' });
+  }
+  function editNote(n) {
+    const box = $('#memEdit');
+    box.hidden = false;
+    box.innerHTML = `<b>${esc(n.p)}</b><textarea name="text" rows="12">${esc(n.text)}</textarea>
+      <div class="acts"><button data-a="save" class="primary">${t('Enregistrer')}</button><button data-a="del" class="danger">${t('Supprimer')}</button><button data-a="close">${t('Fermer')}</button></div>
+      <small>${t('Une copie de la version actuelle est gardée 30 jours (claude-sync-backup). Le changement suit la synchro de ~/.claude.')}</small>`;
+    box.querySelector('[data-a=save]').onclick = async () => { await api('PUT', '/api/memory/notes', { p: n.p, text: box.querySelector('[name=text]').value }); renderMemory(); };
+    box.querySelector('[data-a=del]').onclick = async () => { if (!confirm(t('Supprimer cette note ?'))) return; await api('PUT', '/api/memory/notes', { p: n.p, delete: true }); renderMemory(); };
+    box.querySelector('[data-a=close]').onclick = () => { box.hidden = true; };
+  }
 
   // ---------------------------------------------------------------- configuration de Claude reçue
   // À valider (appliquer / refuser) et journal des changements reçus (restaurer la version remplacée).
