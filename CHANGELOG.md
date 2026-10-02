@@ -2,6 +2,20 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.13.0] — 2026-10-02
+### Ajouté
+- **Choix du moteur de mémoire** (Réglages › Général › *Mémoire des sessions*). Quatre choix : mémoire de Claude Sessions (par défaut), claude-mem, les deux, ou aucune.
+  - claude-mem est **installé automatiquement** quand il est choisi et absent. L'état de l'installation s'affiche dans Réglages.
+  - Il est activé ou coupé pour les sessions de l'app seulement, via `enabledPlugins` dans leur fichier `--settings`. Le terminal n'est pas touché.
+- **Compactage automatique** (Réglages › Général). Par défaut, les sessions de l'app compactent à **la fenêtre complète du modèle**. Autres choix : vers 400 000 tokens, vers 200 000 tokens, ou le réglage de Claude Code.
+- À propos : « Créé par Khalil », avec un lien vers son profil LinkedIn.
+### Corrigé
+- **Compactage en boucle** : `CLAUDE_CODE_AUTO_COMPACT_WINDOW` réglé bas dans `~/.claude/settings.json` (128000 par exemple) faisait compacter vers 95 000 tokens, toutes les quelques minutes, même avec Opus 1M. Il est maintenant remplacé pour les sessions de l'app.
+- Après un compactage, la mémoire des sessions n'est plus réinjectée : le résumé la contient déjà.
+### Modifié
+- L'ancienne case *Mémoire des sessions* est migrée vers le nouveau choix : cochée devient la mémoire de Claude Sessions, décochée devient *Aucune*.
+- Avec la mémoire de Claude Sessions (le choix par défaut), claude-mem n'est plus chargé dans les sessions de l'app. Pour le garder, choisir *Les deux*.
+
 ## [3.12.0] — 2026-10-02
 ### Ajouté
 - **Mémoire des sessions, sans claude-mem** (Réglages › Général, activée par défaut).

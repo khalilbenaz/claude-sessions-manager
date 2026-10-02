@@ -236,7 +236,13 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 
 ### 16 ter. Mémoire des sessions
 
-Claude repart de zéro à chaque session. **La mémoire des sessions** (Réglages › Général, activée par défaut) lui rappelle ce qui a déjà été fait, **sans plugin et sans claude-mem**.
+Claude repart de zéro à chaque session. **La mémoire des sessions** lui rappelle ce qui a déjà été fait. Le moteur se choisit dans Réglages › Général › *Mémoire des sessions* :
+
+- **Mémoire de Claude Sessions** (par défaut) : décrite ci-dessous, sans plugin. claude-mem est alors désactivé pour les sessions de l'app.
+- **claude-mem** : le plugin [claude-mem](https://github.com/thedotmack/claude-mem) est **installé automatiquement** s'il manque (`claude plugin marketplace add thedotmack/claude-mem`, puis `claude plugin install claude-mem@thedotmack`). L'état de l'installation s'affiche sous le choix.
+- **Les deux**, ou **Aucune**.
+
+Le choix ne concerne que les sessions lancées par l'app : il passe par `enabledPlugins` dans leur fichier `--settings`. Un `claude` lancé dans un terminal garde les réglages de `~/.claude/settings.json`.
 
 - **Ce qui est retenu** : pour chaque session lancée par l'app, une fiche avec son titre, ses demandes, la fin de chaque réponse de Claude (« où on en est »), les fichiers modifiés, la branche git et la machine. La fiche est mise à jour à la fin de chaque tour : seule la suite du transcript est lue. Les sorties d'outils, les sous-agents et les messages système sont ignorés.
 - **Ce que Claude reçoit au démarrage** : un résumé des 6 sessions les plus récentes **du même dossier**, toutes machines confondues (première demande, dernières demandes, où on en est, fichiers modifiés), puis la liste des autres dossiers récents. C'est environ 9 000 caractères au plus. La session en cours n'est jamais incluse. Claude est invité à vérifier dans le code avant de s'y fier.
@@ -244,6 +250,13 @@ Claude repart de zéro à chaque session. **La mémoire des sessions** (Réglage
 - **Partagée entre les machines** : si la synchronisation est active (§ 16 bis), option *Mémoire des sessions*, cochée par défaut. Les fiches partent chiffrées de bout en bout, et celles des autres machines sont ajoutées ici. Une session du Mac donne donc son contexte à la session suivante du PC dans le même projet, puisque les dossiers sont traduits comme pour les sessions. Si une fiche a changé des deux côtés, la plus récente gagne.
 - **Sessions concernées** : celles lancées par Claude Sessions. Au premier lancement, les sessions de l'app existantes sont rattrapées. Un `claude` lancé dans un terminal n'est ni lu ni modifié. Une case décochée arrête la capture et l'injection ; les fiches déjà écrites restent sur le disque, et on peut supprimer le dossier `memory` pour les effacer.
 - **API locale** : `GET /api/memory` liste les fiches.
+- **Après un compactage**, le contexte n'est pas redonné : le résumé du compactage le contient déjà.
+
+#### Compactage automatique
+
+Réglages › Général › *Compactage automatique* fixe la fenêtre à partir de laquelle Claude Code compacte la conversation des sessions de l'app. Par défaut, c'est **la fenêtre complète du modèle**, par exemple 1 million de tokens avec Opus 1M. Les autres choix sont vers 400 000 tokens, vers 200 000 tokens, ou *Réglage de Claude Code* (rien n'est imposé).
+
+Si une session compacte toutes les quelques minutes, la cause est souvent `CLAUDE_CODE_AUTO_COMPACT_WINDOW` réglé trop bas, par exemple 128000 dans `env` de `~/.claude/settings.json`. Claude compacte alors vers 95 000 tokens, même sur un modèle 1M. Le choix par défaut remplace cette valeur pour les sessions de l'app. Pour le terminal, retirer la ligne de `~/.claude/settings.json`.
 
 <a id="16-bis-synchroniser-la-liste-entre-machines"></a>
 
@@ -253,7 +266,7 @@ Retrouver sur le PC les sessions créées sur le Mac, et inversement : **nom, do
 
 - **Quoi synchroniser** (Réglages › Synchronisation › *À synchroniser*) : la liste des sessions (toujours), et au choix **les conversations**, **la liste des groupes** (groupes vides compris, dans l'ordre ; déplacer une session d'un groupe à l'autre sur une machine la déplace aussi sur les autres) et **les modèles de session** (chiffrés, dossier traduit comme pour les sessions). À la première synchro, les groupes des deux machines sont réunis. Une option décochée n'envoie ni n'applique rien ; recochée, tout ce qui a changé entre-temps est rattrapé.
 - **Mémoire des sessions** (option *Mémoire des sessions*, cochée par défaut) : les résumés de chaque session (§ 16 ter) partent chiffrés, et ceux des autres machines sont donnés à Claude au démarrage des sessions du même dossier. Cette option est indépendante de claude-mem.
-- **Mémoire claude-mem** (option *Mémoire claude-mem des sessions de l'app*, cochée par défaut, si le plugin [claude-mem](https://github.com/thedotmack/claude-mem) est installé) : les sessions lancées par Claude Sessions ont **leur propre mémoire claude-mem** (dossier `claude-mem` des données de l'app, worker sur son propre port). Ses observations, résumés et prompts partent chiffrés dans l'espace de synchro, et ceux des autres machines sont chargés ici : une machine qui saisit le code **récupère toute la mémoire à sa première synchro**, avant même sa première session. **Le terminal du système est séparé** : `claude` lancé dans Terminal, iTerm ou PowerShell garde sa mémoire locale (`~/.claude-mem`), jamais lue, envoyée ni modifiée. Limites : ajout seulement (un souvenir effacé sur une machine ne l'est pas ailleurs) ; la recherche sémantique (Chroma) ne voit les souvenirs reçus qu'après sa réindexation, la recherche plein texte tout de suite.
+- **Mémoire claude-mem** (option *Mémoire claude-mem des sessions de l'app*, cochée par défaut, si le moteur de mémoire choisi est *claude-mem* ou *Les deux*) : les sessions lancées par Claude Sessions ont **leur propre mémoire claude-mem** (dossier `claude-mem` des données de l'app, worker sur son propre port). Ses observations, résumés et prompts partent chiffrés dans l'espace de synchro, et ceux des autres machines sont chargés ici : une machine qui saisit le code **récupère toute la mémoire à sa première synchro**, avant même sa première session. **Le terminal du système est séparé** : `claude` lancé dans Terminal, iTerm ou PowerShell garde sa mémoire locale (`~/.claude-mem`), jamais lue, envoyée ni modifiée. Limites : ajout seulement (un souvenir effacé sur une machine ne l'est pas ailleurs) ; la recherche sémantique (Chroma) ne voit les souvenirs reçus qu'après sa réindexation, la recherche plein texte tout de suite.
 - **Tout est chiffré de bout en bout** : sessions, groupes, modèles et conversations sont chiffrés sur ta machine (AES-256-GCM, clé dérivée de ton code) avant l'envoi. Le code ne quitte jamais tes machines : le serveur ne reçoit qu'une clé d'accès dérivée (il n'en garde que l'empreinte) et ne peut ni lire ni modifier ce qu'il stocke. Seuls le modèle, le mode (hors bypassPermissions) et l'effort d'une session passent d'une machine à l'autre : aucun autre argument de `claude` n'est repris.
 
 - **Désactivée par défaut.** Rien n'est synchronisé tant qu'aucun **code de synchro** n'est actif. Chaque code est un espace isolé : sans ton code, personne ne voit tes sessions, et tu ne vois pas les leurs.

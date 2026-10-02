@@ -18,7 +18,7 @@ function send() {
   try { data = JSON.parse(input || '{}'); } catch { }
   const body = JSON.stringify({
     csm: CSM_ID, event,
-    data: { session_id: data.session_id, message: data.message, tool_name: data.tool_name },
+    data: { session_id: data.session_id, message: data.message, tool_name: data.tool_name, source: data.source },
   });
   const req = http.request({
     host: '127.0.0.1', port: Number(CSM_PORT), path: '/api/hook', method: 'POST', timeout: 8000,
