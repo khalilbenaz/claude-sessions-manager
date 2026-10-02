@@ -58,6 +58,19 @@ test('créer une session depuis l’interface et échanger', async () => {
   await win.waitForFunction(() => { const tt = terms.get(active); const b = tt.term.buffer.active; for (let y = 0; y < b.length; y++) if (b.getLine(y).translateToString().includes('echo: bonjour e2e')) return true; return false; }, null, { timeout: 45000 });
 });
 
+test('menu clic droit du terminal : tient dans une fenêtre basse et défile', async () => {
+  await win.setViewportSize({ width: 900, height: 420 });
+  const id = await win.evaluate(() => active);
+  await win.evaluate(id => showMenu(terminalItems(id), 300, 200), id);
+  const r = await win.evaluate(() => { const m = document.querySelector('#ctx'), b = m.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, scroll: m.scrollHeight > m.clientHeight, h: innerHeight }; });
+  assert.ok(r.top >= 0 && r.bottom <= r.h, `menu dans la fenêtre (${r.top}-${r.bottom} / ${r.h})`);
+  assert.ok(r.scroll, 'menu défilant');
+  await win.evaluate(() => { const m = document.querySelector('#ctx'); m.lastElementChild.scrollIntoView(); });
+  assert.ok(await win.isVisible('#ctx button:last-child'), 'dernier élément atteignable');
+  await win.evaluate(() => hideMenu());
+  await win.setViewportSize({ width: 1280, height: 800 });
+});
+
 test('vue partagée et palette', async () => {
   await win.evaluate(() => api('POST', '/api/sessions', { cwd: document.querySelector('#formNew [name=cwd]').value, name: 'deuxième' }));
   await win.waitForFunction(() => sessions.size >= 2);
