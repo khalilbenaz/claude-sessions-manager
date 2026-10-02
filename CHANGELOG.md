@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.14.0] — 2026-10-02
+### Ajouté
+- **Synchro de la configuration de Claude** entre les machines (Réglages › Synchronisation › *Configuration de Claude*). Elle couvre :
+  - les règles : `~/.claude/CLAUDE.md`, les `.md` qu'il importe et `~/.claude/rules` ;
+  - les skills : `~/.claude/skills` ;
+  - les agents et commandes : `~/.claude/agents` et `~/.claude/commands` ;
+  - la mémoire de Claude : les dossiers `memory/` de `~/.claude/projects`, avec les chemins traduits d'une machine à l'autre.
+
+  Les fichiers sont chiffrés. Les créations, modifications et suppressions suivent, et la version la plus récente gagne. Un fichier remplacé ou supprimé est d'abord sauvegardé dans `claude-sync-backup`. Chaque catégorie a sa case.
+
 ## [3.13.0] — 2026-10-02
 ### Ajouté
 - **Choix du moteur de mémoire** (Réglages › Général › *Mémoire des sessions*). Quatre choix : mémoire de Claude Sessions (par défaut), claude-mem, les deux, ou aucune.

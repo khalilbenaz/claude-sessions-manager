@@ -638,6 +638,79 @@ test('synchro : mémoire des sessions partagée entre machines, chiffrée', asyn
   }
 });
 
+test('synchro : règles, skills, agents et mémoire de Claude partagés entre machines', async () => {
+  const zlib = require('zlib');
+  const { encodeCode, seal, unseal, txVersion } = require('../lib/sync');
+  const KEY = 'f'.repeat(32);
+  const C = path.join(HOME, '.claude'), enc = p => p.replace(/[^a-zA-Z0-9]/g, '-');
+  const uidOf = p => 'cf-' + txVersion(KEY, Buffer.from('cf-path|' + p));
+  const aad = (uid, m) => `c|${uid}|${m.ver}|${m.updatedAt}`;
+  const w = (rel, txt) => { const f = path.join(C, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, txt); return f; };
+  w('CLAUDE.md', '@REGLES.md\n'); w('REGLES.md', 'toujours en français');
+  w('skills/deploy/SKILL.md', 'déployer'); w('skills/deploy/node_modules/x.js', 'ignoré');
+  const memRel = `projects/${enc(HOME)}-proj/memory/MEMORY.md`;
+  w(memRel, '- note'); w(`projects/${enc(HOME)}-proj/abc.jsonl`, 'conversation : pas une règle');
+  const fake = await fakeSyncServer([KEY]);
+  const get = p => {
+    const m = fake.tx(KEY).meta.get(uidOf(p));
+    if (!m) return null;
+    const blob = Buffer.concat([...Array(m.chunks).keys()].map(i => fake.tx(KEY).chunks.get(`${uidOf(p)}/${m.ver}/${i}`)));
+    return { m, blob, e: JSON.parse(zlib.gunzipSync(unseal(KEY, blob, aad(uidOf(p), m)))) };
+  };
+  const put = (e, updatedAt) => {
+    const uid = uidOf(e.p), raw = Buffer.from(JSON.stringify(e)), ver = txVersion(KEY, raw), m = { cid: 'claude', ver, chunks: 1, updatedAt, origin: 'pc-bureau' };
+    const b = seal(KEY, zlib.gzipSync(raw), aad(uid, m));
+    fake.tx(KEY).chunks.set(`${uid}/${ver}/0`, b); fake.tx(KEY).meta.set(uid, { ...m, size: b.length });
+  };
+  const b64 = s => Buffer.from(s).toString('base64');
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'mac-cf' });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return get('skills/deploy/SKILL.md'); }, 15000, 'skill envoyée');
+    const r = get('REGLES.md');
+    assert.ok(!r.blob.includes('français'), 'chiffré sur le serveur');
+    assert.equal(Buffer.from(r.e.d, 'base64').toString(), 'toujours en français');
+    assert.ok(get('CLAUDE.md'));
+    assert.equal(get('projects/~-proj/memory/MEMORY.md').e.p, 'projects/~-proj/memory/MEMORY.md', 'chemin portable');
+    assert.equal(get('skills/deploy/node_modules/x.js'), null);
+    assert.ok(![...fake.tx(KEY).meta.values()].some(m => m.cid === 'claude' && m.size > 5e6));
+
+    // agent créé et règle modifiée sur une autre machine (plus récents) : écrits ici, l'ancienne règle sauvegardée
+    const later = Date.now() + 5000;
+    put({ p: 'agents/revue.md', d: b64('agent de revue'), x: 0 }, later);
+    put({ p: 'REGLES.md', d: b64('règles du PC'), x: 0 }, later);
+    put({ p: 'skills/deploy/SKILL.md', del: 1 }, later);
+    put({ p: '../evil.md', d: b64('non'), x: 0 }, later);
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fs.existsSync(path.join(C, 'agents', 'revue.md')); }, 15000, 'agent reçu');
+    assert.equal(fs.readFileSync(path.join(C, 'REGLES.md'), 'utf8'), 'règles du PC');
+    assert.ok(!fs.existsSync(path.join(C, 'skills/deploy/SKILL.md')), 'skill supprimée ailleurs');
+    assert.ok(!fs.existsSync(path.join(HOME, 'evil.md')));
+    const bk = path.join(DATA, 'claude-sync-backup');
+    const saved = fs.readdirSync(bk).map(d => path.join(bk, d, 'REGLES.md')).find(f => fs.existsSync(f));
+    assert.equal(fs.readFileSync(saved, 'utf8'), 'toujours en français');
+    assert.ok((await api('GET', '/api/sync')).cfReceived >= 3);
+
+    // version plus ancienne : ignorée ; modification locale : envoyée ; suppression locale : propagée
+    put({ p: 'REGLES.md', d: b64('ancienne'), x: 0 }, Date.now() - 60000);
+    fs.rmSync(path.join(C, memRel));
+    w('CLAUDE.md', '@REGLES.md\nmodifié ici\n');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return get('projects/~-proj/memory/MEMORY.md')?.e.del; }, 15000, 'suppression envoyée');
+    assert.equal(fs.readFileSync(path.join(C, 'REGLES.md'), 'utf8'), 'règles du PC');
+    assert.match(Buffer.from(get('CLAUDE.md').e.d, 'base64').toString(), /modifié ici/);
+
+    // option décochée : plus rien n'est envoyé pour cette catégorie
+    await api('PUT', '/api/settings', { syncClaudeAgents: false });
+    w('agents/autre.md', 'local seulement');
+    await api('POST', '/api/sync/now');
+    assert.equal(get('agents/autre.md'), null);
+  } finally {
+    await api('PUT', '/api/settings', { syncCode: '', syncClaudeAgents: true });
+    fs.rmSync(C + '/agents', { recursive: true, force: true });
+    for (const f of ['CLAUDE.md', 'REGLES.md']) fs.rmSync(path.join(C, f), { force: true });
+    fs.rmSync(path.join(C, 'skills'), { recursive: true, force: true });
+    fake.srv.close();
+  }
+});
+
 test('synchro : liste des groupes, modèles de session, déplacement entre groupes, options', async () => {
   const { encodeCode, seal, unseal } = require('../lib/sync');
   const KEY = 'g'.repeat(32);
