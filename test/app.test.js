@@ -173,6 +173,19 @@ test('réglages : mémoire au choix, demandes programmées, fichiers reçus', as
   }
 });
 
+test('thème clair : le code coloré pour un fond sombre reste lisible (contraste minimal)', async () => {
+  await win.evaluate(() => saveSettings({ theme: 'light' }));
+  await win.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+  const ratio = await win.evaluate(() => [...terms.values()][0].term.options.minimumContrastRatio);
+  assert.equal(ratio, 4.5);
+  await win.evaluate(() => [...terms.values()][0].term.write('\r\n\x1b[38;2;230;230;230mconst blanc = "texte RVB très clair";\x1b[0m \x1b[38;2;255;214;102mjaune clair\x1b[0m \x1b[97mblanc vif\x1b[0m\r\n'));
+  await new Promise(r => setTimeout(r, 300));
+  if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT.replace(/(\.png)?$/, '-clair.png') });
+  await win.evaluate(() => saveSettings({ theme: 'dark' }));
+  await win.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  assert.equal(await win.evaluate(() => [...terms.values()][0].term.options.minimumContrastRatio), 1);
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));

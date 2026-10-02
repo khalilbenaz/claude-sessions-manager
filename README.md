@@ -244,7 +244,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 
 ## 15. Thème clair / sombre, langue
 
-- **Thème** : **Système** (par défaut) suit automatiquement le mode clair ou sombre de Windows / macOS, y compris quand il change en cours de journée ; ou forcer **Clair** / **Sombre** (Réglages › Général, ou palette › « Thème »). Le terminal suit le thème. Astuce : Claude Code a ses propres couleurs (sombres par défaut) ; en thème clair, tape `/theme` dans une session et choisis un thème clair de Claude Code.
+- **Thème** : **Système** (par défaut) suit automatiquement le mode clair ou sombre de Windows / macOS, y compris quand il change en cours de journée ; ou forcer **Clair** / **Sombre** (Réglages › Général, ou palette › « Thème »). Le terminal suit le thème. Claude Code a ses propres couleurs (sombres par défaut) : en thème clair, le terminal de l'app **fonce automatiquement tout texte trop clair** (code, diffs, couleurs RVB), pour qu'il reste lisible (contraste minimal 4,5:1). Pour des couleurs pensées pour un fond clair, tape aussi `/theme` dans une session et choisis un thème clair de Claude Code (ce réglage vaut aussi pour le terminal du système).
 - **Langue** : français ou anglais, automatiquement selon la langue du système, ou forcée dans Réglages › Général.
 
 ## 16. Réglages
@@ -328,7 +328,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 - **Configuration de Claude** : Règles (`CLAUDE.md`, `~/.claude/rules`), skills, agents et commandes, notes de Claude Code : les mêmes sur toutes les machines, la plus récente gagne.
 - **Me demander avant d'appliquer…** : Recommandé : règles, skills, agents et commandes reçus attendent ton accord dans **Fichiers reçus** (Appliquer, Refuser), avec le journal des changements et **Restaurer**.
 - **Synchroniser automatiquement** : Toutes les 5, 10, 30 ou 60 minutes ; tes modifications partent tout de suite, l'intervalle règle la récupération de celles des autres machines.
-- **Machines** : la liste des machines de l'espace et la place occupée ; **Retirer** une machine de la liste ; **Changer de code…** pour couper l'accès d'une machine (l'ancien espace est effacé du serveur).
+- **Machines** : la liste des machines de l'espace et la place occupée ; **Retirer** une machine de la liste ; **Changer de code (couper l'accès d'une machine)…** pour couper l'accès d'une machine (l'ancien espace est effacé du serveur).
 - **Avancé** : Nom de la machine, **racines de dossiers** (alias=chemin, pour retrouver un projet rangé à un autre endroit sur l'autre machine), serveur de synchro (vide = celui du projet).
 
 **Diagnostic**
@@ -409,7 +409,7 @@ Retrouver sur le PC les sessions créées sur le Mac, et inversement : **nom, do
 **Machines** (Réglages › Synchronisation › *Machines*) : chaque machine de l'espace (nom, système, version de l'app, mémoire choisie, dernière synchro), « cette machine » en tête, et la **place occupée** sur le serveur (par exemple 30 Mo sur 200 Mo, nombre de sessions).
 
 - **Retirer** enlève une machine de la liste ; elle y revient si elle se synchronise encore, puisqu'elle a toujours le code.
-- **Changer de code…** coupe vraiment l'accès : un nouveau code est créé, tout ce que cette machine a (sessions, conversations, mémoire, configuration) part dans le nouvel espace, puis **l'ancien espace est effacé du serveur**. Les machines restées sur l'ancien code reçoivent « code refusé » ; saisis le nouveau code sur celles que tu gardes (Réglages › Synchronisation › J'ai déjà un code), elles y renvoient alors ce qu'elles ont.
+- **Changer de code (couper l'accès d'une machine)…** coupe vraiment l'accès : un nouveau code est créé, tout ce que cette machine a (sessions, conversations, mémoire, configuration) part dans le nouvel espace, puis **l'ancien espace est effacé du serveur**. Les machines restées sur l'ancien code reçoivent « code refusé » ; saisis le nouveau code sur celles que tu gardes (Réglages › Synchronisation › J'ai déjà un code), elles y renvoient alors ce qu'elles ont.
 
 **Serveur de synchro** : par défaut, l'app utilise le serveur public du projet (Worker Cloudflare : métadonnées dans une base D1, conversations chiffrées dans R2, jusqu'à 200 Mo par espace). Il ne voit jamais le code ni le contenu en clair, et limite la création d'espaces et la place occupée. **Code créé avant la 3.8** : il avait été tiré par le serveur ; il continue de fonctionner (rattaché automatiquement à la nouvelle clé d'accès), mais pour un chiffrement de bout en bout strict, crée un nouveau code (Désactiver, puis Créer un code) et saisis-le sur tes autres machines. Tu peux héberger le tien (gratuit) avec [`sync-worker/`](sync-worker), puis mettre son adresse dans Réglages › Synchronisation › Avancé › **Serveur** :
 

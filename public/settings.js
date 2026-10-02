@@ -267,7 +267,7 @@
       alert(t('Nouveau code (à saisir sur tes autres machines, Réglages › Synchronisation › J’ai déjà un code) :') + '\n\n' + r.code);
       loadSync();
     } catch (e) { alert(e.message); }
-    finally { b.disabled = false; b.textContent = t('Changer de code…'); renderMachines(true); }
+    finally { b.disabled = false; b.textContent = t('Changer de code (couper l’accès d’une machine)…'); renderMachines(true); }
   };
 
   // ---------------------------------------------------------------- mémoire (fiches, notes de Claude Code, claude-mem)
