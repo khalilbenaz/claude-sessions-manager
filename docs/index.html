@@ -101,6 +101,8 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: 
   .shot aside { display: none; }
   .shot .bar .x { display: none; }
 }
+  table.settings ul { margin: 0; padding-left: 18px; } table.settings li { margin: 3px 0; } table.settings td:first-child { white-space: nowrap; vertical-align: top; }
+  @media (max-width: 640px) { table.stack thead { display: none; } table.stack tr, table.stack td { display: block; } table.stack td:first-child { white-space: normal; padding-bottom: 0; } }
 </style>
 </head>
 <body>
@@ -110,6 +112,8 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: 
     <a class="brand" href="#"><img src="icon.svg" alt=""> Claude Sessions</a>
     <nav>
       <a href="#fonctions">Fonctions</a>
+      <a href="#menu">Menu ⋯</a>
+      <a href="#reglages">Réglages</a>
       <a href="guide.html">Guide</a>
       <a href="#telecharger">Télécharger</a>
       <a href="#securite">Sécurité</a>
@@ -185,6 +189,55 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: 
       <div class="card"><h3><span class="ic">🔔</span>Zone de notification</h3><p>Réduisez l'app près de l'horloge : liste des sessions et de leur état au clic droit, point rouge quand l'une vous attend.</p></div>
       <div class="card"><h3><span class="ic">◐</span>Thème automatique</h3><p>Clair ou sombre selon Windows / macOS, en direct — ou forcé. Interface en français ou en anglais.</p></div>
       <div class="card"><h3><span class="ic">🔄</span>Mises à jour automatiques</h3><p>Nouvelle version téléchargée en arrière-plan ; un redémarrage l'installe et vos sessions reviennent seules.</p></div>
+    </div>
+  </section>
+
+  <section id="menu">
+    <h2>Le menu ⋯ d'une session</h2>
+    <p class="sub">Toutes les actions sur une session, à portée d'un clic (bouton ⋯ ou clic droit dans la liste). <a href="guide.html#g4-les-sessions">Le guide en détail</a></p>
+    <div class="tablebox">
+      <table class="stack">
+        <thead><tr><th>Entrée</th><th>Ce que ça fait</th></tr></thead>
+        <tbody>
+          <tr><td><b>File d&#x27;attente…</b><br><small>Ctrl/⌘+Alt+Q</small></td><td>Des prompts envoyés <b>un par un, automatiquement</b>, chaque fois que Claude a fini le précédent. Badge ⏳ = nombre en attente. Pause automatique près de la limite des 5 h (badge ⏸), reprise à la réinitialisation.</td></tr>
+          <tr><td><b>Insérer un prompt…</b></td><td>Ouvre ta <b>bibliothèque de prompts</b> : <i>Insérer</i> place le texte dans la saisie (tu relis, puis Entrée), <i>Envoyer</i> le soumet. Variables <code>{dossier}</code>, <code>{branche}</code>, <code>{nom}</code>, <code>{selection}</code>.</td></tr>
+          <tr><td><b>Envoyer à plusieurs sessions…</b><br><small>Ctrl/⌘+Alt+B</small></td><td>Le <b>même prompt à plusieurs sessions</b> cochées : tout de suite si elles sont prêtes, sinon dans leur file d'attente.</td></tr>
+          <tr><td><b>Modifications</b><br><small>Ctrl/⌘+Alt+G</small></td><td>Panneau des <b>fichiers modifiés</b> dans le dossier (git) : diff coloré, annuler un fichier, commit avec message proposé, fusion d'un worktree.</td></tr>
+          <tr><td><b>Chronologie</b></td><td>Ce que Claude a fait, dans l'ordre : <b>fichiers lus et modifiés</b>, commandes lancées, outils appelés.</td></tr>
+          <tr><td><b>Consommation</b></td><td><b>Tokens et coût estimé</b> de la session, puis de toutes les sessions sur 5 h, aujourd'hui et 7 jours, avec un graphique par jour.</td></tr>
+          <tr><td><b>📱 Accès depuis l&#x27;app Claude (téléphone)</b></td><td>Rend la session <b>pilotable depuis l'app Claude et claude.ai/code</b> (Remote Control de Claude Code), sans port ouvert. Même entrée pour désactiver.</td></tr>
+          <tr><td><b>Exporter la conversation…</b></td><td>La conversation en <b>Markdown</b> (fichier ou presse-papiers) ou en <b>PDF</b> (impression). Grisé tant que la session n'a pas de conversation.</td></tr>
+          <tr><td><b>Enregistrer comme modèle…</b></td><td>Mémorise <b>dossier, nom, modèle, mode, worktree, groupe et premier prompt</b> pour relancer une session identique en un clic (Nouvelle session, palette, demandes programmées).</td></tr>
+          <tr><td><b>Déplacer vers le groupe…</b></td><td>Range la session dans un <b>groupe</b> existant ou nouveau (aussi par glisser-déposer dans la liste).</td></tr>
+          <tr><td><b>Épingler en haut</b></td><td>Garde la session <b>en tête de la liste</b>, quel que soit l'ordre. Même entrée pour désépingler.</td></tr>
+          <tr><td><b>Verrouiller par mot de passe…</b></td><td><b>Masque</b> le contenu et bloque la saisie jusqu'au mot de passe ; la session continue de tourner. Reverrouillage automatique réglable.</td></tr>
+          <tr><td><b>Couper les alertes de cette session</b></td><td>Plus de <b>notification ni de son</b> pour cette session (les autres continuent). Même entrée pour les réactiver.</td></tr>
+          <tr><td><b>Arrêter</b></td><td>Arrête le processus Claude ; la session <b>reste dans la liste</b>, reprenable d'un clic dans la même conversation. <i>Fermer</i> (barre du haut) la retire de la liste.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="reglages">
+    <h2>Les réglages</h2>
+    <p class="sub">⚙ en bas de la barre latérale, ou <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>,</kbd>. Chaque option, onglet par onglet. <a href="guide.html#g16-reglages">Le guide en détail</a></p>
+    <div class="tablebox">
+      <table class="settings stack">
+        <thead><tr><th>Onglet</th><th>Options</th></tr></thead>
+        <tbody>
+          <tr><td><b>Général</b></td><td><ul><li><b>Thème</b> : Système (suit Windows / macOS en direct), clair ou sombre.</li><li><b>Langue</b> : Automatique (celle du système), français ou anglais. L'interface se recharge.</li><li><b>Modèle par défaut</b> : Modèle proposé dans « Nouvelle session » : opus, sonnet, haiku, ou celui de Claude Code.</li><li><b>Mode par défaut</b> : Mode d'autorisation proposé : par défaut, acceptEdits (modifie sans demander), plan (propose avant d'agir) ou bypassPermissions (aucune confirmation, à réserver aux dossiers sans risque).</li><li><b>Proposer un worktree git par défaut</b> : Dans un dépôt git, la case « worktree dédié » est cochée d'office : chaque nouvelle session travaille sur sa propre branche.</li><li><b>Éditeur pour « Ouvrir dans »</b> : Automatique (le premier trouvé), VS Code, Cursor, Windsurf, Zed, IntelliJ, Sublime, ou une commande personnalisée avec <code>{path}</code>.</li><li><b>Afficher les quotas sous chaque session</b> : Barre d'état de l'app sous l'invite de Claude : quotas 5 h et 7 jours, heure de réinitialisation, contexte utilisé, modèle. Seulement si tu n'as pas ta propre barre d'état ; elle sert aussi à la pause de la file d'attente.</li><li><b>Mémoire des sessions</b> : <b>Mémoire intégrée</b> (recommandé, rien à installer) ou <b>claude-mem</b> (installé automatiquement). Une seule à la fois, pour les sessions de l'app ; avec la synchro, le même choix sur toutes les machines.</li><li><b>Pause de la file d'attente près de la limite des 5 h</b> : La file d'attente n'envoie plus rien au-delà du <b>seuil</b> (80, 90, 95 ou 99 %) ou quand la limite est atteinte, et repart à la réinitialisation.</li><li><b>Relancer les sessions coupées par la limite</b> : À la réinitialisation, envoie « continue » aux sessions interrompues en plein travail par la limite.</li><li><b>Compactage automatique</b> : Moment où Claude Code résume la conversation : <b>fenêtre complète du modèle</b> (recommandé, évite les compactages en boucle), vers 400 000 ou 200 000 tokens, ou réglage de Claude Code.</li><li><b>Rendre les nouvelles sessions accessibles depuis l'app Claude</b> : Active d'office le Remote Control pour chaque nouvelle session (pilotage depuis le téléphone et claude.ai/code).</li><li><b>Mises à jour automatiques</b> : Recherche et télécharge les nouvelles versions. <b>Installer et redémarrer tout seul</b> : seulement fenêtre réduite, en arrière-plan ou après 5 min d'inactivité, jamais pendant qu'une session travaille ; les sessions reviennent.</li><li><b>Barre latérale compacte</b> : Liste des sessions réduite aux pastilles d'état (aussi le bouton ⇤).</li><li><b>Réduire / fermer dans la zone de notification</b> : L'app se range près de l'horloge au lieu de la barre des tâches ; fermer la fenêtre la garde ouverte (les sessions continuent dans tous les cas).</li></ul></td></tr>
+          <tr><td><b>Terminal</b></td><td><ul><li><b>Taille du texte, police</b> : Taille et police des terminaux ; <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>−</kbd> / <kbd>0</kbd> pour zoomer.</li></ul></td></tr>
+          <tr><td><b>Notifications</b></td><td><ul><li><b>Notifications système</b> : Une notification quand une session t'attend ou a fini.</li><li><b>Son</b> : Aucun (par défaut), discret ou clochette, avec un bouton pour tester.</li><li><b>Ne pas déranger</b> : Ni notification ni son, pour toutes les sessions (une seule session : ⋯ › Couper les alertes).</li><li><b>Rappel si une session attend depuis…</b> : Nouvelle alerte si une session attend ta réponse depuis N minutes (0 = jamais).</li><li><b>Alerte si une session travaille depuis plus de…</b> : Prévient d'un tour anormalement long (0 = jamais).</li></ul></td></tr>
+          <tr><td><b>Sécurité</b></td><td><ul><li><b>Reverrouiller quand la fenêtre est masquée</b> : Les sessions verrouillées par mot de passe se reverrouillent dès que la fenêtre est réduite ou cachée.</li><li><b>Reverrouiller après une inactivité de…</b> : Et après N minutes sans action (0 = jamais).</li></ul></td></tr>
+          <tr><td><b>Modèles de session</b></td><td><ul><li><b>Liste des modèles</b> : Lancer, renommer ou supprimer les modèles créés avec « Enregistrer comme modèle ».</li></ul></td></tr>
+          <tr><td><b>Prompts</b></td><td><ul><li><b>Bibliothèque de prompts</b> : Créer, modifier, supprimer tes prompts réutilisables.</li></ul></td></tr>
+          <tr><td><b>Programmées</b></td><td><ul><li><b>Demandes programmées</b> : Un prompt dans une session, ou un modèle de session lancé, à une heure donnée : une fois ou certains jours. Case pour mettre en pause, <b>Lancer</b> pour exécuter tout de suite.</li></ul></td></tr>
+          <tr><td><b>Synchronisation</b></td><td><ul><li><b>Créer un code / J'ai déjà un code</b> : Active la synchro entre tes machines ; le code s'affiche pour le saisir sur les autres. Garde-le secret : qui l'a voit tes sessions.</li><li><b>À synchroniser</b> : Les sessions (toujours), et au choix : leurs <b>conversations</b>, la <b>liste des groupes</b>, les <b>modèles de session</b>, la <b>mémoire des sessions</b> (et le choix de la mémoire).</li><li><b>Configuration de Claude</b> : Règles (<code>CLAUDE.md</code>, <code>~/.claude/rules</code>), skills, agents et commandes, notes de Claude Code : les mêmes sur toutes les machines, la plus récente gagne.</li><li><b>Me demander avant d'appliquer…</b> : Recommandé : règles, skills, agents et commandes reçus attendent ton accord dans <b>Fichiers reçus</b> (Appliquer, Refuser), avec le journal des changements et <b>Restaurer</b>.</li><li><b>Synchroniser automatiquement</b> : Toutes les 5, 10, 30 ou 60 minutes ; tes modifications partent tout de suite, l'intervalle règle la récupération de celles des autres machines.</li><li><b>Avancé</b> : Nom de la machine, <b>racines de dossiers</b> (alias=chemin, pour retrouver un projet rangé à un autre endroit sur l'autre machine), serveur de synchro (vide = celui du projet).</li></ul></td></tr>
+          <tr><td><b>Diagnostic</b></td><td><ul><li><b>Diagnostic</b> : Versions, <code>claude</code> et <code>git</code> trouvés ou non, hooks, dossiers, fin du journal ; <b>Copier le rapport</b> pour signaler un problème.</li></ul></td></tr>
+          <tr><td><b>Journaux</b></td><td><ul><li><b>Journaux</b> : Le journal du serveur, filtrable.</li></ul></td></tr>
+          <tr><td><b>À propos</b></td><td><ul><li><b>À propos</b> : Version, <b>Rechercher des mises à jour</b>, <b>Redémarrer pour mettre à jour</b> quand une version est prête, auteur.</li></ul></td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
