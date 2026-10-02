@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.15.0] — 2026-10-02
+### Modifié
+- **Mémoire des sessions : un seul choix, clair.** Réglages › Général › *Mémoire des sessions : laquelle utiliser ?* propose deux options expliquées : **Mémoire intégrée** (recommandé, rien à installer) ou **claude-mem** (installé automatiquement). Les choix « Les deux » et « Aucune » disparaissent : « Les deux » devient claude-mem, « Aucune » devient la mémoire intégrée.
+- **Synchro** : une seule case *Mémoire des sessions* partage la mémoire choisie, au lieu de deux cases (mémoire intégrée, claude-mem).
+- La case *Mémoire de Claude* de la configuration de Claude s'appelle maintenant *Notes de Claude Code*, pour ne plus la confondre avec la mémoire des sessions.
+
 ## [3.14.0] — 2026-10-02
 ### Ajouté
 - **Synchro de la configuration de Claude** entre les machines (Réglages › Synchronisation › *Configuration de Claude*). Elle couvre :

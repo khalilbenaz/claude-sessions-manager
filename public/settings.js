@@ -23,7 +23,7 @@
   function fill() {
     dlg.querySelectorAll('[data-set]').forEach(el => {
       const v = SETTINGS[el.dataset.set];
-      if (el.type === 'checkbox') el.checked = !!v; else el.value = v ?? '';
+      if (el.type === 'checkbox') el.checked = !!v; else if (el.type === 'radio') el.checked = el.value === v; else el.value = v ?? '';
     });
     $('#editorCmdRow').hidden = SETTINGS.editor !== 'custom';
   }
@@ -32,6 +32,7 @@
       const k = el.dataset.set;
       const v = el.type === 'checkbox' ? el.checked : el.type === 'number' || typeof SETTINGS[k] === 'number' ? Number(el.value) : el.value;
       saveSettings({ [k]: v });
+      if (k === 'memoryEngine') api('GET', '/api/sync').then(renderEngine).catch(() => { });
       if (k === 'editor') $('#editorCmdRow').hidden = v !== 'custom';
       if (k === 'fontSize') { LS.set('csm.font', v); for (const tt of terms.values()) tt.term.options.fontSize = v; fitAll(); }
       if (k === 'notifications' && v && 'Notification' in window) Notification.requestPermission();
@@ -86,12 +87,12 @@
     : count(st.memReceived, 'mémoire reçue') + count(st.memSent, 'mémoire envoyée'))
     + count(st.nmReceived, 'résumés reçus') + count(st.nmSent, 'résumés envoyés')
     + count(st.cfReceived, 'fichiers de Claude reçus') + count(st.cfSent, 'fichiers de Claude envoyés');
-  const ENGINE_HINT = "Au démarrage, Claude reçoit ce qui a été fait avant dans le même dossier. Ne concerne que les sessions lancées par l'app ; le terminal garde ses propres réglages.";
+  const ENGINE_HINT = "Une seule mémoire à la fois, seulement pour les sessions lancées par l'app.";
   function renderEngine(st) {
     const el = $('#memEngineInfo');
     if (!el || !st) return;
     const mi = st.memInstall || '';
-    el.textContent = t(ENGINE_HINT) + (!['claude-mem', 'both'].includes(st.memEngine) ? ''
+    el.textContent = t(ENGINE_HINT) + (st.memEngine !== 'claude-mem' ? ''
       : mi === 'installing' ? ' · ' + t('installation de claude-mem…')
       : mi.startsWith('error') ? ' · ' + t('installation de claude-mem impossible') + mi.slice(5)
       : st.memInstalled ? ' · ' + t('claude-mem installé') : '');

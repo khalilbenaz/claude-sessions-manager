@@ -100,7 +100,7 @@ function sessionSettings(withStatusLine) {
   const engine = st.memoryEngine || 'native';
   const o = { hooks: HOOKS };
   if (withStatusLine) o.statusLine = STATUS_LINE;
-  o.enabledPlugins = { 'claude-mem@thedotmack': engine === 'claude-mem' || engine === 'both' };
+  o.enabledPlugins = { 'claude-mem@thedotmack': engine === 'claude-mem' };
   const w = COMPACT_WINDOW[st.autoCompactWindow || 'model'];
   if (w) o.env = { CLAUDE_CODE_AUTO_COMPACT_WINDOW: w };
   const txt = JSON.stringify(o, null, 2);
