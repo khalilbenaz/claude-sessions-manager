@@ -827,7 +827,7 @@ test('synchro : mémoire claude-mem envoyée chiffrée et chargée depuis les au
   db.prepare("INSERT INTO session_summaries (memory_session_id, project, request, created_at, created_at_epoch) VALUES ('ms-local', 'proj', 'résumé-du-mac', ?, ?)").run(now, ep);
   db.prepare("INSERT INTO user_prompts (session_db_id, content_session_id, prompt_number, prompt_text, created_at, created_at_epoch) VALUES (1, 'cs-local', 1, 'prompt-du-mac', ?, ?)").run(now, ep);
   try {
-    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'mac-mem', memoryEngine: 'both' });
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'mac-mem', memoryEngine: 'claude-mem' });
     // envoyée : un lot chiffré « mem-<machine>-1 »
     const [uid, meta] = await waitFor(async () => { await api('POST', '/api/sync/now'); return [...fake.tx(KEY).meta.entries()].find(([u]) => u.startsWith('mem-')); }, 15000, 'mémoire envoyée');
     assert.match(uid, /^mem-[0-9a-f]{12}-1$/); assert.equal(meta.cid, 'claude-mem');
@@ -882,11 +882,11 @@ test('synchro : mémoire claude-mem envoyée chiffrée et chargée depuis les au
     await api('DELETE', `/api/sessions/${sess.id}`);
 
     // option décochée : plus rien ne part
-    await api('PUT', '/api/settings', { syncMemory: false });
+    await api('PUT', '/api/settings', { syncSessionMemory: false });
     assert.equal((await api('POST', '/api/sync/now')).memory, false);
   } finally {
     db.close();
-    await api('PUT', '/api/settings', { syncCode: '', syncMemory: true, memoryEngine: 'native' });
+    await api('PUT', '/api/settings', { syncCode: '', syncSessionMemory: true, memoryEngine: 'native' });
     fake.srv.close();
     fs.rmSync(file, { force: true });
   }

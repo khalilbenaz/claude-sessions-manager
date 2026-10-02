@@ -265,8 +265,12 @@
         <label>Éditeur pour « Ouvrir dans » <select data-set="editor" id="setEditor"><option value="auto">Automatique</option></select></label>
         <label id="editorCmdRow">Commande personnalisée <input data-set="editorCommand" placeholder="mon-editeur {path}" spellcheck="false"></label>
         <label class="check"><input type="checkbox" data-set="statusLine"> <span>Afficher les quotas et l'heure de leur réinitialisation sous chaque session (si tu n'as pas ta propre barre d'état Claude Code)</span></label>
-        <label>Mémoire des sessions <select data-set="memoryEngine"><option value="native">Mémoire de Claude Sessions (résumé de chaque session, sans plugin)</option><option value="claude-mem">claude-mem (installé automatiquement)</option><option value="both">Les deux</option><option value="off">Aucune</option></select></label>
-        <p class="hint" id="memEngineInfo">Au démarrage, Claude reçoit ce qui a été fait avant dans le même dossier. Ne concerne que les sessions lancées par l'app ; le terminal garde ses propres réglages.</p>
+        <fieldset class="syncWhat memChoice">
+          <legend>Mémoire des sessions : laquelle utiliser ?</legend>
+          <label class="check"><input type="radio" name="memoryEngine" data-set="memoryEngine" value="native"> <span><b>Mémoire intégrée</b> (recommandé) : rien à installer. À la fin de chaque session, un résumé est gardé ; la session suivante dans le même dossier le reçoit.</span></label>
+          <label class="check"><input type="radio" name="memoryEngine" data-set="memoryEngine" value="claude-mem"> <span><b>claude-mem</b> : plugin plus complet (observations détaillées, recherche dans les souvenirs), installé automatiquement si besoin.</span></label>
+          <p class="hint" id="memEngineInfo">Une seule mémoire à la fois, seulement pour les sessions lancées par l'app.</p>
+        </fieldset>
         <label>Compactage automatique <select data-set="autoCompactWindow"><option value="model">Fenêtre complète du modèle (recommandé)</option><option value="400000">Vers 400 000 tokens</option><option value="200000">Vers 200 000 tokens</option><option value="claude">Réglage de Claude Code</option></select></label>
         <p class="hint">Si Claude compacte la conversation en boucle, c'est souvent une fenêtre trop petite imposée par CLAUDE_CODE_AUTO_COMPACT_WINDOW : « Fenêtre complète » la remplace pour les sessions de l'app.</p>
         <label class="check"><input type="checkbox" data-set="remoteAll"> <span>📱 Rendre les nouvelles sessions accessibles depuis l'app Claude (Remote Control)</span></label>
@@ -322,15 +326,14 @@
           <label class="check"><input type="checkbox" data-set="syncTranscripts"> <span>Synchroniser aussi les conversations (historique et contexte, chiffrés)</span></label>
           <label class="check"><input type="checkbox" data-set="syncGroups"> <span>Liste des groupes (groupes vides compris, dans l'ordre)</span></label>
           <label class="check"><input type="checkbox" data-set="syncTemplates"> <span>Modèles de session (chiffrés)</span></label>
-          <label class="check"><input type="checkbox" data-set="syncNativeMemory"> <span>Mémoire des sessions (résumés de chaque session, chiffrés, partagés entre les machines — sans claude-mem)</span></label>
-          <label class="check"><input type="checkbox" data-set="syncMemory"> <span>Mémoire claude-mem des sessions de l'app (chiffrée, chargée sur chaque machine — celle du terminal reste locale)</span></label>
+          <label class="check"><input type="checkbox" data-set="syncSessionMemory"> <span>Mémoire des sessions (celle choisie dans Réglages › Général, chiffrée)</span></label>
         </fieldset>
         <fieldset class="syncWhat">
           <legend>Configuration de Claude (chiffrée, la plus récente gagne)</legend>
           <label class="check"><input type="checkbox" data-set="syncClaudeRules"> <span>Règles : ~/.claude/CLAUDE.md et les fichiers .md à côté (importés avec @), ~/.claude/rules</span></label>
           <label class="check"><input type="checkbox" data-set="syncClaudeSkills"> <span>Skills : ~/.claude/skills</span></label>
           <label class="check"><input type="checkbox" data-set="syncClaudeAgents"> <span>Agents et commandes : ~/.claude/agents, ~/.claude/commands</span></label>
-          <label class="check"><input type="checkbox" data-set="syncClaudeMemory"> <span>Mémoire de Claude : les dossiers memory/ de ~/.claude/projects (projets situés au même endroit sous le dossier personnel)</span></label>
+          <label class="check"><input type="checkbox" data-set="syncClaudeMemory"> <span>Notes de Claude Code : les dossiers memory/ de ~/.claude/projects, que Claude écrit lui-même (projets situés au même endroit sous le dossier personnel)</span></label>
           <p class="hint">Un fichier remplacé ou supprimé sur cette machine est d'abord copié dans le dossier de données de l'app (claude-sync-backup). Les skills installées par des plugins ne sont pas concernées.</p>
         </fieldset>
         <label>Synchroniser automatiquement <select data-set="syncMinutes"><option value="5">toutes les 5 minutes</option><option value="10">toutes les 10 minutes</option><option value="30">toutes les 30 minutes</option><option value="60">toutes les heures</option></select></label>
