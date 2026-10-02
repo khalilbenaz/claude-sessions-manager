@@ -154,6 +154,20 @@ test('réglages : mémoire au choix, demandes programmées, fichiers reçus', as
     await win.waitForFunction(() => /Aucune demande/.test(document.querySelector('#schList').textContent));
     await win.click('.setNav [data-st=sync]');
     assert.equal(await win.isChecked('[data-set=claudeSyncReview]'), true, 'validation demandée par défaut');
+    // mémoire : fiches de la session e2e, recherche, détail
+    await win.click('.setNav [data-st=memory]');
+    await win.waitForFunction(() => document.querySelectorAll('#memList li').length > 0);
+    if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT.replace(/(\.png)?$/, '-memoire-liste.png') });
+    const card = await win.$('#memList li[data-id]');
+    if (card) {
+      await card.click();
+      await win.waitForSelector('#memEdit:not([hidden]) [name=note]');
+      if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT.replace(/(\.png)?$/, '-memoire.png') });
+    }
+    await win.fill('#memQ', 'zzz-introuvable');
+    await win.waitForFunction(() => document.querySelector('#memList li.empty'));
+    await win.selectOption('#memSrc', 'notes');
+    await win.waitForFunction(() => document.querySelector('#memList li'));
   } finally {
     await win.evaluate(() => document.querySelector('#dlgSettings').close());
   }

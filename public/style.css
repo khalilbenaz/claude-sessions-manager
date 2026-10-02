@@ -330,6 +330,20 @@ ul.results li > div .tag { align-self: flex-start; margin-left: 0; }
 #cfReview .cfActs { margin: 6px 0; }
 #cfReview ul.results { max-height: 30vh; }
 #cfReview ul.results li { cursor: default; }
+.memBar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.memBar > * { width: auto !important; flex: 1 1 150px; margin: 0; }
+.memBar input { flex: 3 1 200px; }
+#memList li { cursor: pointer; }
+#memEdit { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+#memEdit textarea { width: 100%; resize: vertical; font: inherit; }
+#memEdit ul { list-style: none; margin: 0; padding: 0; max-height: 30vh; overflow: auto; }
+#memEdit ul li { display: flex; gap: 6px; align-items: flex-start; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 12px; white-space: pre-wrap; }
+#memEdit ul li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+#memEdit .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.usageBar { margin: 4px 0 8px; }
+.usageBar > div { height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; }
+.usageBar > div > span { display: block; height: 100%; background: var(--accent); }
+#machineList li { cursor: default; }
 .schForm { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .schForm textarea { width: 100%; resize: vertical; }
 .schDays { display: flex; flex-wrap: wrap; gap: 4px 12px; }

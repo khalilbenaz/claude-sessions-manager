@@ -260,7 +260,8 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 | **Modèles de session** | lancer, renommer, supprimer |
 | **Prompts** | ouvrir la bibliothèque de prompts |
 | **Programmées** | demandes programmées (§ 11 bis) |
-| **Synchronisation** | créer ou saisir un code de synchro, le copier, fréquence (5, 10, 30 ou 60 min), état ; Avancé : nom de machine, correspondance des dossiers, serveur (§ 16 bis) |
+| **Mémoire** | voir, chercher et corriger la mémoire (§ 16 ter) |
+| **Synchronisation** | créer ou saisir un code de synchro, le copier, fréquence (5, 10, 30 ou 60 min), état, machines et place occupée, changer de code ; Avancé : nom de machine, correspondance des dossiers, serveur (§ 16 bis) |
 | **Diagnostic** | versions, `claude` et `git` trouvés ou non, hooks, dossiers, dernières lignes du journal ; **Copier le rapport** pour une issue |
 | **Journaux** | le journal du serveur, filtrable |
 | **À propos** | version, rechercher des mises à jour, auteur |
@@ -314,6 +315,12 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 
 - **Demandes programmées** : Un prompt dans une session, ou un modèle de session lancé, à une heure donnée : une fois ou certains jours. Case pour mettre en pause, **Lancer** pour exécuter tout de suite (§ 11 bis).
 
+**Mémoire**
+
+- **Recherche et sources** : mémoire intégrée (fiches), notes de Claude Code, claude-mem ; filtres par dossier et par machine.
+- **Corriger une fiche** : renommer, note **« À retenir »** donnée en premier à Claude, retirer une demande ou une réponse, **Oublier** la fiche ; suit la synchro.
+- **Notes de Claude Code** : modifier ou supprimer (copie gardée 30 jours).
+
 **Synchronisation**
 
 - **Créer un code / J'ai déjà un code** : Active la synchro entre tes machines ; le code s'affiche pour le saisir sur les autres. Garde-le secret : qui l'a voit tes sessions (§ 16 bis).
@@ -321,6 +328,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 - **Configuration de Claude** : Règles (`CLAUDE.md`, `~/.claude/rules`), skills, agents et commandes, notes de Claude Code : les mêmes sur toutes les machines, la plus récente gagne.
 - **Me demander avant d'appliquer…** : Recommandé : règles, skills, agents et commandes reçus attendent ton accord dans **Fichiers reçus** (Appliquer, Refuser), avec le journal des changements et **Restaurer**.
 - **Synchroniser automatiquement** : Toutes les 5, 10, 30 ou 60 minutes ; tes modifications partent tout de suite, l'intervalle règle la récupération de celles des autres machines.
+- **Machines** : la liste des machines de l'espace et la place occupée ; **Retirer** une machine de la liste ; **Changer de code…** pour couper l'accès d'une machine (l'ancien espace est effacé du serveur).
 - **Avancé** : Nom de la machine, **racines de dossiers** (alias=chemin, pour retrouver un projet rangé à un autre endroit sur l'autre machine), serveur de synchro (vide = celui du projet).
 
 **Diagnostic**
@@ -351,6 +359,14 @@ Le choix ne concerne que les sessions lancées par l'app : il passe par `enabled
 - **Sessions concernées** : celles lancées par Claude Sessions. Au premier lancement, les sessions de l'app existantes sont rattrapées. Un `claude` lancé dans un terminal n'est ni lu ni modifié. Choisir claude-mem arrête la capture et l'injection ; les fiches déjà écrites restent sur le disque, et on peut supprimer le dossier `memory` pour les effacer.
 - **API locale** : `GET /api/memory` liste les fiches.
 - **Après un compactage**, le contexte n'est pas redonné : le résumé du compactage le contient déjà.
+
+#### Écran Mémoire (Réglages › Mémoire)
+
+Voir, chercher et corriger ce que Claude retient. Une recherche plein texte et des filtres (dossier, machine), et trois sources :
+
+- **Mémoire intégrée** : une fiche par session. Clic = détail : **renommer**, ajouter une note **« À retenir »** (une consigne ou un fait durable, donné à Claude **en premier** au démarrage de chaque session de ce dossier, avant le résumé des sessions), **retirer** une demande ou une réponse fausse (✕, elle ne revient pas à la relecture du transcript), **Oublier cette fiche** (plus jamais donnée à Claude ni recréée). Les corrections suivent la synchro : elles s'appliquent aussi sur tes autres machines.
+- **Notes de Claude Code** : les fichiers `memory/*.md` que Claude Code écrit lui-même dans `~/.claude/projects` ; les modifier ou les supprimer (une copie de la version actuelle est gardée 30 jours) ; ils suivent la synchro de `~/.claude`.
+- **claude-mem** (si c'est la mémoire choisie) : recherche dans ses observations, en lecture seule (sa synchro ne fait qu'ajouter : une correction ne passerait pas aux autres machines).
 
 #### Compactage automatique
 
@@ -389,6 +405,11 @@ Retrouver sur le PC les sessions créées sur le Mac, et inversement : **nom, do
 - **Fréquence** (Réglages › Synchronisation › *Synchroniser automatiquement*) : **toutes les 5, 10 ou 30 minutes ou toutes les heures** (5 min par défaut). Ce que tu changes sur une machine part **tout de suite** ; l'intervalle règle quand les autres machines vont le chercher. **Synchroniser maintenant** force une synchro immédiate.
 - Renommer, regrouper ou supprimer une session se propage aux autres machines à leur synchro suivante (selon leur fréquence) ; en cas de modifications simultanées, la plus récente gagne. Une session supprimée ailleurs mais **en cours ici** n'est pas arrêtée.
 - **Ne partage ton code qu'avec tes propres machines** : il donne accès à tes sessions et à leurs conversations. **Désactiver** l'efface de cette machine.
+
+**Machines** (Réglages › Synchronisation › *Machines*) : chaque machine de l'espace (nom, système, version de l'app, mémoire choisie, dernière synchro), « cette machine » en tête, et la **place occupée** sur le serveur (par exemple 30 Mo sur 200 Mo, nombre de sessions).
+
+- **Retirer** enlève une machine de la liste ; elle y revient si elle se synchronise encore, puisqu'elle a toujours le code.
+- **Changer de code…** coupe vraiment l'accès : un nouveau code est créé, tout ce que cette machine a (sessions, conversations, mémoire, configuration) part dans le nouvel espace, puis **l'ancien espace est effacé du serveur**. Les machines restées sur l'ancien code reçoivent « code refusé » ; saisis le nouveau code sur celles que tu gardes (Réglages › Synchronisation › J'ai déjà un code), elles y renvoient alors ce qu'elles ont.
 
 **Serveur de synchro** : par défaut, l'app utilise le serveur public du projet (Worker Cloudflare : métadonnées dans une base D1, conversations chiffrées dans R2, jusqu'à 200 Mo par espace). Il ne voit jamais le code ni le contenu en clair, et limite la création d'espaces et la place occupée. **Code créé avant la 3.8** : il avait été tiré par le serveur ; il continue de fonctionner (rattaché automatiquement à la nouvelle clé d'accès), mais pour un chiffrement de bout en bout strict, crée un nouveau code (Désactiver, puis Créer un code) et saisis-le sur tes autres machines. Tu peux héberger le tien (gratuit) avec [`sync-worker/`](sync-worker), puis mettre son adresse dans Réglages › Synchronisation › Avancé › **Serveur** :
 

@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.19.0] — 2026-10-02
+### Ajouté
+- **Écran Mémoire** (Réglages › Mémoire) : recherche plein texte et filtres (dossier, machine) dans la mémoire intégrée, les notes de Claude Code et claude-mem (lecture seule). Une fiche se renomme, reçoit une note **« À retenir »** (donnée à Claude en premier au démarrage dans ce dossier), perd une demande ou une réponse fausse (elle ne revient pas), ou s'**oublie** (plus jamais donnée ni recréée) ; les corrections suivent la synchro. Les notes de Claude Code se modifient ou se suppriment (copie gardée 30 jours).
+- **Machines de la synchro** (Réglages › Synchronisation › Machines) : liste des machines de l'espace (nom, système, version, mémoire, dernière synchro), place occupée sur le serveur, **Retirer** une machine de la liste, **Changer de code…** (nouvel espace, données de cette machine renvoyées, ancien espace effacé du serveur : l'ancien code est refusé).
+- Worker : `GET /usage` (place occupée) et `DELETE /space` (effacement complet d'un espace), testés.
+### Corrigé
+- Mémoire intégrée : un dossier atteint par un lien symbolique (par exemple `/var` → `/private/var` sur macOS) est reconnu comme le même projet.
+- Tests : ne joignent plus jamais le serveur de synchro public.
+
 ## [3.18.0] — 2026-10-02
 ### Ajouté
 - **La file d'attente suit le quota** : près de la limite des 5 h (seuil réglable, 95 % par défaut, lu par la barre d'état de l'app) ou au message « 5-hour limit reached ∙ resets … » de Claude Code, la file se met en pause (badge ⏸) et repart seule à la réinitialisation ; les sessions coupées par la limite reçoivent « continue ». Réglages › Général.

@@ -9,6 +9,8 @@
 // GET  /transcripts           -> { items: [{ uid, cid, ver, chunks, size, updatedAt, origin }] }
 // PUT  /transcripts/<uid>/<ver>/<n>   octets        (morceau n de la version ver, 1 Mo au plus)
 // GET  /transcripts/<uid>/<ver>/<n>   -> octets
+// GET  /usage                 -> { bytes, max, sessions, transcripts }   (place occupée par l'espace)
+// DELETE /space                -> { ok }   efface tout l'espace (données, morceaux R2, accès) : changement de code
 // PUT  /transcripts/<uid> { cid, ver, chunks, size, updatedAt, origin } -> { applied }
 //      (valide une version dont tous les morceaux sont envoyés ; les autres versions sont effacées)
 // Une session supprimée (POST /sessions, deleted) efface aussi sa conversation.
@@ -196,10 +198,30 @@ export default {
     if (url.pathname === '/spaces') return req.method === 'POST' ? createSpace(req, env) : json({ error: 'method not allowed' }, 405);
     if (url.pathname === '/spaces/link') return req.method === 'POST' ? linkSpace(req, env) : json({ error: 'method not allowed' }, 405);
     const tx = url.pathname.match(/^\/transcripts(?:\/([^/]+)(?:\/([^/]+)\/([^/]+))?)?$/);
-    if (url.pathname !== '/sessions' && !tx) return json({ error: 'not found' }, 404);
+    if (!['/sessions', '/usage', '/space'].includes(url.pathname) && !tx) return json({ error: 'not found' }, 404);
     const space = await spaceOf(req, env);
     if (!space) return json({ error: 'unauthorized' }, 401);
     if (tx) return transcripts(req, env, space, tx.slice(1).filter(x => x !== undefined));
+    if (url.pathname === '/usage') {
+      if (req.method !== 'GET') return json({ error: 'method not allowed' }, 405);
+      const c = await env.DB.prepare(
+        'SELECT (SELECT COUNT(*) FROM csm_sessions WHERE space = ?1 AND deleted = 0) AS sessions, (SELECT COUNT(*) FROM csm_transcripts WHERE space = ?1) AS transcripts',
+      ).bind(space).first();
+      return json({ bytes: await usedBytes(env, space), max: SPACE_MAX, sessions: c.sessions, transcripts: c.transcripts });
+    }
+    if (url.pathname === '/space') {
+      if (req.method !== 'DELETE') return json({ error: 'method not allowed' }, 405);
+      // morceaux R2 (listés par préfixe : y compris ceux qu'aucune ligne ne référence), puis toutes les lignes
+      let cursor;
+      do {
+        const page = await env.BUCKET.list({ prefix: space + '/', cursor, limit: 1000 });
+        if (page.objects.length) await env.BUCKET.delete(page.objects.map(o => o.key));
+        cursor = page.truncated ? page.cursor : undefined;
+      } while (cursor);
+      await env.DB.batch(['csm_parts', 'csm_transcripts', 'csm_sessions', 'csm_usage', 'csm_auth', 'csm_spaces']
+        .map(t => env.DB.prepare(`DELETE FROM ${t} WHERE space = ?`).bind(space)));
+      return json({ ok: true });
+    }
 
     if (req.method === 'GET') {
       const since = Math.max(0, Number(url.searchParams.get('since')) || 0);
