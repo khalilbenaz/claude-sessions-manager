@@ -232,7 +232,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 | **Synchronisation** | créer ou saisir un code de synchro, le copier, fréquence (5, 10, 30 ou 60 min), état ; Avancé : nom de machine, correspondance des dossiers, serveur (§ 16 bis) |
 | **Diagnostic** | versions, `claude` et `git` trouvés ou non, hooks, dossiers, dernières lignes du journal ; **Copier le rapport** pour une issue |
 | **Journaux** | le journal du serveur, filtrable |
-| **À propos** | version, rechercher des mises à jour |
+| **À propos** | version, rechercher des mises à jour, auteur |
 
 ### 16 ter. Mémoire des sessions
 
