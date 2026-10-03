@@ -144,7 +144,7 @@ function saveState() {
 const sameOrigin = url => { try { return new URL(url).origin === ORIGIN; } catch { return false; } };
 const external = url => { try { return ['http:', 'https:', 'mailto:'].includes(new URL(url).protocol); } catch { return false; } };
 
-function createWindow() {
+function createWindow({ hidden = false } = {}) {
   const st = loadState();
   win = new BrowserWindow({
     x: st.x, y: st.y, width: st.width || 1400, height: st.height || 900, minWidth: 760, minHeight: 480,
@@ -162,7 +162,7 @@ function createWindow() {
   win.webContents.on('will-navigate', (e, url) => { if (!sameOrigin(url)) { e.preventDefault(); if (external(url)) shell.openExternal(url); } });
   win.webContents.on('will-attach-webview', e => e.preventDefault());
 
-  win.once('ready-to-show', () => { if (process.env.CSM_HIDE_WINDOW) return; if (!START_HIDDEN || win.__forceShow) win.show(); }); // CSM_HIDE_WINDOW : tests automatiques, rien à l'écran
+  win.once('ready-to-show', () => { if (process.env.CSM_HIDE_WINDOW || hidden) return; if (!START_HIDDEN || win.__forceShow) win.show(); }); // CSM_HIDE_WINDOW : tests automatiques, rien à l'écran
   win.on('close', e => {
     saveState();
     if (quitting) return;
@@ -175,6 +175,14 @@ function createWindow() {
   win.on('focus', () => { win.flashFrame(false); updates?.onFocus?.(); });
   win.on('show', () => updates?.onFocus?.());
 
+  // Affichage tué (mémoire saturée, plantage) ou figé : la fenêtre resterait noire, et Cmd+R n'y peut
+  // rien puisqu'il n'y a plus de page pour l'exécuter. On recrée la fenêtre ; serveur et sessions intacts.
+  let frozen = null;
+  win.webContents.on('render-process-gone', (e, d) => { if (d.reason !== 'clean-exit') recoverWindow(`affichage arrêté (${d.reason})`); });
+  win.on('unresponsive', () => { clearTimeout(frozen); frozen = setTimeout(() => recoverWindow('affichage figé depuis 20 s'), 20000); });
+  win.on('responsive', () => clearTimeout(frozen));
+  win.on('closed', () => clearTimeout(frozen));
+
   win.webContents.on('did-fail-load', async (e, code, desc, url, isMain) => {
     if (!isMain) return;
     // Serveur pas encore prêt ou arrêté : on le relance puis on recharge.
@@ -182,6 +190,32 @@ function createWindow() {
     else (process.env.CSM_HIDE_WINDOW ? (t, m) => console.error(m) : dialog.showErrorBox)('Claude Sessions', `Le serveur local ne démarre pas.\n\nJournal : ${path.join(DATA, 'server.log')}`);
   });
   win.loadURL(URL_);
+}
+
+// Recrée la fenêtre après un plantage de l'affichage ou du GPU, en gardant son état (visible ou cachée).
+// Machine encore saturée (3 reprises en 1 min) : on attend 15 s au lieu d'1 pour ne pas boucler.
+let recoveries = [], recoverTimer = null;
+function recoverWindow(why, delay) {
+  if (quitting || recoverTimer) return;
+  const now = Date.now();
+  recoveries = recoveries.filter(t => now - t < 60000);
+  delay ??= recoveries.length >= 3 ? 15000 : 1000;
+  updLog(`[fenêtre] ${why} : recréation dans ${delay / 1000} s`);
+  recoverTimer = setTimeout(() => {
+    recoverTimer = null;
+    if (quitting) return;
+    recoveries.push(Date.now());
+    const visible = !!win && !win.isDestroyed() && win.isVisible();
+    if (win && !win.isDestroyed()) { saveState(); win.destroy(); }
+    win = null;
+    if (visible) showWindow(); else createWindow({ hidden: true });
+  }, delay);
+}
+
+// Recharger : simple rechargement si la page vit, sinon recréation de la fenêtre.
+function reloadWindow() {
+  if (!win || win.isDestroyed() || win.webContents.isCrashed()) recoverWindow('rechargement demandé', 0);
+  else win.webContents.reloadIgnoringCache();
 }
 
 // Masque la fenêtre (plus d'entrée dans la barre des tâches) ; la 1re fois, explique où elle est passée.
@@ -367,6 +401,7 @@ function buildTray() {
     { type: 'separator' },
     { label: 'Rechercher des mises à jour', click: () => updates?.check(), visible: !!updates && app.isPackaged },
     { label: 'Lancer au démarrage de l’ordinateur', type: 'checkbox', checked: loginItem(), click: i => setLoginItem(i.checked), visible: !process.windowsStore }, // version Store : non géré par l'app
+    { label: 'Recharger la fenêtre', click: reloadWindow },
     { label: 'Redémarrer le serveur (les sessions reviennent)', click: async () => { stopServer(); await new Promise(r => setTimeout(r, 800)); await ensureServer(); win?.loadURL(URL_); } },
     { type: 'separator' },
     { label: 'Quitter (les sessions continuent)', click: () => { quitting = true; app.quit(); } },
@@ -400,7 +435,7 @@ function buildAppMenu() {
       { role: 'cut', label: L('Couper', 'Cut') }, { role: 'copy', label: L('Copier', 'Copy') }, { role: 'paste', label: L('Coller', 'Paste') },
       { role: 'pasteAndMatchStyle', label: L('Coller et adapter le style', 'Paste and Match Style') }, { role: 'delete', label: L('Supprimer', 'Delete') },
       { role: 'selectAll', label: L('Tout sélectionner', 'Select All') }] },
-    { label: L('Présentation', 'View'), submenu: [{ role: 'reload', label: L('Recharger', 'Reload') }, { role: 'togglefullscreen', label: L('Plein écran', 'Toggle Full Screen') }] },
+    { label: L('Présentation', 'View'), submenu: [{ label: L('Recharger', 'Reload'), accelerator: 'Cmd+R', click: reloadWindow }, { role: 'togglefullscreen', label: L('Plein écran', 'Toggle Full Screen') }] },
     { label: L('Fenêtre', 'Window'), role: 'window', submenu: [
       { role: 'minimize', label: L('Réduire', 'Minimize') }, { role: 'zoom', label: L('Zoom', 'Zoom') }, { type: 'separator' },
       { role: 'front', label: L('Tout ramener au premier plan', 'Bring All to Front') }] },
@@ -414,6 +449,8 @@ app.on('second-instance', showWindow);
 app.on('activate', showWindow); // clic sur l'icône du Dock
 app.on('before-quit', () => { quitting = true; saveState(); });
 app.on('window-all-closed', e => e.preventDefault()); // reste dans la barre des tâches / de menus
+// GPU tué (mémoire saturée) : Electron le relance, mais la fenêtre peut rester noire.
+app.on('child-process-gone', (e, d) => { if (d.type === 'GPU' && d.reason !== 'clean-exit') recoverWindow(`GPU arrêté (${d.reason})`); });
 app.on('web-contents-created', (e, wc) => { wc.on('will-attach-webview', ev => ev.preventDefault()); });
 
 app.whenReady().then(async () => {

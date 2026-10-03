@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.19.3] — 2026-10-03
+### Corrigé
+- **Fenêtre noire** sous forte charge (mémoire saturée) : quand macOS ou Windows tue l'affichage ou le GPU, la fenêtre est recréée automatiquement (de même si elle reste figée plus de 20 s), sans toucher au serveur ni aux sessions. <kbd>Cmd</kbd>+<kbd>R</kbd> et le nouveau « Recharger la fenêtre » du menu de l'icône la recréent aussi quand la page est morte.
+
 ## [3.19.2] — 2026-10-02
 ### Corrigé
 - Menu clic droit (terminal, session) : il ne déborde plus en bas d'une fenêtre basse ; il reste dans la fenêtre et défile (molette ou flèches) jusqu'au dernier élément.
