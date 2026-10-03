@@ -199,6 +199,15 @@ test('thème clair : le code coloré pour un fond sombre reste lisible (contrast
   assert.equal(await win.evaluate(() => [...terms.values()][0].term.options.minimumContrastRatio), 1);
 });
 
+test('affichage tué (mémoire saturée) : la fenêtre est recréée, les sessions continuent', async () => {
+  const next = app.waitForEvent('window', { timeout: 30000 });
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.forcefullyCrashRenderer());
+  win = await next;
+  await win.waitForFunction(() => document.documentElement.dataset.ready === '1', null, { timeout: 60000 });
+  await win.waitForFunction(() => [...sessions.values()].some(s => s.name === 'e2e'), null, { timeout: 30000 });
+  assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length), 1, 'une seule fenêtre, l’ancienne est détruite');
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));
