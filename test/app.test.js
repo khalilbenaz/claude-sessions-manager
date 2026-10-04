@@ -186,6 +186,28 @@ test('réglages : mémoire au choix, demandes programmées, fichiers reçus', as
   }
 });
 
+test('pièces jointes : miniature de l’image jointe, agrandie au clic, marquée envoyée après Entrée', async () => {
+  const id = await win.evaluate(() => active);
+  await win.evaluate(async id => {
+    const c = document.createElement('canvas'); c.width = 120; c.height = 80;
+    const g = c.getContext('2d'); g.fillStyle = '#d97757'; g.fillRect(0, 0, 120, 80);
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    await attachFiles(id, [new File([blob], 'capture.png', { type: 'image/png' })]);
+  }, id);
+  const thumb = `.term .thumbs:not([hidden]) .thumb img`;
+  await win.waitForSelector(thumb);
+  assert.equal(await win.$eval('.term .thumbs:not([hidden]) .thumb', b => b.classList.contains('sent')), false, 'message en cours');
+  await win.click('.term .thumbs:not([hidden]) .thumb');
+  await win.waitForSelector('#dlgImage[open] img');
+  assert.match(await win.textContent('#dlgImage figcaption'), /capture\.png/);
+  if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT.replace(/(\.png)?$/, '-image.png') });
+  await win.keyboard.press('Escape');
+  await win.evaluate(id => attachmentsSent(id), id);
+  await win.waitForSelector('.term .thumbs:not([hidden]) .thumb.sent');
+  await win.click('.term .thumbs:not([hidden]) .thumbsClose');
+  assert.equal(await win.$('.term .thumbs:not([hidden])'), null, 'masquée');
+});
+
 test('thème clair : le code coloré pour un fond sombre reste lisible (contraste minimal)', async () => {
   await win.evaluate(() => saveSettings({ theme: 'light' }));
   await win.waitForFunction(() => document.documentElement.dataset.theme === 'light');

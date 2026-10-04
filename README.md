@@ -186,6 +186,8 @@ Comme dans un terminal, Claude reçoit images et fichiers :
 
 Le fichier est copié dans un dossier temporaire et son chemin collé dans ta ligne de saisie : Claude affiche `[Image #1]` et l'envoie avec ton message. Les copies sont effacées après 7 jours.
 
+**Aperçu** : chaque image jointe apparaît en **miniature en haut à droite du terminal** (encadrée tant que le message n'est pas envoyé, estompée ensuite, les 8 dernières). **Clic** = l'image en grand avec son nom (<kbd>Échap</kbd> pour fermer) ; **✕** masque les miniatures jusqu'à la prochaine pièce jointe. Les autres fichiers apparaissent en 📄.
+
 ## 11. Palette, recherche, prompts, file d'attente, envoi groupé
 
 - **Palette de commandes** (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>) : quelques lettres pour aller à une session, reprendre une conversation, lancer un modèle, insérer un prompt ou exécuter une action (disposition, thème, réglages, diagnostic, verrouillage…). Les actions récentes remontent en tête.
