@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.20.0] — 2026-10-04
+### Ajouté
+- **Aperçu des images jointes** : miniatures en haut à droite du terminal (encadrées pour le message en cours, estompées une fois envoyées, les 8 dernières) ; clic = l'image en grand avec son nom ; ✕ pour les masquer. Lues sur la machine, rien de plus n'est envoyé.
+
 ## [3.19.3] — 2026-10-03
 ### Corrigé
 - **Fenêtre noire** sous forte charge (mémoire saturée) : quand macOS ou Windows tue l'affichage ou le GPU, la fenêtre est recréée automatiquement (de même si elle reste figée plus de 20 s), sans toucher au serveur ni aux sessions. <kbd>Cmd</kbd>+<kbd>R</kbd> et le nouveau « Recharger la fenêtre » du menu de l'icône la recréent aussi quand la page est morte.

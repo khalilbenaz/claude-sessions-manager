@@ -71,7 +71,11 @@ function ensureTerm(id) {
   term.loadAddon(fit);
   term.loadAddon(new WebLinksAddon.WebLinksAddon((e, uri) => window.open(uri, '_blank')));
   term.open(el);
-  term.onData(d => send({ t: 'input', id, d }));
+  term.onData(d => { send({ t: 'input', id, d }); if (d.includes('\r')) attachmentsSent(id); });
+  // aperçu des images jointes (miniatures en haut à droite du terminal)
+  const thumbs = document.createElement('div');
+  thumbs.className = 'thumbs'; thumbs.hidden = true;
+  el.appendChild(thumbs);
   // clic / focus dans un panneau de la vue partagée : ce panneau devient le panneau actif
   term.textarea?.addEventListener('focus', () => {
     const i = panes.indexOf(id);
@@ -645,6 +649,45 @@ async function uploadFile(file) {
   return j.path;
 }
 
+// ------------------------------------------------------------------ aperçu des pièces jointes
+// Par session : images (et fichiers) joints, lus localement (URL blob, rien de plus n'est envoyé). Ceux du
+// message en cours sont encadrés ; après Entrée ils restent, estompés (« envoyé »), jusqu'aux 8 derniers.
+const escHtml = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const attachments = new Map();
+const isImage = f => /^image\//.test(f.type) || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(f.name || '');
+function addAttachments(id, files) {
+  const list = attachments.get(id) || [];
+  for (const f of files) list.push({ name: f.name || 'image.png', url: isImage(f) ? URL.createObjectURL(f) : '', sent: false });
+  while (list.length > 8) { const x = list.shift(); if (x.url) URL.revokeObjectURL(x.url); }
+  attachments.set(id, list);
+  renderAttachments(id, true);
+}
+function attachmentsSent(id) {
+  const list = attachments.get(id);
+  if (!list?.some(x => !x.sent)) return;
+  list.forEach(x => { x.sent = true; });
+  renderAttachments(id);
+}
+function renderAttachments(id, show) {
+  const t = terms.get(id), box = t?.el.querySelector('.thumbs');
+  if (!box) return;
+  const list = attachments.get(id) || [];
+  if (show) box.dataset.closed = '';
+  box.hidden = !list.length || box.dataset.closed === '1';
+  box.innerHTML = list.map((x, i) => `<button class="thumb${x.sent ? ' sent' : ''}" data-i="${i}" title="${escHtml(x.name)}${x.sent ? ' · ' + t2('envoyée') : ''}">${x.url ? `<img src="${x.url}" alt="">` : '<span>📄</span>'}</button>`).join('')
+    + `<button class="thumbsClose" title="${t2('Masquer')}">✕</button>`;
+  box.querySelectorAll('.thumb').forEach(b => { b.onclick = e => { e.stopPropagation(); viewAttachment(list[+b.dataset.i]); }; });
+  box.querySelector('.thumbsClose').onclick = e => { e.stopPropagation(); box.dataset.closed = '1'; box.hidden = true; t.term.focus(); };
+}
+function viewAttachment(x) {
+  if (!x?.url) return;
+  const d = $('#dlgImage');
+  d.querySelector('img').src = x.url;
+  d.querySelector('figcaption').textContent = x.name + (x.sent ? ' · ' + t2('envoyée') : '');
+  d.showModal();
+}
+const t2 = s => (typeof t === 'function' ? t(s) : s);
+
 // Colle les chemins comme le ferait un terminal après un glisser-déposer : Claude détecte les images et les attache.
 async function attachFiles(id, files) {
   const t = terms.get(id); if (!t) return;
@@ -654,6 +697,7 @@ async function attachFiles(id, files) {
     for (const f of files) paths.push(await uploadFile(f));
     const quoted = paths.map(p => (/\s/.test(p) ? `"${p}"` : p));
     t.term.paste(quoted.join(' ') + ' ');
+    addAttachments(id, files);
     toast(files.length > 1 ? `${files.length} fichiers ajoutés` : 'Ajouté — il sera envoyé avec ton message');
   } catch (e) { toast(`Échec : ${e.message}`, true); }
   t.term.focus();
