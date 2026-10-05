@@ -759,9 +759,9 @@ function on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); }
 function emit(ev, ...a) { for (const fn of listeners[ev] || []) { try { fn(...a); } catch (e) { console.error('module', ev, e); } } }
 const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
-  renameSession, history, transcriptPath, setStatus, lockedResume, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
+  renameSession, history, transcriptPath, setStatus, lockedResume, splitArgs, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
 };
-for (const mod of ['lock', 'git', 'settings', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync', 'schedule']) {
+for (const mod of ['lock', 'git', 'settings', 'auth', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync', 'schedule']) {
   try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }
 }
 

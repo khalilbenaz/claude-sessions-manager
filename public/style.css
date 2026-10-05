@@ -59,6 +59,10 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 4
 #histList .t .ren { margin-right: 4px; }
 .ctx { position: fixed; inset: auto; margin: 0; z-index: 100; min-width: 200px; display: flex; flex-direction: column; padding: 4px; color: inherit; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.45); user-select: none; max-height: calc(100vh - 8px); overflow-y: auto; overscroll-behavior: contain; }
 .ctx:not(:popover-open) { display: none; }
+.authBanner { display: flex; align-items: center; gap: 10px; padding: 6px 12px; background: color-mix(in srgb, #e0a030 16%, var(--panel)); border-bottom: 1px solid var(--line); font-size: 13px; }
+.authBanner[hidden] { display: none; }
+.authBanner > span { flex: 1; min-width: 0; }
+.authBanner.expired { background: color-mix(in srgb, var(--warn, #e05050) 20%, var(--panel)); }
 .ctx button { display: flex; justify-content: space-between; gap: 24px; background: none; border: none; border-radius: 5px; text-align: left; padding: 5px 10px; flex-shrink: 0; }
 .ctx button:hover:not(:disabled), .ctx button:focus-visible { background: var(--panel); outline: none; }
 .ctx button:disabled { opacity: .4; cursor: default; }

@@ -264,6 +264,8 @@ function connect() {
       if (langChanged) location.reload();
     } else if (m.t === 'schedules') {
       window.dispatchEvent(new CustomEvent('csm:schedules'));
+    } else if (m.t === 'auth') {
+      window.dispatchEvent(new CustomEvent('csm:auth', { detail: m }));
     } else if (m.t === 'sync') {
       window.dispatchEvent(new CustomEvent('csm:sync', { detail: m.status }));
     } else if (m.t === 'templates' || m.t === 'prompts') {
