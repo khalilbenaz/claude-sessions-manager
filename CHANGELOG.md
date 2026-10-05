@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.22.0] — 2026-10-05
+### Ajouté
+- **Langue des réponses de Claude** : les sessions lancées par l'app répondent toujours dans la langue de l'interface (français par défaut pour une app en français), via le réglage `language` de Claude Code. Réglages › Général : autre langue, ou garder le réglage de Claude Code. Le `claude` du terminal n'est pas modifié.
+
 ## [3.21.1] — 2026-10-05
 ### Modifié
 - Aperçu des images jointes : propre à chaque session et affiché seulement sur la session active (plus sur les autres panneaux de la vue partagée) ; il ne montre que les images du message en cours et disparaît à l'envoi (avant : les 8 dernières, estompées, restaient affichées).

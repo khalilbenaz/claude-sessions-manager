@@ -257,6 +257,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 
 - **Thème** : **Système** (par défaut) suit automatiquement le mode clair ou sombre de Windows / macOS, y compris quand il change en cours de journée ; ou forcer **Clair** / **Sombre** (Réglages › Général, ou palette › « Thème »). Le terminal suit le thème. Claude Code a ses propres couleurs (sombres par défaut) : en thème clair, le terminal de l'app **fonce automatiquement tout texte trop clair** (code, diffs, couleurs RVB), pour qu'il reste lisible (contraste minimal 4,5:1). Pour des couleurs pensées pour un fond clair, tape aussi `/theme` dans une session et choisis un thème clair de Claude Code (ce réglage vaut aussi pour le terminal du système).
 - **Langue** : français ou anglais, automatiquement selon la langue du système, ou forcée dans Réglages › Général.
+- **Langue des réponses de Claude** : les sessions lancées par l'app répondent dans la langue de l'interface (en français si l'app est en français), quelle que soit la langue de tes messages ou du code. Réglages › Général › *Langue des réponses de Claude* : une autre langue, ou *Réglage de Claude Code* pour garder le tien (`language` dans `~/.claude/settings.json`). S'applique aux sessions lancées ou relancées ensuite ; le `claude` du terminal n'est pas concerné.
 
 ## 16. Réglages
 

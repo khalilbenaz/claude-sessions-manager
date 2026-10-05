@@ -95,12 +95,23 @@ const STATUS_LINE = { type: 'command', command: nodeRunner('statusline.js'), pad
 // « model » : Claude Code borne la valeur à la fenêtre du modèle (min), donc 1M = fenêtre complète, et cette
 // valeur prime sur un CLAUDE_CODE_AUTO_COMPACT_WINDOW trop bas dans ~/.claude/settings.json (compactage en boucle).
 const COMPACT_WINDOW = { model: '1000000', '200000': '200000', '400000': '400000' };
+const REPLY_LANGS = { fr: 'french', en: 'english', es: 'spanish', ar: 'arabic', de: 'german', it: 'italian', pt: 'portuguese' };
+function replyLanguage(st) {
+  const v = st.replyLanguage || 'app';
+  if (v === 'claude') return ''; // laisser le réglage de Claude Code
+  if (v !== 'app') return REPLY_LANGS[v] || '';
+  const ui = st.lang && st.lang !== 'auto' ? st.lang : (Intl.DateTimeFormat().resolvedOptions().locale || 'fr').slice(0, 2);
+  return REPLY_LANGS[ui] || 'french';
+}
 function sessionSettings(withStatusLine) {
   const st = ctx.getSettings?.() || {};
   const engine = st.memoryEngine || 'native';
   const o = { hooks: HOOKS };
   if (withStatusLine) o.statusLine = STATUS_LINE;
   o.enabledPlugins = { 'claude-mem@thedotmack': engine === 'claude-mem' };
+  // Langue des réponses de Claude (réglage « language » de Claude Code) : par défaut celle de l'app
+  const lang = replyLanguage(st);
+  if (lang) o.language = lang;
   const w = COMPACT_WINDOW[st.autoCompactWindow || 'model'];
   if (w) o.env = { CLAUDE_CODE_AUTO_COMPACT_WINDOW: w };
   const txt = JSON.stringify(o, null, 2);
