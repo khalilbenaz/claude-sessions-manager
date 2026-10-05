@@ -36,7 +36,7 @@
   async function renew() {
     const dlg = $('#dlgAuth');
     if (!dlg.open) dlg.showModal();
-    try { st = await api('POST', '/api/auth/renew'); } catch (e) { toast(e.message, true); }
+    try { st = await api('POST', '/api/auth/renew'); wasRenewing = !!st.renewing; } catch (e) { toast(e.message, true); }
     render();
   }
   $('#authRenew').onclick = renew;
@@ -63,9 +63,15 @@
     n.onclick = () => { window.csmNative ? window.csmNative.focus() : window.focus(); renew(); n.close(); };
   }
 
+  let wasRenewing = false;
   window.addEventListener('csm:auth', e => {
-    st = e.detail.status; render(); notify();
-    if (e.detail.done) { toast(t('Connexion à Claude renouvelée')); $('#dlgAuth').close(); }
+    st = e.detail.status;
+    // fin d'un renouvellement réussi : fenêtre fermée (même si le message « done » s'est perdu)
+    const ok = e.detail.done || (wasRenewing && !st.renewing && !st.error && st.renewedAt);
+    wasRenewing = !!st.renewing;
+    if (ok) { if ($('#dlgAuth').open) $('#dlgAuth').close(); toast(t('Connexion à Claude renouvelée')); }
+    render();
+    try { notify(); } catch { }
   });
   window.addEventListener('csm:ready', () => { load().then(notify); });
   setInterval(() => { if (st) { st.msLeft = st.expiresAt ? st.expiresAt - Date.now() : null; render(); } }, 60e3);
