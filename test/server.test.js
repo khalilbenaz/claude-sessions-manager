@@ -1170,18 +1170,18 @@ test('connexion Claude : expiration proche signalée, renouvellement depuis l’
 });
 
 test('langue des réponses : transmise à Claude Code (réglage language), par défaut celle de l’interface', async () => {
-  const newest = () => fs.readdirSync(DATA).filter(f => /^session-settings-/.test(f)).map(f => path.join(DATA, f)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
+  const c = await wsClient();
   const langOf = async opts => {
     await api('PUT', '/api/settings', opts);
     const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'langue' });
     await idle(s.id);
-    const l = JSON.parse(fs.readFileSync(newest(), 'utf8')).language;
+    const m = (c.out[s.id] || '').match(/LANGUE:([a-z]+)/);
     await api('DELETE', `/api/sessions/${s.id}`);
-    return l;
+    return m ? m[1] : undefined;
   };
   try {
     assert.equal(await langOf({ lang: 'fr', replyLanguage: 'app' }), 'french');
     assert.equal(await langOf({ replyLanguage: 'en' }), 'english');
     assert.equal(await langOf({ replyLanguage: 'claude' }), undefined, 'réglage de Claude Code laissé tel quel');
-  } finally { await api('PUT', '/api/settings', { replyLanguage: 'app', lang: 'auto' }); }
+  } finally { c.ws.close(); await api('PUT', '/api/settings', { replyLanguage: 'app', lang: 'auto' }); }
 });
