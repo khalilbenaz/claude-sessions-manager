@@ -69,11 +69,15 @@
     // fin d'un renouvellement réussi : fenêtre fermée (même si le message « done » s'est perdu)
     const ok = e.detail.done || (wasRenewing && !st.renewing && !st.error && st.renewedAt);
     wasRenewing = !!st.renewing;
-    if (ok) { if ($('#dlgAuth').open) $('#dlgAuth').close(); toast(t('Connexion à Claude renouvelée')); }
-    render();
+    render(); // bandeau d'abord : rien de ce qui suit ne doit l'empêcher de se mettre à jour
+    if (ok) {
+      try { if ($('#dlgAuth').open) $('#dlgAuth').close(); } catch { }
+      try { toast(t('Connexion à Claude renouvelée')); } catch { }
+      render();
+    }
     try { notify(); } catch { }
   });
   window.addEventListener('csm:ready', () => { load().then(notify); });
   setInterval(() => { if (st) { st.msLeft = st.expiresAt ? st.expiresAt - Date.now() : null; render(); } }, 60e3);
-  window.csmFeatures = Object.assign(window.csmFeatures || {}, { renewLogin: renew });
+  window.csmFeatures = Object.assign(window.csmFeatures || {}, { renewLogin: renew, authState: () => st });
 })();

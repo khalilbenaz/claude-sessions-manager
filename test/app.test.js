@@ -245,7 +245,7 @@ test('connexion Claude : bandeau avant expiration, renouvellement dans l’app',
   try {
     await win.waitForFunction(() => !document.querySelector('#dlgAuth').open && document.querySelector('#authBanner').hidden, null, { timeout: 20000 });
   } catch (e) {
-    const diag = await win.evaluate(async () => ({ auth: await api('GET', '/api/auth'), open: document.querySelector('#dlgAuth').open, banner: !document.querySelector('#authBanner').hidden, step: document.querySelector('#authStep').textContent }));
+    const diag = await win.evaluate(async () => ({ auth: await api('GET', '/api/auth'), open: document.querySelector('#dlgAuth').open, banner: !document.querySelector('#authBanner').hidden, step: document.querySelector('#authStep').textContent, text: document.querySelector('#authText').textContent, ui: window.csmFeatures.authState?.() }));
     throw new Error(e.message + ' — ' + JSON.stringify(diag));
   }
   fs.rmSync(f, { force: true });
