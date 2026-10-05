@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.21.1] — 2026-10-05
+### Modifié
+- Aperçu des images jointes : propre à chaque session et affiché seulement sur la session active (plus sur les autres panneaux de la vue partagée) ; il ne montre que les images du message en cours et disparaît à l'envoi (avant : les 8 dernières, estompées, restaient affichées).
+
 ## [3.21.0] — 2026-10-05
 ### Ajouté
 - **Connexion à Claude qui expire** (« Your login expires in 3 days · run /login to renew ») : bandeau 🔑 quelques jours avant l'expiration (5 par défaut) et notification quotidienne ; **Renouveler** lance la connexion depuis l'app (`claude auth login` en arrière-plan), le navigateur s'ouvre sur la page de Claude, et le code éventuel se colle dans l'app. Seule la date d'expiration est lue, jamais les jetons. Réglages › Général : activer, nombre de jours.

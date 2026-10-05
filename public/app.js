@@ -652,8 +652,8 @@ async function uploadFile(file) {
 }
 
 // ------------------------------------------------------------------ aperçu des pièces jointes
-// Par session : images (et fichiers) joints, lus localement (URL blob, rien de plus n'est envoyé). Ceux du
-// message en cours sont encadrés ; après Entrée ils restent, estompés (« envoyé »), jusqu'aux 8 derniers.
+// Par session : images (et fichiers) joints au message en cours, lus localement (URL blob, rien de plus n'est
+// envoyé). Affiché seulement sur la session active ; vidé à l'envoi du message (Entrée).
 const escHtml = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const attachments = new Map();
 const isImage = f => /^image\//.test(f.type) || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(f.name || '');
@@ -666,16 +666,19 @@ function addAttachments(id, files) {
 }
 function attachmentsSent(id) {
   const list = attachments.get(id);
-  if (!list?.some(x => !x.sent)) return;
-  list.forEach(x => { x.sent = true; });
+  if (!list?.length) return;
+  for (const x of list) if (x.url) URL.revokeObjectURL(x.url);
+  attachments.delete(id);
   renderAttachments(id);
 }
+// changement de session active : seul l'aperçu de la session active est visible
+window.addEventListener('csm:active', () => { for (const id of attachments.keys()) renderAttachments(id); });
 function renderAttachments(id, show) {
   const t = terms.get(id), box = t?.el.querySelector('.thumbs');
   if (!box) return;
   const list = attachments.get(id) || [];
   if (show) box.dataset.closed = '';
-  box.hidden = !list.length || box.dataset.closed === '1';
+  box.hidden = !list.length || box.dataset.closed === '1' || id !== active;
   box.innerHTML = list.map((x, i) => `<button class="thumb${x.sent ? ' sent' : ''}" data-i="${i}" title="${escHtml(x.name)}${x.sent ? ' · ' + t2('envoyée') : ''}">${x.url ? `<img src="${x.url}" alt="">` : '<span>📄</span>'}</button>`).join('')
     + `<button class="thumbsClose" title="${t2('Masquer')}">✕</button>`;
   box.querySelectorAll('.thumb').forEach(b => { b.onclick = e => { e.stopPropagation(); viewAttachment(list[+b.dataset.i]); }; });

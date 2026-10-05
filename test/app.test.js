@@ -186,7 +186,7 @@ test('réglages : mémoire au choix, demandes programmées, fichiers reçus', as
   }
 });
 
-test('pièces jointes : miniature de l’image jointe, agrandie au clic, marquée envoyée après Entrée', async () => {
+test('pièces jointes : miniature sur la session active seulement, agrandie au clic, retirée à l’envoi', async () => {
   const id = await win.evaluate(() => active);
   await win.evaluate(async id => {
     const c = document.createElement('canvas'); c.width = 120; c.height = 80;
@@ -202,8 +202,25 @@ test('pièces jointes : miniature de l’image jointe, agrandie au clic, marqué
   assert.match(await win.textContent('#dlgImage figcaption'), /capture\.png/);
   if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT.replace(/(\.png)?$/, '-image.png') });
   await win.keyboard.press('Escape');
+  // autre session active : l'aperçu de la première n'apparaît pas
+  const other = await win.evaluate(id => [...sessions.keys()].find(x => x !== id), id);
+  if (other) {
+    await win.evaluate(o => select(o), other);
+    await win.waitForFunction(() => !document.querySelector('.term .thumbs:not([hidden])'));
+    assert.equal(await win.evaluate(o => terms.get(o)?.el.querySelector('.thumbs:not([hidden])') || null, other), null, 'rien sur l’autre session');
+    await win.evaluate(i => select(i), id);
+    await win.waitForSelector(thumb);
+  }
+  // message envoyé : aperçu retiré
   await win.evaluate(id => attachmentsSent(id), id);
-  await win.waitForSelector('.term .thumbs:not([hidden]) .thumb.sent');
+  await win.waitForFunction(() => !document.querySelector('.term .thumbs:not([hidden])'));
+  // masquer à la main
+  await win.evaluate(async id => {
+    const c = document.createElement('canvas'); c.width = 10; c.height = 10;
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    addAttachments(id, [new File([blob], 'b.png', { type: 'image/png' })]);
+  }, id);
+  await win.waitForSelector(thumb);
   await win.click('.term .thumbs:not([hidden]) .thumbsClose');
   assert.equal(await win.$('.term .thumbs:not([hidden])'), null, 'masquée');
 });
