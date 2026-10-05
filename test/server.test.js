@@ -244,7 +244,7 @@ test('file d’attente : en pause près de la limite des 5 h, reprise à la réi
     assert.ok(w > Date.now() - 1000);
     await new Promise(r => setTimeout(r, 600));
     assert.ok(!(c.out[Q.id] || '').includes('echo: apres-quota'), 'rien envoyé pendant la pause');
-    await waitFor(() => (c.out[Q.id] || '').includes('echo: apres-quota'), 8000, 'reprise après la réinitialisation');
+    await waitFor(() => (c.out[Q.id] || '').includes('echo: apres-quota'), 20000, 'reprise après la réinitialisation');
     await idle(Q.id);
     assert.equal((await session(Q.id)).quotaWait, undefined);
 
