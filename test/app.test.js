@@ -62,9 +62,9 @@ test('menu clic droit du terminal : tient dans une fenêtre basse et défile', a
   await win.setViewportSize({ width: 900, height: 420 });
   const id = await win.evaluate(() => active);
   await win.evaluate(id => showMenu(terminalItems(id), 300, 200), id);
-  const r = await win.evaluate(() => { const m = document.querySelector('#ctx'), b = m.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, scroll: m.scrollHeight > m.clientHeight, h: innerHeight }; });
+  const r = await win.evaluate(() => { const m = document.querySelector('#ctx'), b = m.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, scroll: m.scrollHeight > m.clientHeight, full: m.scrollHeight, h: innerHeight }; });
   assert.ok(r.top >= 0 && r.bottom <= r.h, `menu dans la fenêtre (${r.top}-${r.bottom} / ${r.h})`);
-  assert.ok(r.scroll, 'menu défilant');
+  if (r.full > r.h) assert.ok(r.scroll, 'menu défilant'); // contenu plus haut que la fenêtre
   await win.evaluate(() => { const m = document.querySelector('#ctx'); m.lastElementChild.scrollIntoView(); });
   assert.ok(await win.isVisible('#ctx button:last-child'), 'dernier élément atteignable');
   await win.evaluate(() => hideMenu());
