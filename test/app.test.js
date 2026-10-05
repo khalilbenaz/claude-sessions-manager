@@ -65,8 +65,13 @@ test('menu clic droit du terminal : tient dans une fenêtre basse et défile', a
   const r = await win.evaluate(() => { const m = document.querySelector('#ctx'), b = m.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, scroll: m.scrollHeight > m.clientHeight, full: m.scrollHeight, h: innerHeight }; });
   assert.ok(r.top >= 0 && r.bottom <= r.h, `menu dans la fenêtre (${r.top}-${r.bottom} / ${r.h})`);
   if (r.full > r.h) assert.ok(r.scroll, 'menu défilant'); // contenu plus haut que la fenêtre
-  await win.evaluate(() => { const m = document.querySelector('#ctx'); m.lastElementChild.scrollIntoView(); });
-  assert.ok(await win.isVisible('#ctx button:last-child'), 'dernier élément atteignable');
+  // défilé jusqu'en bas : le dernier élément est dans la zone visible du menu
+  const last = await win.evaluate(() => {
+    const m = document.querySelector('#ctx'); m.scrollTop = m.scrollHeight;
+    const a = m.getBoundingClientRect(), b = m.lastElementChild.getBoundingClientRect();
+    return { inside: b.top >= a.top - 1 && b.bottom <= a.bottom + 1, a: [a.top, a.bottom], b: [b.top, b.bottom] };
+  });
+  assert.ok(last.inside, 'dernier élément atteignable ' + JSON.stringify(last));
   await win.evaluate(() => hideMenu());
   await win.setViewportSize({ width: 1280, height: 800 });
 });
