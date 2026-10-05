@@ -35,8 +35,8 @@
   async function load() { try { st = await api('GET', '/api/auth'); render(); } catch { } }
   async function renew() {
     const dlg = $('#dlgAuth');
-    if (!dlg.open) dlg.showModal();
-    try { st = await api('POST', '/api/auth/renew'); wasRenewing = !!st.renewing; } catch (e) { toast(e.message, true); }
+    if (!dlg.open) { dlg.returnValue = ''; dlg.showModal(); }
+    try { st = await api('POST', '/api/auth/renew'); wasRenewing = !!st.renewing; watch(); } catch (e) { toast(e.message, true); }
     render();
   }
   $('#authRenew').onclick = renew;
@@ -48,7 +48,8 @@
     try { st = await api('POST', '/api/auth/code', { code }); $('#authCode').value = ''; render(); } catch (e) { toast(e.message, true); }
   };
   $('#authCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#authCodeSend').click(); } });
-  $('#dlgAuth').addEventListener('close', () => { if (st?.renewing) api('POST', '/api/auth/cancel').catch(() => { }); });
+  // « Fermer » abandonne la connexion en cours (Échap ou fermeture imprévue : elle continue, abandon auto après 15 min)
+  $('#dlgAuth').addEventListener('close', () => { if (st?.renewing && $('#dlgAuth').returnValue === 'cancel') api('POST', '/api/auth/cancel').catch(() => { }); });
 
   // notification système : une fois par jour quand l'expiration approche
   function notify() {
@@ -64,8 +65,21 @@
   }
 
   let wasRenewing = false;
-  window.addEventListener('csm:auth', e => {
-    st = e.detail.status;
+  window.addEventListener('csm:auth', e => apply(e.detail.status, e.detail.done));
+  // Pendant un renouvellement : état relu directement toutes les secondes (ne dépend pas des messages en direct)
+  let poll = null;
+  function watch() {
+    clearInterval(poll);
+    const end = Date.now() + 16 * 60e3;
+    poll = setInterval(async () => {
+      if (Date.now() > end) return clearInterval(poll);
+      try { const x = await api('GET', '/api/auth'); apply(x, false); if (!x.renewing) clearInterval(poll); } catch { }
+    }, 1000);
+  }
+  function apply(next, done) {
+    if (!next) return;
+    st = next;
+    const e = { detail: { done } };
     // fin d'un renouvellement réussi : fenêtre fermée (même si le message « done » s'est perdu)
     const ok = e.detail.done || (wasRenewing && !st.renewing && !st.error && st.renewedAt);
     wasRenewing = !!st.renewing;
@@ -76,8 +90,8 @@
       render();
     }
     try { notify(); } catch { }
-  });
+  }
   window.addEventListener('csm:ready', () => { load().then(notify); });
-  setInterval(() => { if (st) { st.msLeft = st.expiresAt ? st.expiresAt - Date.now() : null; render(); } }, 60e3);
+  setInterval(() => { if (!st?.renewing) load(); }, 5 * 60e3); // état relu régulièrement (changement fait ailleurs, ex. /login)
   window.csmFeatures = Object.assign(window.csmFeatures || {}, { renewLogin: renew, authState: () => st });
 })();
