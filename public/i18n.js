@@ -151,6 +151,9 @@ const EN = {
   "Même connexion que <code>/login</code> dans Claude Code : rien n'est enregistré par l'app. Les sessions ouvertes utilisent la nouvelle connexion dès leur prochain échange (sinon « Relancer »).": "Same sign-in as <code>/login</code> in Claude Code: the app stores nothing. Open sessions use the new sign-in from their next exchange (otherwise “Restart”).",
   "🔑 Prévenir avant l'expiration de la connexion à Claude et la renouveler en un clic": "🔑 Warn before the Claude sign-in expires and renew it in one click",
   "Prévenir combien de jours avant": "Warn how many days before",
+  "Langue des réponses de Claude": "Claude's reply language",
+  "Celle de l'interface": "Same as the interface",
+  "Réglage de Claude Code": "Claude Code setting",
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
