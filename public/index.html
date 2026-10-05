@@ -35,6 +35,11 @@
 </aside>
 
 <main>
+  <div id="authBanner" class="authBanner" hidden>
+    <span>🔑 <span id="authText"></span></span>
+    <button type="button" id="authRenew" class="primary">Renouveler</button>
+    <button type="button" id="authLater">Plus tard</button>
+  </div>
   <div id="bar">
     <span id="curDot" class="dot"></span>
     <span id="curName" class="name" title="Double-clic pour renommer"></span>
@@ -149,6 +154,19 @@
 <dialog id="dlgImage" class="imageView">
   <form method="dialog"><button class="icon" aria-label="Fermer">✕</button></form>
   <figure><img alt=""><figcaption></figcaption></figure>
+</dialog>
+<dialog id="dlgAuth">
+  <form method="dialog">
+    <h2>Connexion à Claude</h2>
+    <p id="authStep"></p>
+    <p><a id="authLink" href="#" hidden>Ouvrir la page de connexion</a></p>
+    <div id="authCodeRow" class="row" hidden><input id="authCode" class="mono" placeholder="Code affiché par la page" autocomplete="off" spellcheck="false"><button type="button" id="authCodeSend" class="primary">Valider</button></div>
+    <p class="hint">Même connexion que <code>/login</code> dans Claude Code : rien n'est enregistré par l'app. Les sessions ouvertes utilisent la nouvelle connexion dès leur prochain échange (sinon « Relancer »).</p>
+    <menu>
+      <button value="cancel" formnovalidate>Fermer</button>
+      <button type="button" id="authGo" class="primary">Se connecter</button>
+    </menu>
+  </form>
 </dialog>
 <dialog id="dlgRename">
   <form method="dialog">
@@ -270,6 +288,8 @@
         <label class="check"><input type="checkbox" data-set="worktreeDefault"> <span>Proposer un worktree git par défaut dans un dépôt</span></label>
         <label>Éditeur pour « Ouvrir dans » <select data-set="editor" id="setEditor"><option value="auto">Automatique</option></select></label>
         <label id="editorCmdRow">Commande personnalisée <input data-set="editorCommand" placeholder="mon-editeur {path}" spellcheck="false"></label>
+        <label class="check"><input type="checkbox" data-set="authReminder"> <span>🔑 Prévenir avant l'expiration de la connexion à Claude et la renouveler en un clic</span></label>
+        <label>Prévenir combien de jours avant <input type="number" min="1" max="30" data-set="authWarnDays"></label>
         <label class="check"><input type="checkbox" data-set="statusLine"> <span>Afficher les quotas et l'heure de leur réinitialisation sous chaque session (si tu n'as pas ta propre barre d'état Claude Code)</span></label>
         <fieldset class="syncWhat memChoice">
           <legend>Mémoire des sessions : laquelle utiliser ?</legend>
@@ -498,5 +518,6 @@
 <script src="settings.js"></script>
 <script src="palette.js"></script>
 <script src="lock.js"></script>
+<script src="auth.js"></script>
 </body>
 </html>

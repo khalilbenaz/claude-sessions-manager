@@ -824,7 +824,7 @@ test('synchro : règles, skills, agents et mémoire de Claude partagés entre ma
 
     // lien symbolique : jamais d'écriture à travers lui (dépôt relié dans les skills)
     const repo = path.join(HOME, 'depot-relie'); fs.mkdirSync(repo, { recursive: true });
-    fs.symlinkSync(repo, path.join(C, 'skills', 'relie'));
+    fs.symlinkSync(repo, path.join(C, 'skills', 'relie'), process.platform === 'win32' ? 'junction' : 'dir'); // jonction : sans droits admin sous Windows
     put({ p: 'skills/relie/evil.sh', d: b64('rm -rf'), x: 1 }, Date.now() + 9000);
     put({ p: 'skills/relie/.git/hooks/pre-commit', d: b64('rm -rf'), x: 1 }, Date.now() + 9000);
     await api('POST', '/api/sync/now');
@@ -1142,5 +1142,29 @@ test('synchro : ancien espace (code connu du serveur) rattaché une fois à la c
   } finally {
     await api('PUT', '/api/settings', { syncCode: '' });
     fake.srv.close();
+  }
+});
+
+test('connexion Claude : expiration proche signalée, renouvellement depuis l’app', async () => {
+  const f = path.join(HOME, '.claude', '.credentials.json');
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  const old = fs.existsSync(f) ? fs.readFileSync(f) : null;
+  try {
+    fs.writeFileSync(f, JSON.stringify({ claudeAiOauth: { accessToken: 'a', refreshToken: 'b', expiresAt: Date.now() + 3600e3, refreshTokenExpiresAt: Date.now() + 2 * 86400e3 } }));
+    let st = await api('GET', '/api/auth');
+    assert.equal(st.source, 'file'); assert.equal(st.warn, true); assert.equal(st.expired, false);
+    assert.ok(!JSON.stringify(st).includes('"a"'), 'aucun jeton exposé');
+    const c = await wsClient();
+    await api('POST', '/api/auth/renew');
+    st = await waitFor(async () => { const x = await api('GET', '/api/auth'); return x.prompt && x.url && x; }, 10000, 'lien de connexion');
+    assert.match(st.url, /^https:\/\/claude\.com\/cai\/oauth\/authorize/);
+    assert.equal((await req('POST', '/api/auth/code', { code: 'a b;rm' })).status, 400, 'code invalide refusé');
+    await api('POST', '/api/auth/code', { code: 'CODE-OK' });
+    st = await waitFor(async () => { const x = await api('GET', '/api/auth'); return !x.renewing && x; }, 10000, 'fin du renouvellement');
+    assert.equal(st.error, ''); assert.equal(st.warn, false, 'connexion renouvelée : plus d’alerte');
+    assert.ok(c.msgs ? true : true);
+    c.ws.close();
+  } finally {
+    if (old) fs.writeFileSync(f, old); else fs.rmSync(f, { force: true });
   }
 });

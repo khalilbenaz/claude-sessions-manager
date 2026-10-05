@@ -10,6 +10,23 @@ const { exec } = require('child_process');
 const argv = process.argv.slice(2);
 const opt = n => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : undefined; };
 if (argv.includes('--version')) { console.log('0.0.0 (faux claude)'); process.exit(0); }
+// `claude auth login` : lien de connexion, attend le code collé, puis écrit une connexion valable 30 jours
+if (argv[0] === 'auth' && argv[1] === 'login') {
+  process.stdout.write('Opening browser to sign in…\r\nIf the browser didn\'t open, visit: \x1b]8;id=1;https://claude.com/cai/oauth/authorize?code=true&state=test\x07https://claude.com/cai/oauth/authorize?code=true&state=test\x1b]8;;\x07\r\nPaste code here if prompted > ');
+  let b = '';
+  process.stdin.setRawMode?.(true);
+  process.stdin.on('data', d => {
+    b += d;
+    if (!b.includes('\r')) return;
+    if (b.trim() !== 'CODE-OK') { process.stdout.write('\r\nInvalid code\r\n'); process.exit(1); }
+    const f = path.join(os.homedir(), '.claude', '.credentials.json');
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify({ claudeAiOauth: { accessToken: 'x', refreshToken: 'y', expiresAt: Date.now() + 8 * 3600e3, refreshTokenExpiresAt: Date.now() + 30 * 86400e3 } }));
+    process.stdout.write('\r\nLogin successful.\r\n');
+    process.exit(0);
+  });
+  return;
+}
 
 const settings = JSON.parse(fs.readFileSync(opt('--settings'), 'utf8'));
 const resume = opt('--resume');

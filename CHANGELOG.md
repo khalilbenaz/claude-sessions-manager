@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.21.0] — 2026-10-05
+### Ajouté
+- **Connexion à Claude qui expire** (« Your login expires in 3 days · run /login to renew ») : bandeau 🔑 quelques jours avant l'expiration (5 par défaut) et notification quotidienne ; **Renouveler** lance la connexion depuis l'app (`claude auth login` en arrière-plan), le navigateur s'ouvre sur la page de Claude, et le code éventuel se colle dans l'app. Seule la date d'expiration est lue, jamais les jetons. Réglages › Général : activer, nombre de jours.
+### Corrigé
+- Tests : lien de dépôt créé en jonction sous Windows (sans droits admin).
+
 ## [3.20.0] — 2026-10-04
 ### Ajouté
 - **Aperçu des images jointes** : miniatures en haut à droite du terminal (encadrées pour le message en cours, estompées une fois envoyées, les 8 dernières) ; clic = l'image en grand avec son nom ; ✕ pour les masquer. Lues sur la machine, rien de plus n'est envoyé.

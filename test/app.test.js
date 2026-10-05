@@ -230,6 +230,22 @@ test('affichage tué (mémoire saturée) : la fenêtre est recréée, les sessio
   assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length), 1, 'une seule fenêtre, l’ancienne est détruite');
 });
 
+test('connexion Claude : bandeau avant expiration, renouvellement dans l’app', async () => {
+  const f = path.join(HOME, '.claude', '.credentials.json');
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.writeFileSync(f, JSON.stringify({ claudeAiOauth: { accessToken: 'a', refreshToken: 'b', expiresAt: Date.now() + 3600e3, refreshTokenExpiresAt: Date.now() + 2.5 * 86400e3 } }));
+  await win.evaluate(() => api('GET', '/api/auth').then(s => window.dispatchEvent(new CustomEvent('csm:auth', { detail: { status: s } }))));
+  await win.waitForSelector('#authBanner:not([hidden])');
+  assert.match(await win.textContent('#authText'), /expire dans 2 jours/);
+  await win.click('#authRenew');
+  await win.waitForSelector('#dlgAuth[open] #authCodeRow:not([hidden])', { timeout: 20000 });
+  assert.equal(await win.isVisible('#authLink'), true, 'lien de connexion proposé');
+  await win.fill('#authCode', 'CODE-OK');
+  await win.click('#authCodeSend');
+  await win.waitForFunction(() => !document.querySelector('#dlgAuth').open && document.querySelector('#authBanner').hidden, null, { timeout: 20000 });
+  fs.rmSync(f, { force: true });
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));

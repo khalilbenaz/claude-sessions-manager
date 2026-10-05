@@ -19,7 +19,7 @@ Une seule fenêtre pour piloter plusieurs sessions [Claude Code](https://docs.cl
 11. [Palette, recherche, prompts, file d'attente, envoi groupé](#11-palette-recherche-prompts-file-dattente-envoi-groupé) — et [demandes programmées](#11-bis-demandes-programmées)
 12. [Modèles de session](#12-modèles-de-session)
 13. [Verrouiller une session par mot de passe](#13-verrouiller-une-session-par-mot-de-passe)
-14. [Notifications, zone de notification, arrière-plan](#14-notifications-zone-de-notification-arrière-plan) — et [accès depuis l'app Claude (téléphone)](#14-bis-accès-depuis-lapp-claude-téléphone)
+14. [Notifications, zone de notification, arrière-plan](#14-notifications-zone-de-notification-arrière-plan) — et [accès depuis l'app Claude (téléphone)](#14-bis-accès-depuis-lapp-claude-téléphone) — et [connexion à Claude qui expire](#14-ter-connexion-à-claude-qui-expire--your-login-expires-in-3-days-)
 15. [Thème clair / sombre, langue](#15-thème-clair--sombre-langue)
 16. [Réglages](#16-réglages) — [mémoire des sessions](#16-ter-mémoire-des-sessions) et [synchroniser les sessions entre machines](#16-bis-synchroniser-les-sessions-entre-machines)
 17. [Mises à jour](#17-mises-à-jour)
@@ -232,6 +232,15 @@ Pour masquer une session sensible (écran partagé, poste laissé ouvert) : ⋯ 
 - **Zone de notification** (Windows, près de l'horloge) / **barre de menus** (macOS) : **réduire ou fermer la fenêtre l'y envoie**, les sessions continuent. Clic sur l'icône = afficher / masquer ; **clic droit** = la **liste des sessions et leur état** (🟠 travaille, 🔴 attend, 🟢 prête ; clic pour y aller), nouvelle session, historique, réglages, lancer au démarrage, redémarrer le serveur, quitter. Un **point rouge** sur l'icône signale une session qui t'attend. Windows 11 : si l'icône est cachée, elle est sous la flèche **^** (glisse-la dans la zone visible).
 - **Quitter** : « Quitter (les sessions continuent) » ferme l'app ; « Quitter et arrêter toutes les sessions » arrête aussi le serveur (elles reviendront au prochain lancement).
 - **Lancement au démarrage** de l'ordinateur : activé au premier lancement, réglable dans le menu de l'icône.
+
+### 14 ter. Connexion à Claude qui expire (« Your login expires in 3 days »)
+
+La connexion de Claude Code à ton compte claude.ai a une durée limitée (en Team / Enterprise, l'organisation peut imposer de la renouveler régulièrement). L'app s'en occupe :
+
+- **Bandeau 🔑** en haut de l'écran quelques jours avant l'expiration (5 par défaut, Réglages › Général), et une **notification** par jour ; rouge si elle a expiré. *Plus tard* le masque 24 h.
+- **Renouveler** (ou palette › *Renouveler la connexion à Claude*) : l'app lance `claude auth login` en arrière-plan, le **navigateur s'ouvre** sur la page de connexion de Claude ; tu te connectes et autorises. Si la page affiche un code, colle-le dans la fenêtre de l'app. Le bandeau disparaît dès que la connexion est renouvelée.
+- C'est la même connexion que `/login` : l'app ne lit et ne garde que sa **date d'expiration**, jamais les jetons. Sur macOS (connexion rangée dans le trousseau, que l'app ne lit pas), l'expiration est déduite des avertissements que Claude affiche dans les sessions.
+- Les sessions ouvertes utilisent la nouvelle connexion dès leur prochain échange ; si l'une affiche encore une erreur de connexion, **Relancer**.
 
 ### 14 bis. Accès depuis l'app Claude (téléphone)
 
@@ -475,6 +484,7 @@ Sur Mac, <kbd>Ctrl</kbd>+<kbd>Alt</kbd> = <kbd>Ctrl</kbd>+<kbd>Option</kbd>. Dan
 | Worktrees / Modifications indisponibles | `git` n'est pas installé (Diagnostic l'indique). |
 | L'icône n'apparaît pas près de l'horloge (Windows 11) | elle est sous la flèche **^** ; glisse-la dans la zone visible. |
 | macOS : l'app ne s'ouvre pas (« développeur non vérifié », « endommagée ») | Réglages Système › Confidentialité et sécurité › **Ouvrir quand même** ; ou `xattr -cr "/Applications/Claude Sessions.app"` puis relancer. |
+| « Your login expires in N days » / « Please run /login » | bandeau 🔑 **Renouveler** (§ 14 ter) : le navigateur s'ouvre sur la page de connexion de Claude. |
 | Mot de passe de verrouillage oublié | non récupérable : fermer la session ; la conversation reste dans les fichiers de Claude Code. |
 | Autre souci | Réglages › Diagnostic › **Copier le rapport**, puis [ouvrir une issue](https://github.com/khalilbenaz/claude-sessions-manager/issues). |
 
