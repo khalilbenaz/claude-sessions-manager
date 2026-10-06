@@ -264,7 +264,8 @@ function renameSession(s, name) {
 function spawnSession(s, { resume, fork } = {}) {
   if (resume && !transcriptExists(resume)) resume = undefined;
   // CSM_CLAUDE_ARGS : arguments placés avant ceux de claude (tests : CSM_CLAUDE=node, CSM_CLAUDE_ARGS=faux-claude.js)
-  const args = [...splitArgs(process.env.CSM_CLAUDE_ARGS || ''), '--settings', settingsFor(s), ...splitArgs(s.args)];
+  s.settingsFile = settingsFor(s); // réglages de lancement (langue, mémoire, compactage…) : comparés après un changement
+  const args = [...splitArgs(process.env.CSM_CLAUDE_ARGS || ''), '--settings', s.settingsFile, ...splitArgs(s.args)];
   if (resume) args.push('--resume', resume);
   if (resume && fork) args.push('--fork-session'); // ponctuel : jamais mémorisé dans s.args
   args.push(...(ctx.remoteArgs?.(s) || [])); // accès depuis l'app Claude (lib/remote.js)
@@ -721,11 +722,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (s && m[2] === 'kill' && req.method === 'POST') { s.wantRun = false; persist(); killSession(s); return json(res, 200, {}); }
     if (s && m[2] === 'restart' && req.method === 'POST') {
-      if (!s.pty) await ctx.prepareResume?.(s); // conversation modifiée sur une autre machine (lib/sync)
-      killSession(s);
-      s.buf += '\x1b[2J\x1b[H';
-      broadcast({ t: 'clear', id: s.id });
-      spawnSession(s, { resume: s.claudeSessionId || undefined });
+      await restartSession(s);
       return json(res, 200, publicView(s));
     }
     if (s && m[2] === 'seen' && req.method === 'POST') {
@@ -784,6 +781,32 @@ server.on('upgrade', (req, sock, head) => {
 const listeners = {};
 function on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); }
 function emit(ev, ...a) { for (const fn of listeners[ev] || []) { try { fn(...a); } catch (e) { console.error('module', ev, e); } } }
+async function restartSession(s) {
+  if (!s.pty) await ctx.prepareResume?.(s); // conversation modifiée sur une autre machine (lib/sync)
+  delete s.applyOnIdle;
+  killSession(s);
+  s.buf += '\x1b[2J\x1b[H';
+  broadcast({ t: 'clear', id: s.id });
+  spawnSession(s, { resume: s.claudeSessionId || undefined });
+}
+// Réglages de lancement changés (langue des réponses, mémoire, compactage…) : Claude Code ne les lit qu'au
+// démarrage. Sessions ouvertes avec d'anciens réglages : relancées dans leur conversation, tout de suite si elles
+// sont au repos, sinon dès qu'elles ont fini leur tour.
+const staleSessions = () => [...sessions.values()].filter(s => s.pty && s.settingsFile && !s.lock && s.settingsFile !== settingsFor(s));
+route('GET', /^\/api\/apply-settings$/, async ({ res }) => {
+  const list = staleSessions();
+  json(res, 200, { count: list.length, busy: list.filter(s => s.status === 'working' || s.status === 'attention').length });
+});
+route('POST', /^\/api\/apply-settings$/, async ({ res }) => {
+  let now = 0, later = 0;
+  for (const s of staleSessions()) {
+    if (s.status === 'working' || s.status === 'attention') { s.applyOnIdle = true; later++; }
+    else { await restartSession(s); now++; }
+  }
+  json(res, 200, { now, later });
+});
+on('idle', s => { if (s.applyOnIdle && s.settingsFile !== settingsFor(s)) setTimeout(() => restartSession(s).catch(() => { }), 800); else delete s.applyOnIdle; });
+
 const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
   renameSession, history, transcriptPath, setStatus, lockedResume, splitArgs, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,

@@ -35,6 +35,8 @@
       const v = el.type === 'checkbox' ? el.checked : el.type === 'number' || typeof SETTINGS[k] === 'number' ? Number(el.value) : el.value;
       saveSettings({ [k]: v });
       if (k === 'memoryEngine') api('GET', '/api/sync').then(renderEngine).catch(() => { });
+      // réglages lus par Claude Code au démarrage : proposer de relancer les sessions ouvertes
+      if (['replyLanguage', 'memoryEngine', 'autoCompactWindow', 'statusLine'].includes(k)) setTimeout(offerApply, 400);
       if (k === 'editor') $('#editorCmdRow').hidden = v !== 'custom';
       if (k === 'fontSize') { LS.set('csm.font', v); for (const tt of terms.values()) tt.term.options.fontSize = v; fitAll(); }
       if (k === 'notifications' && v && 'Notification' in window) Notification.requestPermission();
@@ -193,6 +195,16 @@
   }
   $('#logFilter').oninput = renderLogs;
   $('#logRefresh').onclick = loadLogs;
+
+  // ---------------------------------------------------------------- réglages de lancement changés
+  async function offerApply() {
+    let st; try { st = await api('GET', '/api/apply-settings'); } catch { return; }
+    if (!st.count) return;
+    const msg = t('{n} session(s) ouverte(s) utilisent encore l’ancien réglage (Claude Code ne le lit qu’au démarrage). Les relancer maintenant ? La conversation reprend là où elle en était ; une session en plein travail sera relancée dès qu’elle aura fini.').replace('{n}', st.count);
+    if (!confirm(msg)) return;
+    try { const r = await api('POST', '/api/apply-settings'); toastMsg(t('{a} relancée(s), {b} à la fin de leur tour').replace('{a}', r.now).replace('{b}', r.later)); } catch (e) { alert(e.message); }
+  }
+  const toastMsg = m => (typeof toast === 'function' ? toast(m) : null);
 
   // ---------------------------------------------------------------- demandes programmées (lib/schedule.js)
   const DAYS = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];

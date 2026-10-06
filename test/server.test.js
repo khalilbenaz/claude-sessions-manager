@@ -1169,6 +1169,30 @@ test('connexion Claude : expiration proche signalée, renouvellement depuis l’
   }
 });
 
+test('réglage de lancement changé : sessions ouvertes signalées puis relancées dans leur conversation', async () => {
+  const c = await wsClient();
+  try {
+    await api('PUT', '/api/settings', { replyLanguage: 'fr' });
+    const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'a-relancer' });
+    const first = await idle(s.id);
+    assert.match(c.out[s.id] || '', /LANGUE:french/);
+    c.input(s.id, 'premier message\r'); // une conversation à reprendre
+    await waitFor(() => /echo: premier message/.test(c.out[s.id] || ''), 10000, 'réponse');
+    await idle(s.id);
+    await api('PUT', '/api/settings', { replyLanguage: 'en' });
+    const st = await api('GET', '/api/apply-settings');
+    assert.ok(st.count >= 1, 'session signalée');
+    c.out[s.id] = '';
+    const r = await api('POST', '/api/apply-settings');
+    assert.ok(r.now >= 1);
+    await waitFor(() => /LANGUE:english/.test(c.out[s.id] || ''), 15000, 'relancée avec la nouvelle langue');
+    const again = await idle(s.id);
+    assert.equal(again.claudeSessionId, first.claudeSessionId, 'même conversation');
+    assert.equal((await api('GET', '/api/apply-settings')).count, 0, 'plus rien à relancer');
+    await api('DELETE', `/api/sessions/${s.id}`);
+  } finally { c.ws.close(); await api('PUT', '/api/settings', { replyLanguage: 'app' }); }
+});
+
 test('langue des réponses : transmise à Claude Code (réglage language), par défaut celle de l’interface', async () => {
   const c = await wsClient();
   const langOf = async opts => {
