@@ -110,7 +110,10 @@ async function ensureServer() {
   if (await isUp()) return true;
   fs.mkdirSync(DATA, { recursive: true });
   // Electron lui-même en mode Node : aucune installation de Node.js requise. Détaché = survit à l'app.
-  const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1', PATH: loginShellPath() };
+  // langue préférée du système (Node lancé depuis le Finder ne la connaît pas : il répondrait en-US)
+  let sysLang = '';
+  try { sysLang = (app.getPreferredSystemLanguages?.()[0] || app.getLocale() || '').slice(0, 2).toLowerCase(); } catch { }
+  const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1', PATH: loginShellPath(), CSM_SYS_LANG: sysLang };
   spawn(process.execPath, [SERVER, `--port=${PORT}`], { cwd: ROOT, env, detached: true, stdio: 'ignore', windowsHide: true }).unref();
   for (let i = 0; i < 150; i++) { if (await isUp()) return true; await new Promise(r => setTimeout(r, 200)); }
   return false;

@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.22.1] — 2026-10-06
+### Corrigé
+- **Langue des réponses** : avec l'interface en « Automatique », les sessions recevaient « always answer in English » sur un Mac en français (Node lancé par l'app ne connaît pas la langue du système et répond en-US). La langue vient maintenant de l'app (langues préférées du système), sinon des réglages de macOS / Windows, sinon de LANG ; inconnue, rien n'est imposé. Relancer les sessions déjà ouvertes pour qu'elles la prennent.
+
 ## [3.22.0] — 2026-10-05
 ### Ajouté
 - **Langue des réponses de Claude** : les sessions lancées par l'app répondent toujours dans la langue de l'interface (français par défaut pour une app en français), via le réglage `language` de Claude Code. Réglages › Général : autre langue, ou garder le réglage de Claude Code. Le `claude` du terminal n'est pas modifié.

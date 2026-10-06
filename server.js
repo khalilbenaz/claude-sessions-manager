@@ -96,12 +96,28 @@ const STATUS_LINE = { type: 'command', command: nodeRunner('statusline.js'), pad
 // valeur prime sur un CLAUDE_CODE_AUTO_COMPACT_WINDOW trop bas dans ~/.claude/settings.json (compactage en boucle).
 const COMPACT_WINDOW = { model: '1000000', '200000': '200000', '400000': '400000' };
 const REPLY_LANGS = { fr: 'french', en: 'english', es: 'spanish', ar: 'arabic', de: 'german', it: 'italian', pt: 'portuguese' };
+// Langue du système : celle transmise par l'app (Electron), sinon les langues préférées de macOS / Windows, sinon
+// LANG. Pas Intl : Node lancé hors d'un terminal répond « en-US » quelle que soit la langue du système.
+let SYS_LANG = null;
+function systemLanguage() {
+  if (SYS_LANG !== null) return SYS_LANG;
+  let l = process.env.CSM_SYS_LANG || '';
+  try {
+    if (!l && IS_MAC) l = (require('child_process').execFileSync('defaults', ['read', '-g', 'AppleLanguages'], { encoding: 'utf8', timeout: 3000 }).match(/[a-z]{2}/i) || [''])[0];
+    if (!l && IS_WIN) l = require('child_process').execFileSync('powershell', ['-NoProfile', '-Command', '(Get-Culture).TwoLetterISOLanguageName'], { encoding: 'utf8', timeout: 5000, windowsHide: true }).trim();
+  } catch { }
+  if (!l) l = (process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG || '').slice(0, 2);
+  return (SYS_LANG = l.toLowerCase());
+}
 function replyLanguage(st) {
   const v = st.replyLanguage || 'app';
   if (v === 'claude') return ''; // laisser le réglage de Claude Code
   if (v !== 'app') return REPLY_LANGS[v] || '';
-  const ui = st.lang && st.lang !== 'auto' ? st.lang : (Intl.DateTimeFormat().resolvedOptions().locale || 'fr').slice(0, 2);
-  return REPLY_LANGS[ui] || 'french';
+  // « Celle de l'interface » : même règle que l'interface (public/i18n.js : français si le système est en français,
+  // anglais sinon) ; langue du système inconnue → rien imposé (réglage de Claude Code)
+  const sys = systemLanguage();
+  const ui = st.lang && st.lang !== 'auto' ? st.lang : sys ? (sys === 'fr' ? 'fr' : 'en') : '';
+  return REPLY_LANGS[ui] || '';
 }
 function sessionSettings(withStatusLine) {
   const st = ctx.getSettings?.() || {};
