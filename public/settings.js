@@ -252,7 +252,9 @@
 
   // ---------------------------------------------------------------- machines de l'espace de synchro
   const OS = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' };
-  const fmtMB = b => b >= 1e9 ? (b / 1e9).toFixed(1) + ' Go' : Math.max(0.1, b / 1e6).toFixed(1) + ' Mo';
+  // unités binaires, comme la limite du serveur (1 Go = 1024 Mo) : « 94 Mo sur 1 Go »
+  const fmtMB = b => { const m = b / 1048576; return m >= 1024 ? (m / 1024).toLocaleString(undefined, { maximumFractionDigits: 1 }) + ' Go' : Math.max(0.1, m).toLocaleString(undefined, { maximumFractionDigits: m >= 100 ? 0 : 1 }) + ' Mo'; };
+  const PART_LABEL = { conversations: 'Conversations', config: 'Configuration de Claude', claudemem: 'claude-mem', memory: 'Mémoire intégrée' };
   let machinesAt = 0;
   async function renderMachines(force) {
     if (!force && Date.now() - machinesAt < 5000) return;
@@ -262,7 +264,8 @@
     $('#usageBar').hidden = !u;
     if (u) {
       $('#usageBar span').style.width = Math.min(100, u.bytes / u.max * 100).toFixed(1) + '%';
-      $('#usageBar small').textContent = `${fmtMB(u.bytes)} ${t('sur')} ${fmtMB(u.max)} · ${u.sessions} ${t('sessions')} · ${u.transcripts} ${t('éléments')}`;
+      const detail = Object.entries(u.parts || {}).sort((a, b) => b[1].bytes - a[1].bytes).map(([k, p]) => `${t(PART_LABEL[k] || k)} ${fmtMB(p.bytes)} (${p.n})`).join(' · ');
+      $('#usageBar small').textContent = `${t('Place sur le serveur de synchro')} : ${fmtMB(u.bytes)} ${t('sur')} ${fmtMB(u.max)} · ${u.sessions} ${t('sessions')}${detail ? '\n' + detail : ''}`;
     }
     $('#machineList').innerHTML = d.machines.map(m => `<li data-id="${esc(m.id)}"><div><b>${esc(m.name)}${m.me ? ' · ' + t('cette machine') : ''}</b><small>${esc(OS[m.platform] || m.platform || '?')} · v${esc(m.version || '?')} · ${t('mémoire')} ${esc(m.engine === 'claude-mem' ? 'claude-mem' : m.engine === 'off' ? t('désactivée') : t('intégrée'))}${m.seen ? ' · ' + t('vue') + ' ' + esc(new Date(m.seen).toLocaleString()) : ''}</small></div>
       ${m.me ? '' : `<span class="acts"><button data-a="del">${t('Retirer')}</button></span>`}</li>`).join('');

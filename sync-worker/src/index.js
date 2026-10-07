@@ -9,7 +9,7 @@
 // GET  /transcripts           -> { items: [{ uid, cid, ver, chunks, size, updatedAt, origin }] }
 // PUT  /transcripts/<uid>/<ver>/<n>   octets        (morceau n de la version ver, 1 Mo au plus)
 // GET  /transcripts/<uid>/<ver>/<n>   -> octets
-// GET  /usage                 -> { bytes, max, sessions, transcripts }   (place occupée par l'espace)
+// GET  /usage                 -> { bytes, max, sessions, transcripts, parts }   (place occupée, détail par catégorie)
 // DELETE /space                -> { ok }   efface tout l'espace (données, morceaux R2, accès) : changement de code
 // PUT  /transcripts/<uid> { cid, ver, chunks, size, updatedAt, origin } -> { applied }
 //      (valide une version dont tous les morceaux sont envoyés ; les autres versions sont effacées)
@@ -21,7 +21,7 @@
 // Stockage : métadonnées dans D1, morceaux chiffrés dans R2 (BUCKET, clé <space>/<uid>/<ver>/<n>), place occupée
 // tenue dans csm_usage (aucune requête ne relit toutes les lignes).
 // Limites : 5 créations d'espace par jour et par adresse (/64 en IPv6), 2000 par jour au total ; par espace
-// 5000 lignes et 200 Mo de conversations ; 8 Go de conversations au total (R2 gratuit : 10 Go).
+// 5000 lignes et 1 Gio de données ; 8 Gio au total (R2 gratuit : 10 Go).
 // Le rev est attribué dans SQL : D1 sérialise les écritures, deux push simultanés n'ont jamais le même rev.
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -40,7 +40,7 @@ const DAY = 86400000;
 const PER_IP_PER_DAY = 5;
 const PER_DAY = 2000;
 const CHUNK_MAX = 1024 * 1024 + 64, MAX_CHUNKS = 40;
-const SPACE_MAX = 200 * 1024 * 1024;       // octets de conversations par espace
+const SPACE_MAX = 1024 * 1024 * 1024;      // octets par espace (1 Gio ; R2 gratuit : 10 Go au total)
 const TOTAL_MAX = 8 * 1024 * 1024 * 1024;  // octets de conversations tous espaces confondus (R2 gratuit : 10 Go)
 const ROWS_MAX = 5000;                     // sessions / groupes / modèles par espace
 const HEX64 = /^[0-9a-f]{64}$/;
@@ -207,7 +207,13 @@ export default {
       const c = await env.DB.prepare(
         'SELECT (SELECT COUNT(*) FROM csm_sessions WHERE space = ?1 AND deleted = 0) AS sessions, (SELECT COUNT(*) FROM csm_transcripts WHERE space = ?1) AS transcripts',
       ).bind(space).first();
-      return json({ bytes: await usedBytes(env, space), max: SPACE_MAX, sessions: c.sessions, transcripts: c.transcripts });
+      // détail par catégorie, d'après le préfixe des éléments (cf- configuration, nm- mémoire intégrée, mem- claude-mem)
+      const { results } = await env.DB.prepare(
+        `SELECT CASE WHEN uid LIKE 'cf-%' THEN 'config' WHEN uid LIKE 'nm-%' THEN 'memory' WHEN uid LIKE 'mem-%' THEN 'claudemem' ELSE 'conversations' END AS k,
+           COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM csm_transcripts WHERE space = ? GROUP BY k`,
+      ).bind(space).all();
+      const parts = Object.fromEntries(results.map(r => [r.k, { n: r.n, bytes: r.bytes }]));
+      return json({ bytes: await usedBytes(env, space), max: SPACE_MAX, sessions: c.sessions, transcripts: c.transcripts, parts });
     }
     if (url.pathname === '/space') {
       if (req.method !== 'DELETE') return json({ error: 'method not allowed' }, 405);

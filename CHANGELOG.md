@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.23.0] — 2026-10-07
+### Modifié
+- **Place sur le serveur de synchro : 1 Go par espace** (au lieu de 200 Mo).
+- Réglages › Synchronisation › Machines : la barre s'intitule « Place sur le serveur de synchro » et détaille ce qui l'occupe (conversations, configuration de Claude, claude-mem, mémoire intégrée, avec le nombre d'éléments) ; unités cohérentes avec la limite (« 94 Mo sur 1 Go » au lieu de « 94,2 Mo sur 209,7 Mo »).
+
 ## [3.22.2] — 2026-10-06
 ### Corrigé
 - **Réglages lus au démarrage par Claude Code** (langue des réponses, mémoire, compactage, barre d'état) : les sessions déjà ouvertes gardaient l'ancien réglage (par exemple « always answer in English » après avoir choisi Français). Après un changement, l'app propose maintenant de les relancer dans leur conversation : tout de suite si elles sont au repos, à la fin de leur tour sinon.
