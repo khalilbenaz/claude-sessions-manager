@@ -122,7 +122,8 @@ test('espace : place occupée, puis effacement complet (changement de code)', as
   await s.j('POST', '/sessions', { items: [{ uid: 'sess-dddddd', data: {}, updatedAt: 1 }] });
   const u = (await s.j('GET', '/usage')).body;
   assert.deepEqual([u.bytes, u.sessions, u.transcripts], [5000, 1, 1]);
-  assert.ok(u.max >= 100e6);
+  assert.equal(u.max, 1024 * 1024 * 1024, 'limite : 1 Gio par espace');
+  assert.deepEqual(u.parts, { conversations: { n: 1, bytes: 5000 } }, 'détail par catégorie');
   const other = await space();
   await other.putPart('sess-eeeeee', V('a'), 0, blob);
   assert.equal((await s.j('DELETE', '/space')).status, 200);
