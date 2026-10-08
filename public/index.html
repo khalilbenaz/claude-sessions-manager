@@ -324,6 +324,7 @@
       </section>
       <section data-st="alerts" hidden>
         <label class="check"><input type="checkbox" data-set="notifications"> <span>Notifications système</span></label>
+        <div class="row"><button type="button" id="notifTest">Tester la notification</button><span id="notifTestResult" class="hint"></span></div>
         <label>Son <select data-set="sound"><option value="off">Aucun</option><option value="soft">Discret</option><option value="bell">Clochette</option></select> <button type="button" id="soundTest">▶ Tester</button></label>
         <label class="check"><input type="checkbox" data-set="dnd"> <span>Ne pas déranger (ni notification ni son)</span></label>
         <label>Rappel si une session attend depuis (minutes, 0 = jamais) <input type="number" min="0" max="600" data-set="waitingMinutes"></label>
