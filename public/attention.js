@@ -21,13 +21,16 @@
   }
   const ago = ts => { const m = Math.max(0, Math.round((Date.now() - ts) / 60000)); return m < 1 ? t('à l’instant') : m < 60 ? `${t('il y a')} ${m} min` : `${t('il y a')} ${Math.round(m / 60)} h`; };
 
+  const isPerm = (s, ctx) => /permission|autoris|approv|proceed|Do you want/i.test(`${s.message} ${ctx.slice(-400)}`);
+  const CHOICE = { yes: '1', always: '2', no: '' };
+
   function items() {
     const out = [];
     for (const s of sorted()) {
       if (s.locked) continue;
       if (s.status === 'attention') {
         const ctx = context(s.id);
-        const perm = /permission|autoris|approv|proceed|Do you want/i.test(`${s.message} ${ctx.slice(-400)}`);
+        const perm = isPerm(s, ctx);
         out.push({ s, kind: perm ? 'perm' : 'question', ctx, risk: perm && RISK.test(ctx), readOnly: perm && READ_ONLY.test(ctx) && !RISK.test(ctx) });
       } else if (s.status === 'idle' && s.message === 'terminé' && unread.has(s.id)) {
         out.push({ s, kind: 'review', ctx: context(s.id, 6) });
@@ -90,4 +93,7 @@
   setInterval(render, 5000); // « il y a N min »
   window.addEventListener('csm:ready', render);
   F.attentionItems = items;
+  // vue partagée : un panneau dont la session attend une autorisation affiche Oui / Toujours / Non
+  F.paneAsk = id => { const s = sessions.get(id); return !!(s && !s.locked && s.status === 'attention' && isPerm(s, context(id))); };
+  F.answerPerm = (id, choice) => { if (CHOICE[choice]) { keys(id, CHOICE[choice]); setTimeout(render, 400); } };
 })();

@@ -367,3 +367,21 @@ test('fermer la fenêtre ne coupe pas les sessions', async () => {
   const list = await r.json();
   assert.ok(list.filter(s => s.alive).length >= 2, 'sessions toujours actives');
 });
+
+test('en-tête : chemin complet du dossier et état en pastille', async () => {
+  await win.waitForFunction(() => document.querySelector('#curCwd bdi')?.textContent.length > 0);
+  const r = await win.evaluate(() => ({ cwd: document.querySelector('#curCwd bdi').textContent, title: document.querySelector('#curCwd').title, msg: document.querySelector('#curMsg').className }));
+  assert.ok(r.cwd.endsWith('projet'), r.cwd); // chemin complet, non tronqué
+  assert.ok(r.title.startsWith(r.cwd));
+  assert.match(r.msg, /msg/);
+});
+
+test('vue partagée : bandeau d’aide masquable et mémorisé', async () => {
+  await win.click('[data-layout="2c"]');
+  assert.equal(await win.locator('#paneHint').isVisible(), true);
+  assert.ok(await win.locator('.pane:not([hidden]) .phead .pnum').count() >= 2);
+  await win.click('#paneHintX');
+  assert.equal(await win.locator('#paneHint').isVisible(), false);
+  assert.equal(await win.evaluate(() => localStorage.getItem('csm.paneHintOff')), 'true');
+  await win.click('[data-layout="1"]');
+});
