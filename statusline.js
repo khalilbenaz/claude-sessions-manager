@@ -53,7 +53,8 @@ function quotaOf(p) {
   const pct = num(w, 'used_percentage', 'usedPercentage', 'utilization');
   if (pct === undefined) return null;
   const r = resetAt(w);
-  return { pct, resetAt: r ? r.getTime() : 0 };
+  const w7 = p.rate_limits?.seven_day, p7 = num(w7, 'used_percentage', 'usedPercentage', 'utilization'), r7 = resetAt(w7);
+  return { pct, resetAt: r ? r.getTime() : 0, ...(p7 !== undefined ? { seven: { pct: p7, resetAt: r7 ? r7.getTime() : 0 } } : {}) };
 }
 function report(p, cb) {
   const { CSM_ID, CSM_PORT, CSM_TOKEN } = process.env;

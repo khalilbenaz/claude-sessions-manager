@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.30.0] — 2026-10-08
+### Modifié
+- **Nouvelle interface « Atelier »** (1re étape de la refonte) : graphite et argile en sombre, ivoire en clair, contraste vérifié ; polices IBM Plex Sans et JetBrains Mono intégrées (licence OFL, aucune connexion) ; barre latérale, en-tête de session (état en pastille), fenêtres, palette, réglages et terminal redessinés.
+### Ajouté
+- Bas de la barre latérale : quotas **5 h** et **7 jours** (barres, pourcentage, heure de réinitialisation) et état de la synchro.
+### Corrigé
+- Réglages : les cases à cocher ne prennent plus la hauteur d'un champ de saisie (options moins espacées).
+- Terminaux réajustés quand la police arrive après leur ouverture, et quand la fenêtre redevient visible.
+
 ## [3.29.0] — 2026-10-08
 ### Modifié
 - Une extension fournie par un plugin ne voyage plus seule : elle n'arrive qu'**avec son plugin** (dont elle utilise les skills et agents), installé par la synchro des plugins. Les copies reçues seules (3.27) sont retirées ; celles publiées par une machine encore en 3.27 sont ignorées.
