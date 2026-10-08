@@ -64,6 +64,8 @@ const liveNotes = new Set(); // référence gardée jusqu'au clic / à la fermet
 function notify(title, body, sessionId) {
   const clean = v => String(v || '').replace(/[\u0000-\u001f]+/g, ' ').slice(0, 300);
   title = clean(title) || 'Claude Sessions'; body = clean(body);
+  // instances de test (fenêtre cachée) : rien n'apparaît sur le bureau de l'utilisateur
+  if (process.env.CSM_HIDE_WINDOW) return IS_MAC && !macNotificationsAllowed() ? 'applescript' : Notification.isSupported() ? 'native' : 'unsupported';
   if (IS_MAC && !macNotificationsAllowed()) {
     execFile('osascript', ['-e', 'on run argv', '-e', 'display notification (item 2 of argv) with title (item 1 of argv)', '-e', 'end run', title, body], () => { });
     return 'applescript';
@@ -177,6 +179,10 @@ function createWindow({ hidden = false } = {}) {
   win.on('minimize', () => { if (prefs.minimizeToTray && tray) toTray(true); });
   for (const ev of ['resize', 'move']) win.on(ev, debounce(saveState, 500));
   win.on('focus', () => { win.flashFrame(false); updates?.onFocus?.(); });
+  // F5 recharge la fenêtre (Windows n'a pas de barre de menus ; Ctrl+R reste à Claude : recherche dans l'historique)
+  win.webContents.on('before-input-event', (e, i) => {
+    if (i.type === 'keyDown' && i.key === 'F5' && !i.control && !i.alt && !i.meta) { e.preventDefault(); reloadWindow(); }
+  });
   win.on('show', () => updates?.onFocus?.());
 
   // Affichage tué (mémoire saturée, plantage) ou figé : la fenêtre resterait noire, et Cmd+R n'y peut
