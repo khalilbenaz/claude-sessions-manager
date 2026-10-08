@@ -4,6 +4,8 @@ Une seule fenêtre pour piloter plusieurs sessions [Claude Code](https://docs.cl
 
 **Site et guide : https://khalilbenaz.github.io/claude-sessions-manager/** · [Guide détaillé en ligne](https://khalilbenaz.github.io/claude-sessions-manager/guide.html) · [Journal des versions](CHANGELOG.md)
 
+![Claude Sessions : sessions par groupe avec leur état, terminal de la session active, quotas en bas de la barre latérale](docs/img/app-dark.png)
+
 ## Sommaire
 
 1. [Installation](#1-installation)
