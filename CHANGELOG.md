@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.27.0] — 2026-10-08
+### Ajouté
+- Synchro des **extensions fournies par un plugin** : copiées sur les machines qui n'ont pas le plugin (« reçue de *machine* (plugin *nom*) ») ; une machine qui a le plugin garde sa version ; seule la version la plus haute circule (pas d'aller-retour entre deux versions) ; copie retirée quand le plugin est désinstallé à la source, et gardée en réserve si le plugin local est désinstallé.
+
 ## [3.26.0] — 2026-10-08
 ### Ajouté
 - Synchro des **extensions** importées : installées sur toutes les machines de l'espace (chiffrées), désactivation et suppression comprises ; « reçue de *machine* » dans Réglages › Extensions. Option dans Réglages › Synchronisation. Les extensions des plugins restent propres à chaque machine.
