@@ -258,6 +258,13 @@ const EN = {
   "Pas encore de consommation sur 7 jours.": "No usage over 7 days yet.",
   "Usage de Claude (temps, coût, quota, tâches)": "Claude usage (time, cost, quota, tasks)",
   'Tous': 'All', 'Mes modèles': 'My templates', 'Chercher un modèle…': 'Search templates…', 'Chercher un modèle': 'Search templates', 'Aucun modèle ne correspond.': 'No matching template.', 'importée par lien': 'imported from a link', 'Mettre à jour': 'Update', 'Importer un fichier…': 'Import a file…', 'Importer le lien': 'Import link', 'Lien de l\'extension': 'Extension link', 'ou un lien : https://github.com/compte/depot (fichier, dossier, dépôt ou gist)': 'or a link: https://github.com/account/repo (file, folder, repository or gist)', 'Dépôt GitHub : les fichiers': 'GitHub repository: the', 'à la racine ou dans': 'files at the root or in', 'ou': 'or', 'Dépôt privé : connecte la CLI GitHub (': 'Private repository: sign in the GitHub CLI (',
+  'Sur cette machine': 'On this machine', 'Toutes les machines': 'All machines', 'Cette machine': 'This machine', 'Machine': 'Machine', 'Machines': 'Machines', 'Période': 'Period',
+  'Jour': 'Day', '30 jours': '30 days', 'Travail': 'Work', 'Ajouter': 'Add', 'Par session': 'Per session', 'Pas encore de consommation sur cette période.': 'No usage over this period yet.',
+  'Pause de la file à': 'Queue pauses at', 'Pause de la file désactivée': 'Queue pause is off', 'Seuil de la pause': 'Pause threshold', 'seuil de pause': 'pause threshold', 'mesuré': 'measured', 'prévision': 'forecast',
+  'modèle supprimé': 'template deleted', 'session supprimée': 'session deleted',
+  'ce PC': 'this PC', 'ce Mac': 'this Mac', 'le PC': 'the PC', 'le Mac': 'the Mac', 'session sur': 'session on', 'sessions sur': 'sessions on', 'sur': 'on',
+  'Usage de Claude (temps, coût, tokens par jour et par session, chiffrés ; jamais de conversation)': 'Claude usage (time, cost, tokens per day and per session, encrypted; never any conversation)',
+  'Quota 7 jours : prévision': '7-day quota: forecast', 'Pas encore de quota sur 7 jours.': 'No 7-day quota yet.', 'Prévision dès quelques heures de mesures.': 'Forecast after a few hours of measurements.',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
