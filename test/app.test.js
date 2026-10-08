@@ -337,13 +337,29 @@ test('extensions : modèle dans Nouvelle session, affichage dédié rempli par C
   await win.evaluate(() => api('DELETE', '/api/extensions/ext-e2e'));
 });
 
+test('nouvelle session : premier message visible, raccourci, indication du dépôt du dossier', async () => {
+  const REPO = path.join(TMP, 'depot');
+  fs.mkdirSync(REPO, { recursive: true });
+  const gx = a => require('child_process').execFileSync('git', a, { cwd: REPO });
+  gx(['init', '-q', '-b', 'principale']); gx(['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'init']);
+  await win.click('#btnNew');
+  assert.equal(await win.isVisible('#formNew [name=prompt]'), true); // plus caché dans « Options avancées »
+  assert.match(await win.textContent('#nsKbd'), /Ctrl Alt N|⌘⌥N/);
+  assert.equal((await win.textContent('#formNew button[value=ok]')).trim(), 'Lancer la session');
+  await win.fill('#formNew [name=cwd]', REPO);
+  await win.waitForFunction(() => /branche principale/.test(document.querySelector('#cwdGit').textContent) && !document.querySelector('#cwdGit').hidden, null, { timeout: 15000 });
+  await win.fill('#formNew [name=cwd]', WORK);
+  await win.waitForFunction(() => /Pas un dépôt git/.test(document.querySelector('#cwdGit').textContent), null, { timeout: 15000 });
+  await win.evaluate(() => document.querySelector('#dlgNew').close());
+});
+
 test('centre d’attention : demande d’autorisation affichée et acceptée depuis le centre', async () => {
   const id = await win.evaluate(() => [...sessions.values()].find(s => s.name === 'e2e').id);
   await win.evaluate(id => send({ t: 'input', id, d: 'demande\r' }), id);
   await win.waitForSelector('#btnAttention:not([hidden])', { timeout: 30000 });
   await win.click('#btnAttention'); // bouton « À traiter » de la barre du haut
   await win.waitForSelector('#dlgAttention[open] .atCard.perm', { timeout: 15000 });
-  assert.match(await win.textContent('#dlgAttention .atCard.perm .atCtx'), /Do you want to proceed/);
+  assert.match(await win.textContent('#dlgAttention .atCard.perm .atAsk'), /Do you want to proceed/);
   await win.click('#dlgAttention .atCard.perm button:has-text("Autoriser")');
   await win.waitForFunction(id => { const b = terms.get(id).term.buffer.active; for (let y = 0; y < b.length; y++) if (b.getLine(y).translateToString().includes('AUTORISATION:oui')) return true; return false; }, id, { timeout: 20000 });
   await win.waitForFunction(() => !document.querySelector('#dlgAttention .atCard.perm'), null, { timeout: 15000 });
