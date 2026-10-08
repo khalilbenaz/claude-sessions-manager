@@ -337,6 +337,19 @@ test('extensions : modèle dans Nouvelle session, affichage dédié rempli par C
   await win.evaluate(() => api('DELETE', '/api/extensions/ext-e2e'));
 });
 
+test('centre d’attention : demande d’autorisation affichée et acceptée depuis le centre', async () => {
+  const id = await win.evaluate(() => [...sessions.values()].find(s => s.name === 'e2e').id);
+  await win.evaluate(id => send({ t: 'input', id, d: 'demande\r' }), id);
+  await win.waitForSelector('#btnAttention:not([hidden])', { timeout: 30000 });
+  await win.keyboard.press(process.platform === 'darwin' ? 'Meta+Alt+i' : 'Control+Alt+i');
+  await win.waitForSelector('#dlgAttention[open] .atCard.perm', { timeout: 15000 });
+  assert.match(await win.textContent('#dlgAttention .atCard.perm .atCtx'), /Do you want to proceed/);
+  await win.click('#dlgAttention .atCard.perm button:has-text("Autoriser")');
+  await win.waitForFunction(id => { const b = terms.get(id).term.buffer.active; for (let y = 0; y < b.length; y++) if (b.getLine(y).translateToString().includes('AUTORISATION:oui')) return true; return false; }, id, { timeout: 20000 });
+  await win.waitForFunction(() => !document.querySelector('#dlgAttention .atCard.perm'), null, { timeout: 15000 });
+  await win.evaluate(() => document.querySelector('#dlgAttention').close());
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));

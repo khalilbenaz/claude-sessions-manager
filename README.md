@@ -239,6 +239,12 @@ Pour masquer une session sensible (écran partagé, poste laissé ouvert) : ⋯ 
 
 ## 14. Notifications, zone de notification, arrière-plan
 
+**Centre d'attention** : le bouton **À traiter N** (barre du haut), <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>I</kbd> ou la palette ouvre la liste des demandes de **toutes** tes sessions :
+- **autorisations** (avec les dernières lignes du terminal pour voir la commande) : **Autoriser**, **Toujours pour ce projet**, **Refuser** — envoyés comme au clavier (1, 2, Échap). Les commandes risquées (push, suppression, déploiement…) sont signalées et listées en premier ; **Autoriser les lectures seules** accepte d'un coup les simples lectures de fichiers ;
+- **questions** de Claude : réponse directe dans la carte ;
+- **tâches terminées** pas encore regardées : à relire, ou *Marquer comme vu*.
+Les sessions verrouillées n'y apparaissent pas.
+
 - **Notifications système** quand une session attend ta réponse ou a fini (seulement si tu ne la regardes pas), avec un **son** au choix. **Ne pas déranger** coupe tout ; ⋯ › Couper les alertes le fait pour une seule session.
 - **Rappels** si une session attend depuis X minutes ou travaille depuis plus de Y minutes (Réglages › Notifications).
 - **Pastille** sur l'icône de l'app (Dock / barre des tâches) avec le **nombre** de sessions en attente (9+ au-delà). Sur Mac, l'app n'étant pas signée par Apple, macOS masque la pastille native : le nombre est alors dessiné sur l'icône du Dock.

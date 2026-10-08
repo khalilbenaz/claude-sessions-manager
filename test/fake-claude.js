@@ -124,7 +124,14 @@ async function prompt(text) {
       out('\r\n  ⎿ Interrupted · What should Claude do instead?\r\n❯ ');
       return;
     }
-    if (pending === 'ask' && /[\r\n]/.test(buf)) { buf = ''; pending = null; hook('Stop').then(() => out('\r\n❯ ')); return; }
+    // comme Claude Code : 1 / 2 / Échap répondent directement à une demande d'autorisation (Entrée = choix courant)
+    if (pending === 'ask' && /[\r\n12\x1b]/.test(buf)) {
+      const r = (buf.match(/[12\x1b]/) || ['1'])[0];
+      buf = ''; pending = null;
+      out(`\r\nAUTORISATION:${r === '\x1b' ? 'non' : r === '2' ? 'toujours' : 'oui'}`);
+      hook('Stop').then(() => out('\r\n❯ '));
+      return;
+    }
     let i;
     while ((i = buf.search(/[\r\n]/)) >= 0) {
       const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);

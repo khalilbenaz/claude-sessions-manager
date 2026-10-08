@@ -37,6 +37,7 @@
       ['🕘', t('Historique des conversations'), () => openHistory(), `${MOD}+Alt+H`],
       ['🔎', t('Rechercher dans toutes les sessions'), () => F.openSearch(), `${MOD}+Maj+F`],
       ['📣', t('Envoyer à plusieurs sessions'), () => F.openBroadcast(), `${MOD}+Alt+B`],
+      ['🔔', t('Centre d’attention (demandes des sessions)'), () => F.openAttention?.(), `${MOD}+Alt+I`],
       ['📚', t('Bibliothèque de prompts'), () => F.openPrompts(active)],
       ['±', t('Panneau Modifications'), () => F.togglePanel('changes'), `${MOD}+Alt+G`],
       ['🕑', t('Chronologie de la session'), () => F.showPanel('timeline')],
