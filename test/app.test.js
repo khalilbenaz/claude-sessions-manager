@@ -341,7 +341,7 @@ test('centre d’attention : demande d’autorisation affichée et acceptée dep
   const id = await win.evaluate(() => [...sessions.values()].find(s => s.name === 'e2e').id);
   await win.evaluate(id => send({ t: 'input', id, d: 'demande\r' }), id);
   await win.waitForSelector('#btnAttention:not([hidden])', { timeout: 30000 });
-  await win.keyboard.press(process.platform === 'darwin' ? 'Meta+Alt+i' : 'Control+Alt+i');
+  await win.click('#btnAttention'); // bouton « À traiter » de la barre du haut
   await win.waitForSelector('#dlgAttention[open] .atCard.perm', { timeout: 15000 });
   assert.match(await win.textContent('#dlgAttention .atCard.perm .atCtx'), /Do you want to proceed/);
   await win.click('#dlgAttention .atCard.perm button:has-text("Autoriser")');
@@ -351,7 +351,7 @@ test('centre d’attention : demande d’autorisation affichée et acceptée dep
 });
 
 test('usage de Claude : indicateurs, quota, sessions (Ctrl+Alt+U)', async () => {
-  await win.keyboard.press(process.platform === 'darwin' ? 'Meta+Alt+u' : 'Control+Alt+u');
+  await win.evaluate(() => window.csmFeatures.openUsage()); // (raccourci Ctrl+Alt+U, palette, quotas de la barre latérale)
   await win.waitForSelector('#dlgUsage[open] #dbKpis .dbKpi', { timeout: 15000 });
   assert.equal(await win.evaluate(() => document.querySelectorAll('#dbKpis .dbKpi').length), 4);
   assert.match(await win.textContent('#dbKpis'), /Sessions actives/);
