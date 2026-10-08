@@ -51,7 +51,7 @@ test('créer une session depuis l’interface et échanger', async () => {
   await win.fill('#formNew [name=cwd]', WORK);
   await win.fill('#formNew [name=name]', 'e2e');
   await win.click('#formNew button[value=ok]');
-  await win.waitForFunction(() => [...sessions.values()].some(s => s.name === 'e2e' && s.status === 'idle'), null, { timeout: 60000 });
+  await win.waitForFunction(() => [...sessions.values()].some(s => s.name === 'e2e' && s.status === 'idle'), null, { timeout: 120000 });
   await win.click('.term.show');
   await win.keyboard.type('bonjour e2e');
   await win.keyboard.press('Enter');

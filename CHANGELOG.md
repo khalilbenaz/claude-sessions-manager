@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.29.0] — 2026-10-08
+### Modifié
+- Une extension fournie par un plugin ne voyage plus seule : elle n'arrive qu'**avec son plugin** (dont elle utilise les skills et agents), installé par la synchro des plugins. Les copies reçues seules (3.27) sont retirées ; celles publiées par une machine encore en 3.27 sont ignorées.
+
 ## [3.28.0] — 2026-10-08
 ### Ajouté
 - Synchro des **plugins Claude Code** : les machines d'un espace ont les mêmes plugins (marketplaces GitHub). Plugin reçu : validation dans Réglages › Synchronisation (« Plugins à valider ») si « Me demander… » est coché, sinon installation automatique. Une machine qui n'a pas un plugin ne le fait jamais retirer ailleurs ; une désinstallation réelle est propagée et toujours proposée, jamais appliquée seule. Marketplaces locaux jamais partagés.
