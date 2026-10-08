@@ -13,6 +13,7 @@ Une extension **n'exécute aucun code** dans l'application : elle décrit, Claud
 - **Réglages › Extensions › Importer une extension…**, ou glisser le fichier sur cette page. Réimporter un fichier du même `id` le met à jour.
 - **Par un plugin Claude Code** : les fichiers `*.csm.json` du dossier `csm/` d'un plugin installé sont chargés automatiquement (pratique pour une équipe : le plugin se met à jour, les extensions suivent). Ils se retirent en désinstallant le plugin.
 - Chaque extension se désactive ou se supprime dans la même page.
+- **Synchronisation** : avec un code de synchro, une extension importée est installée sur toutes tes machines (chiffrée) ; désactivation et suppression suivent. Taille utile pour la synchro : environ 50 Ko de JSON.
 
 ## Format
 

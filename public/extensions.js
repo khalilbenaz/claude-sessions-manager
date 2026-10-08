@@ -33,7 +33,7 @@
       return el('li', { class: 'extItem' },
         el('label', { class: 'extMain' }, sw,
           el('span', {},
-            el('b', { text: `${x.name} ` }), el('span', { class: 'hint', text: `${x.version || ''} · ${t(x.source)}` }),
+            el('b', { text: `${x.name} ` }), el('span', { class: 'hint', text: `${x.version || ''} · ${x.from ? `${t('reçue de')} ${x.from}` : t(x.source)}` }),
             el('div', { class: 'hint', text: x.error ? `${t('Invalide')} : ${x.error}` : (x.description || parts.join(' · ')) }),
             x.description && parts.length ? el('div', { class: 'hint', text: parts.join(' · ') }) : null)),
         x.removable ? el('button', { type: 'button', class: 'danger', text: t('Supprimer'), onclick: async () => {

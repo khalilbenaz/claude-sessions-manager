@@ -181,6 +181,8 @@ const EN = {
   "Affichage": "Display",
   "L’affichage se remplira quand Claude aura avancé. La conversation reste dans « Terminal ».": "The display fills in as Claude progresses. The conversation stays in “Terminal”.",
   "Basculer entre l'affichage du type de session et le terminal": "Switch between the session type display and the terminal",
+  "Extensions importées (installées sur les autres machines, chiffrées)": "Imported extensions (installed on the other machines, encrypted)",
+  "reçue de": "received from",
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',

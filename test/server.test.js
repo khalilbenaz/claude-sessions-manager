@@ -1270,9 +1270,57 @@ test('extensions : fournies par un plugin Claude Code (dossier csm/), non suppri
   const f = path.join(cfg, 'installed_plugins.json'), old = fs.existsSync(f) ? fs.readFileSync(f) : null;
   fs.writeFileSync(f, JSON.stringify({ version: 2, plugins: { 'prive@prive': [{ installPath: plug }] } }));
   try {
-    const e = await waitFor(async () => (await api('GET', '/api/extensions')).find(x => x.id === 'metier-prive'), 40000, 'extension du plugin');
+    const e = await waitFor(async () => (await api('GET', '/api/extensions')).find(x => x.id === 'metier-prive'), 5000, 'extension du plugin');
     assert.equal(e.source, 'plugin prive'); assert.equal(e.removable, false);
     assert.ok((await api('GET', '/api/extensions/templates')).some(t => t.id === 'metier-prive/modele'));
     assert.equal((await req('DELETE', '/api/extensions/metier-prive')).status, 404, 'se retire en désinstallant le plugin');
   } finally { if (old) fs.writeFileSync(f, old); else fs.rmSync(f, { force: true }); }
+});
+
+test('synchro : le type de session (extension) suit la session d’une machine à l’autre', async () => {
+  const { encodeCode } = require('../lib/sync');
+  const KEY = 't'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-type' });
+    const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'typée-synchro', type: 'mon-ext/ticket' });
+    const row = await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.find(KEY, d => d.name === 'typée-synchro'); }, 10000, 'session envoyée');
+    assert.equal(fake.plain(KEY, row.uid).type, 'mon-ext/ticket');
+    const t1 = Date.now();
+    fake.put(KEY, { uid: 'mac-type-1', updatedAt: t1, origin: 'mac', data: sealed(KEY, 'mac-type-1', t1, { name: 'venue-du-mac', cwd: '{home}', type: 'mon-ext/ticket' }) });
+    const r = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/sessions')).find(x => x.syncId === 'mac-type-1'); }, 10000, 'session reçue');
+    assert.equal(r.type, 'mon-ext/ticket');
+    await api('DELETE', `/api/sessions/${s.id}`); await api('DELETE', `/api/sessions/${r.id}`);
+  } finally { await api('PUT', '/api/settings', { syncCode: '' }); fake.srv.close(); }
+});
+
+test('synchro : une extension importée ici s’installe sur les autres machines (et sa suppression aussi)', async () => {
+  const { encodeCode } = require('../lib/sync');
+  const KEY = 'x'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  const ext = { csm: 1, id: 'ext-synchro', name: 'Partagée', templates: [{ id: 'tpl', name: 'Modèle partagé' }] };
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-ext' });
+    await api('POST', '/api/sync/now');
+    // importée ici : envoyée, chiffrée
+    await api('POST', '/api/extensions', { content: JSON.stringify(ext) });
+    const row = await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get('csmext-ext-synchro'); }, 10000, 'extension envoyée');
+    assert.ok(!JSON.stringify(row.data).includes('Modèle partagé'), 'chiffrée');
+    assert.equal(fake.plain(KEY, 'csmext-ext-synchro').ext.name, 'Partagée');
+    // importée sur une autre machine : installée ici, avec son origine
+    const t1 = Date.now();
+    fake.put(KEY, { uid: 'csmext-venue-du-mac', updatedAt: t1, origin: 'MacBook', data: sealed(KEY, 'csmext-venue-du-mac', t1, { ext: { csm: 1, id: 'venue-du-mac', name: 'Du Mac', prompts: [{ id: 'pp', title: 'P', text: 'x' }] }, enabled: true }) });
+    const got = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/extensions')).find(e => e.id === 'venue-du-mac'); }, 10000, 'extension reçue');
+    assert.equal(got.from, 'MacBook'); assert.equal(got.enabled, true);
+    // invalide : ignorée
+    const t2 = Date.now();
+    fake.put(KEY, { uid: 'csmext-casse', updatedAt: t2, origin: 'MacBook', data: sealed(KEY, 'csmext-casse', t2, { ext: { csm: 9, id: 'casse' } }) });
+    await api('POST', '/api/sync/now');
+    assert.ok(!(await api('GET', '/api/extensions')).some(e => e.id === 'casse'));
+    // supprimée ailleurs : retirée ici ; supprimée ici : pierre tombale
+    fake.put(KEY, { uid: 'csmext-venue-du-mac', updatedAt: Date.now() + 1000, deleted: 1, data: {} });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return !(await api('GET', '/api/extensions')).some(e => e.id === 'venue-du-mac'); }, 10000, 'suppression reçue');
+    await api('DELETE', '/api/extensions/ext-synchro');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get('csmext-ext-synchro').deleted === 1; }, 10000, 'suppression envoyée');
+  } finally { await api('PUT', '/api/settings', { syncCode: '' }); fake.srv.close(); }
 });

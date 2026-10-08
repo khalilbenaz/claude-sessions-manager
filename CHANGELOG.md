@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.26.0] — 2026-10-08
+### Ajouté
+- Synchro des **extensions** importées : installées sur toutes les machines de l'espace (chiffrées), désactivation et suppression comprises ; « reçue de *machine* » dans Réglages › Extensions. Option dans Réglages › Synchronisation. Les extensions des plugins restent propres à chaque machine.
+- Synchro du **type de session** (affichage dédié d'une extension) avec la session.
+### Corrigé
+- File d'attente : la limite des 5 h affichée par Claude est prise en compte même quand la fin du tour arrive avant ce message (machine chargée).
+- Extensions d'un plugin : visibles dès l'installation du plugin (plus d'attente).
+
 ## [3.25.0] — 2026-10-08
 ### Ajouté
 - **Extensions** : un fichier `.csm.json` ajoute des modèles de session, des prompts et des types de session (affichage dédié rempli par Claude : résumé, tableaux, chronologie, cases à cocher, brouillon à relire ; boutons d'action qui envoient une demande à la session). Purement déclaratif, rien n'est exécuté dans l'app. Import dans Réglages › Extensions (ou glisser-déposer), activation, suppression ; un plugin Claude Code peut en fournir (dossier `csm/`). Format : docs/extensions.md ; exemple : extensions/revue-de-code.csm.json.
