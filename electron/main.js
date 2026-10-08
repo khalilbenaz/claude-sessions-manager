@@ -1,4 +1,11 @@
 'use strict';
+// Sortie standard fermée (app lancée sans console, terminal parent disparu) : une écriture lève EPIPE, qui
+// deviendrait une « erreur JavaScript dans le processus principal ». Ces erreurs d'écriture sont ignorées.
+for (const s of [process.stdout, process.stderr]) s?.on?.('error', () => { });
+for (const k of ['log', 'info', 'warn', 'error']) {
+  const orig = console[k].bind(console);
+  console[k] = (...a) => { try { orig(...a); } catch { } };
+}
 require('../lib/tz').alignTimezone(); // avant tout usage de Date : suivre le fuseau du système
 // Claude Sessions — application de bureau (Windows / macOS).
 // La fenêtre n'est qu'une vue : les sessions vivent dans le serveur local (processus séparé), qui continue
@@ -35,7 +42,7 @@ let updates = null; // electron/updater.js
 // Journal des mises à jour (DATA/update.log, 256 Ko max) : dit pourquoi une installation automatique attend.
 let lastWhy = null;
 function updLog(m) {
-  console.log(m);
+  try { console.log(m); } catch { } // EPIPE possible, levé tout de suite sous Windows
   try {
     const f = path.join(DATA, 'update.log');
     try { if (fs.statSync(f).size > 256e3) fs.renameSync(f, f + '.1'); } catch { }
