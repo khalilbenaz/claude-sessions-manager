@@ -258,6 +258,12 @@ const EN = {
   "Pas encore de consommation sur 7 jours.": "No usage over 7 days yet.",
   "Usage de Claude (temps, coût, quota, tâches)": "Claude usage (time, cost, quota, tasks)",
   'Tous': 'All', 'Mes modèles': 'My templates', 'Chercher un modèle…': 'Search templates…', 'Chercher un modèle': 'Search templates', 'Aucun modèle ne correspond.': 'No matching template.', 'importée par lien': 'imported from a link', 'Mettre à jour': 'Update', 'Importer un fichier…': 'Import a file…', 'Importer le lien': 'Import link', 'Lien de l\'extension': 'Extension link', 'ou un lien : https://github.com/compte/depot (fichier, dossier, dépôt ou gist)': 'or a link: https://github.com/account/repo (file, folder, repository or gist)', 'Dépôt GitHub : les fichiers': 'GitHub repository: the', 'à la racine ou dans': 'files at the root or in', 'ou': 'or', 'Dépôt privé : connecte la CLI GitHub (': 'Private repository: sign in the GitHub CLI (',
+  'ce PC': 'this PC', 'ce Mac': 'this Mac', 'machine': 'machine', 'machines': 'machines', 'éléments reçus': 'items received', 'Ajouter une machine': 'Add a machine', "Saisir ce code sur l'autre machine": 'Enter this code on the other machine',
+  'Nom, dossier, modèle, groupe de chaque session, épinglage, couleur': 'Name, folder, model, group of each session, pinning, color', 'Historique et contexte, chiffrés': 'History and context, encrypted',
+  'Groupes': 'Groups', "Groupes vides compris, dans l'ordre": 'Empty groups included, in order', 'Chiffrés': 'Encrypted', 'Plugins Claude Code': 'Claude Code plugins',
+  'Les mêmes sur toutes les machines ; validation demandée si « Me demander… » est coché': 'The same on every machine; approval asked if “Ask me…” is checked',
+  'Extensions importées': 'Imported extensions', 'Installées sur les autres machines, chiffrées': 'Installed on the other machines, encrypted', 'Mémoire des sessions': 'Session memory',
+  'Celle choisie dans Réglages › Général, et ce choix lui-même, chiffrés': 'The one chosen in Settings › General, and that choice itself, encrypted',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
