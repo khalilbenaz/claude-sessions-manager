@@ -47,7 +47,7 @@ function render(p, now) {
 }
 
 // Quotas transmis au serveur de l'app (file d'attente en pause près de la limite, lib/queue.js) : au plus
-// toutes les 30 s par session, sans jamais retarder l'affichage.
+// toutes les 10 s par session, sans jamais retarder l'affichage.
 function quotaOf(p) {
   const w = p.rate_limits?.five_hour;
   const pct = num(w, 'used_percentage', 'usedPercentage', 'utilization');
@@ -61,7 +61,7 @@ function report(p, cb) {
   const q = CSM_ID && CSM_PORT && quotaOf(p);
   if (!q) return cb();
   const mark = require('path').join(require('os').tmpdir(), `csm-quota-${CSM_PORT}-${CSM_ID}`);
-  try { if (Date.now() - require('fs').statSync(mark).mtimeMs < 30e3) return cb(); } catch { }
+  try { if (Date.now() - require('fs').statSync(mark).mtimeMs < 10e3) return cb(); } catch { }
   try { require('fs').writeFileSync(mark, ''); } catch { }
   const body = JSON.stringify({ csm: CSM_ID, event: 'quota', data: q });
   const req = require('http').request({
