@@ -1,4 +1,5 @@
 'use strict';
+require('../lib/tz').alignTimezone(); // même fuseau que l'app testée (qui suit celui du système)
 // Test de bout en bout de l'application Electron (Playwright) avec le faux claude.
 // Lancer : npm run test:app
 const { test, before, after } = require('node:test');

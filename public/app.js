@@ -33,6 +33,10 @@ const termContrast = () => (themeName() === 'light' ? 4.5 : 1);
 function applySettings() {
   document.documentElement.dataset.theme = themeName();
   document.body.classList.toggle('compact', !!SETTINGS.compactSidebar);
+  { // le bouton dit ce qu'il fera : réduire, ou déplier (flèche retournée en CSS)
+    const b = $('#btnCompact'), l = SETTINGS.compactSidebar ? t('Déplier la barre latérale') : t('Réduire la barre latérale');
+    if (b) { b.title = l; b.setAttribute('aria-label', l); b.setAttribute('aria-pressed', SETTINGS.compactSidebar ? 'true' : 'false'); }
+  }
   window.csmNative?.setPrefs?.({ minimizeToTray: SETTINGS.minimizeToTray !== false, closeToTray: SETTINGS.closeToTray !== false });
   for (const tt of terms.values()) {
     tt.term.options.theme = termTheme();

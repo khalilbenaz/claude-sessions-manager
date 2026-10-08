@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.35.1] — 2026-10-08
+### Corrigé
+- **Heure affichée une heure trop tard sous Windows** (Maroc passé à GMT, données de fuseaux d'Electron plus anciennes) : l'app suit maintenant le décalage de Windows, comme déjà sur macOS.
+- Bouton de la barre latérale compacte : la flèche s'inverse quand la barre est réduite, et son libellé dit « Déplier » / « Réduire ».
+
 ## [3.35.0] — 2026-10-08
 ### Ajouté
 - **Usage de Claude** : période Jour / 7 jours / 30 jours ; quota 5 h avec heures, prévision hachurée et seuil de pause ; **quota 7 jours avec sa propre prévision** (historique conservé) ; tâches planifiées avec « Ajouter » et leur cible ; vue **toutes les machines** (agrégats chiffrés via la synchro, option « Usage de Claude », jamais de conversation).

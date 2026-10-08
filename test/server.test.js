@@ -1,4 +1,5 @@
 'use strict';
+require('../lib/tz').alignTimezone(); // même fuseau que l'app testée (qui suit celui du système)
 // Tests de bout en bout du serveur avec un faux claude (aucun appel à l'API, profil utilisateur temporaire).
 // Lancer : npm test
 const { test, before, after } = require('node:test');
