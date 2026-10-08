@@ -302,7 +302,8 @@ function alertUser(s, what, body) {
   playSound();
   if (!SETTINGS.notifications) return;
   // macOS : par l'app (repli si elle n'est pas signée par Apple — le centre de notifications la refuse)
-  if (window.csmNative?.platform === 'darwin' && window.csmNative.notify) return window.csmNative.notify(`${s.name} — ${what}`, body, s.id);
+  // dans l'app : notification du système par le processus principal (clic = fenêtre au premier plan sur la session)
+  if (window.csmNative?.notify) return window.csmNative.notify(`${s.name} — ${what}`, body, s.id);
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const n = new Notification(`${s.name} — ${what}`, { body, tag: s.id, icon: 'icon.svg', silent: true });
   n.onclick = () => { window.csmNative ? window.csmNative.focus() : window.focus(); select(s.id); n.close(); };

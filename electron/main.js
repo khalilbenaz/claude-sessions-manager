@@ -66,14 +66,15 @@ function notify(title, body, sessionId) {
   title = clean(title) || 'Claude Sessions'; body = clean(body);
   if (IS_MAC && !macNotificationsAllowed()) {
     execFile('osascript', ['-e', 'on run argv', '-e', 'display notification (item 2 of argv) with title (item 1 of argv)', '-e', 'end run', title, body], () => { });
-    return;
+    return 'applescript';
   }
-  if (!Notification.isSupported()) return;
+  if (!Notification.isSupported()) return 'unsupported';
   const n = new Notification({ title, body, silent: true });
   liveNotes.add(n);
   n.on('click', () => { liveNotes.delete(n); if (sessionId) send(`select:${sessionId}`); else showWindow(); });
   n.on('close', () => liveNotes.delete(n));
   n.show();
+  return 'native';
 }
 
 // Lecture d'un réglage du serveur (le jeton est dans le dossier de données, lisible par l'utilisateur seul).
@@ -273,8 +274,8 @@ function registerIpc() {
   ipcMain.on('csm:attention', (e, n) => {
     if (!trusted(e)) return;
     n = Math.max(0, Math.min(99, Number(n) || 0));
-    if (IS_MAC) { app.setBadgeCount(n); if (!macNotificationsAllowed()) setDockDot(n > 0); }
-    if (IS_WIN && win) win.setOverlayIcon(n ? badgeIcon() : null, n ? `${n} en attente` : '');
+    if (IS_MAC) { if (macNotificationsAllowed()) app.setBadgeCount(n); else setDockBadge(n); }
+    if (IS_WIN && win) win.setOverlayIcon(n ? badgeIcon(n) : null, n ? `${n} session${n > 1 ? 's' : ''} en attente` : '');
     // macOS : un seul rebond du Dock par nouvelle attente (flashFrame rebondit sans fin jusqu'au retour dans l'app)
     if (IS_MAC) { if (n > attention && win && !win.isFocused()) app.dock?.bounce?.('informational'); }
     else if (n && win && !win.isFocused()) win.flashFrame(true);
@@ -287,6 +288,12 @@ function registerIpc() {
   });
   ipcMain.on('csm:focus', e => { if (trusted(e)) showWindow(); });
   ipcMain.on('csm:notify', (e, o) => { if (trusted(e) && o && typeof o === 'object') notify(o.title, o.body, typeof o.id === 'string' ? o.id : ''); });
+  // Réglages › Notifications › Tester : montre une notification et dit par quel moyen elle passe
+  ipcMain.handle('csm:notify-test', e => {
+    if (!trusted(e)) return null;
+    const how = notify('Claude Sessions', 'Notification de test : si tu la vois, tout fonctionne.', '');
+    return { how, signed: macNotificationsAllowed() };
+  });
   ipcMain.handle('csm:update', async (e, action) => {
     if (!trusted(e) || !updates) return updates?.state || null;
     if (action === 'check') await updates.check();
@@ -332,37 +339,73 @@ async function refreshTrayIcon() {
   tray.setToolTip(`Claude Sessions — ${alive} session${alive > 1 ? 's' : ''} active${alive > 1 ? 's' : ''}${attention ? ` · ${attention} en attente de réponse` : ''}`);
 }
 
-// Repli macOS de la pastille (app non signée) : point rouge dessiné sur l'icône du Dock.
-let dockImg = null, dockImgAlert = null, dockDot = false;
-function setDockDot(on) {
-  if (on === dockDot || !app.dock) return;
-  dockDot = on;
-  if (!dockImg) {
-    dockImg = nativeImage.createFromPath(path.join(ROOT, 'public', 'icon.png'));
-    const s = dockImg.getSize(), bmp = Buffer.from(dockImg.toBitmap());
-    const r = s.width * 0.14, cx = s.width - r - s.width * 0.06, cy = r + s.height * 0.06;
-    for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) {
-      const d = Math.hypot(x - cx, y - cy), i = (y * s.width + x) * 4;
+// ---------------------------------------------------------------- pastille avec le nombre
+// Chiffres en police bitmap 5×7 (le processus principal n'a pas de canvas) : pastille rouge et nombre en blanc,
+// dessinés sur l'icône du Dock (macOS sans signature Apple : la pastille native est masquée) et en overlay de la
+// barre des tâches Windows.
+const GLYPHS = {
+  0: ['01110', '10001', '10011', '10101', '11001', '10001', '01110'], 1: ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
+  2: ['01110', '10001', '00001', '00110', '01000', '10000', '11111'], 3: ['11110', '00001', '00001', '01110', '00001', '00001', '11110'],
+  4: ['00010', '00110', '01010', '10010', '11111', '00010', '00010'], 5: ['11111', '10000', '11110', '00001', '00001', '10001', '01110'],
+  6: ['00110', '01000', '10000', '11110', '10001', '10001', '01110'], 7: ['11111', '00001', '00010', '00100', '01000', '01000', '01000'],
+  8: ['01110', '10001', '10001', '01110', '10001', '10001', '01110'], 9: ['01110', '10001', '10001', '01111', '00001', '00010', '01100'],
+  '+': ['00000', '00100', '00100', '11111', '00100', '00100', '00000'],
+};
+// Dessine dans un bitmap BGRA (w×h) une pastille centrée en (cx, cy), rayon r, avec le texte.
+function paintBadge(bmp, w, h, cx, cy, r, text) {
+  for (let y = Math.max(0, Math.floor(cy - r - 1)); y < Math.min(h, Math.ceil(cy + r + 1)); y++) {
+    for (let x = Math.max(0, Math.floor(cx - r - 1)); x < Math.min(w, Math.ceil(cx + r + 1)); x++) {
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy), i = (y * w + x) * 4;
       if (d > r + 1) continue;
-      const a = Math.min(1, r + 1 - d); // bord adouci ; pixels BGRA
-      [48, 59, 240].forEach((c, k) => { bmp[i + k] = Math.round(bmp[i + k] * (1 - a) + c * a); });
+      const a = Math.min(1, r + 1 - d);
+      [48, 59, 230].forEach((c, k) => { bmp[i + k] = Math.round(bmp[i + k] * (1 - a) + c * a); }); // rouge (BGRA)
       bmp[i + 3] = Math.max(bmp[i + 3], Math.round(255 * a));
     }
-    dockImgAlert = nativeImage.createFromBitmap(bmp, { width: s.width, height: s.height });
   }
-  app.dock.setIcon(on ? dockImgAlert : dockImg);
+  if (!text) return;
+  const chars = String(text).split('');
+  const gap = 1, cols = chars.length * 5 + (chars.length - 1) * gap;
+  const scale = Math.max(1, Math.floor(Math.min((r * 1.25) / 7, (r * 1.5) / cols)));
+  const tw = cols * scale, th = 7 * scale;
+  const x0 = Math.round(cx - tw / 2), y0 = Math.round(cy - th / 2);
+  chars.forEach((ch, n) => {
+    const g = GLYPHS[ch]; if (!g) return;
+    for (let gy = 0; gy < 7; gy++) for (let gx = 0; gx < 5; gx++) {
+      if (g[gy][gx] !== '1') continue;
+      for (let sy = 0; sy < scale; sy++) for (let sx = 0; sx < scale; sx++) {
+        const x = x0 + (n * (5 + gap) + gx) * scale + sx, y = y0 + gy * scale + sy;
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const i = (y * w + x) * 4;
+        bmp[i] = bmp[i + 1] = bmp[i + 2] = 255; bmp[i + 3] = 255;
+      }
+    }
+  });
+}
+const badgeText = n => (n > 9 ? '9+' : String(n));
+
+// macOS sans signature Apple : nombre dessiné sur l'icône du Dock.
+let dockBase = null, dockShown = -1;
+function setDockBadge(n) {
+  if (!app.dock || n === dockShown) return;
+  dockShown = n;
+  if (!dockBase) dockBase = nativeImage.createFromPath(path.join(ROOT, 'public', 'icon.png'));
+  if (!n) { app.dock.setIcon(dockBase); return; }
+  const s = dockBase.getSize(), bmp = Buffer.from(dockBase.toBitmap());
+  const r = s.width * 0.19;
+  paintBadge(bmp, s.width, s.height, s.width - r - s.width * 0.02, r + s.height * 0.02, r, badgeText(n));
+  app.dock.setIcon(nativeImage.createFromBitmap(bmp, { width: s.width, height: s.height }));
 }
 
-let badge = null;
-function badgeIcon() {
-  if (badge) return badge;
-  // Pastille rouge 16×16 (overlay de la barre des tâches Windows).
-  const size = 16, buf = Buffer.alloc(size * size * 4);
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    const d = Math.hypot(x - 7.5, y - 7.5), i = (y * size + x) * 4;
-    if (d <= 7.5) { buf[i] = 0x4a; buf[i + 1] = 0x56; buf[i + 2] = 0xf0; buf[i + 3] = d > 6.5 ? 160 : 255; } // BGRA
-  }
-  return (badge = nativeImage.createFromBitmap(buf, { width: size, height: size }));
+// Windows : overlay de la barre des tâches avec le nombre (32 px : net aussi sur écran haute densité).
+const overlays = new Map();
+function badgeIcon(n) {
+  const t = badgeText(n);
+  if (overlays.has(t)) return overlays.get(t);
+  const size = 32, buf = Buffer.alloc(size * size * 4);
+  paintBadge(buf, size, size, 16, 16, 15, t);
+  const img = nativeImage.createFromBitmap(buf, { width: size, height: size });
+  overlays.set(t, img);
+  return img;
 }
 
 // ---------------------------------------------------------------- barre des tâches / de menus

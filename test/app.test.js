@@ -273,6 +273,16 @@ test('connexion Claude : bandeau avant expiration, renouvellement dans l’app',
   fs.rmSync(f, { force: true });
 });
 
+test('notifications et pastille : test depuis les réglages, nombre sur l’icône', async () => {
+  const r = await win.evaluate(() => window.csmNative.notifyTest());
+  assert.ok(['native', 'applescript', 'unsupported'].includes(r.how), JSON.stringify(r));
+  if (process.platform !== 'darwin') assert.equal(r.how, 'native');
+  // pastille : 1, 12 (« 9+ ») puis 0, sans erreur dans le processus principal
+  for (const n of [1, 12, 0]) await win.evaluate(n => window.csmNative.setAttention(n), n);
+  await new Promise(res => setTimeout(res, 300));
+  if (process.platform === 'win32') assert.equal(await app.evaluate(({ BrowserWindow }) => !!BrowserWindow.getAllWindows()[0]), true);
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));

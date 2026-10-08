@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('csmNative', {
   focus: () => ipcRenderer.send('csm:focus'),
   // notification par l'app (repli macOS sans signature Apple) ; id = session à ouvrir au clic
   notify: (title, body, id) => ipcRenderer.send('csm:notify', { title: String(title || ''), body: String(body || ''), id: String(id || '') }),
+  notifyTest: () => ipcRenderer.invoke('csm:notify-test'),
   setPrefs: p => ipcRenderer.send('csm:prefs', { minimizeToTray: !!p.minimizeToTray, closeToTray: !!p.closeToTray }),
   appVersion: () => ipcRenderer.sendSync('csm:app-version'),
   restartServer: () => ipcRenderer.invoke('csm:restart-server'),

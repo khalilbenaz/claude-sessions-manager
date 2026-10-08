@@ -136,16 +136,27 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
   }
 
   // Remplace l'app une fois celle-ci fermée, puis la relance.
-  const macWritable = dest => { try { fs.accessSync(path.dirname(dest), fs.constants.W_OK); fs.accessSync(dest, fs.constants.W_OK); return true; } catch { return false; } };
+  // Trois cas, du plus simple au plus contraint :
+  //  - dossier parent modifiable (ex. ~/Applications, ou /Applications pour un administrateur) : app remplacée ;
+  //  - app modifiable mais pas son dossier : son contenu (Contents) est remplacé sur place, sans mot de passe ;
+  //  - sinon (app installée par un autre compte) : mot de passe demandé UNE fois, et l'app est rendue à
+  //    l'utilisateur (chown) : les mises à jour suivantes passent par le cas précédent.
+  const canWrite = p => { try { fs.accessSync(p, fs.constants.W_OK); return true; } catch { return false; } };
+  const macMode = dest => (canWrite(path.dirname(dest)) && canWrite(dest) ? 'replace'
+    : canWrite(dest) && canWrite(path.join(dest, 'Contents')) ? 'inplace' : 'admin');
   async function installMac(auto) {
     const dest = bundle();
     await beforeInstall({ auto });
-    const writable = macWritable(dest);
+    const mode = macMode(dest), who = os.userInfo().username.replace(/[^\w.-]/g, '');
+    log(`[maj] installation macOS : ${mode}`);
+    const steps = {
+      replace: 'rm -rf "$CSM_DEST.old"; mv "$CSM_DEST" "$CSM_DEST.old" && if ditto "$CSM_SRC" "$CSM_DEST"; then rm -rf "$CSM_DEST.old"; else rm -rf "$CSM_DEST"; mv "$CSM_DEST.old" "$CSM_DEST"; fi',
+      inplace: 'rm -rf "$CSM_DEST/Contents.old"; mv "$CSM_DEST/Contents" "$CSM_DEST/Contents.old" && if ditto "$CSM_SRC/Contents" "$CSM_DEST/Contents"; then rm -rf "$CSM_DEST/Contents.old"; else rm -rf "$CSM_DEST/Contents"; mv "$CSM_DEST/Contents.old" "$CSM_DEST/Contents"; fi',
+      admin: `osascript -e "do shell script \"rm -rf '$CSM_DEST' && ditto '$CSM_SRC' '$CSM_DEST' && chown -R ${who}:staff '$CSM_DEST' && xattr -cr '$CSM_DEST'\" with prompt \"Claude Sessions installe la version ${staged.version}. Mot de passe demandé une seule fois : les prochaines mises à jour s'installeront sans.\" with administrator privileges"`,
+    };
     const script = [
       'while kill -0 "$CSM_PID" 2>/dev/null; do sleep 0.3; done',
-      writable
-        ? 'rm -rf "$CSM_DEST.old"; mv "$CSM_DEST" "$CSM_DEST.old" && if ditto "$CSM_SRC" "$CSM_DEST"; then rm -rf "$CSM_DEST.old"; else rm -rf "$CSM_DEST"; mv "$CSM_DEST.old" "$CSM_DEST"; fi'
-        : `osascript -e "do shell script \"rm -rf '$CSM_DEST' && ditto '$CSM_SRC' '$CSM_DEST' && xattr -cr '$CSM_DEST'\" with prompt \"Claude Sessions installe la version ${staged.version}.\" with administrator privileges"`,
+      steps[mode],
       'xattr -cr "$CSM_DEST" 2>/dev/null',
       'rm -rf "$CSM_STAGE"',
       'open "$CSM_DEST"',

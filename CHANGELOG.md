@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.24.0] — 2026-10-08
+### Ajouté
+- Pastille avec le **nombre** de sessions en attente sur l'icône : overlay de la barre des tâches Windows (avant : un point) et icône du Dock sur macOS quand la pastille native est masquée (app non signée).
+- Réglages › Notifications › **Tester la notification** : en montre une et indique par quel moyen elle passe (native ou repli macOS) et quoi régler si rien ne s'affiche.
+### Corrigé
+- Notifications : passent par l'app sur Windows aussi (clic = fenêtre au premier plan sur la session), plus par l'API du navigateur intégré.
+- macOS : la mise à jour ne demande plus le mot de passe à chaque version. App modifiable : remplacée sur place sans mot de passe ; installée par un autre compte : mot de passe demandé une seule fois, puis l'app est attribuée à l'utilisateur.
+- README : exemple de groupe neutre.
+
 ## [3.23.0] — 2026-10-07
 ### Modifié
 - **Place sur le serveur de synchro : 1 Go par espace** (au lieu de 200 Mo).

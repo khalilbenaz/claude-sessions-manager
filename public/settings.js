@@ -45,6 +45,23 @@
     });
   });
   $('#soundTest').onclick = () => playSound($('[data-set=sound]').value);
+  // Notification de test : par l'app (natif) ou, dans un navigateur, par l'API Notification
+  $('#notifTest').onclick = async () => {
+    const out = $('#notifTestResult');
+    if (window.csmNative?.notifyTest) {
+      const r = await window.csmNative.notifyTest();
+      out.textContent = !r ? '' : r.how === 'native'
+        ? t('Envoyée. Rien ne s’affiche ? Vérifie les notifications de Claude Sessions dans les réglages du système (et le mode Ne pas déranger / Concentration).')
+        : r.how === 'applescript'
+          ? t('Envoyée par macOS (via « Éditeur de script ») : l’app n’est pas signée par Apple, macOS refuse ses propres notifications. Autorise « Éditeur de script » dans Réglages Système › Notifications.')
+          : t('Notifications non prises en charge par ce système.');
+      return;
+    }
+    if (!('Notification' in window)) { out.textContent = t('Notifications non prises en charge par ce système.'); return; }
+    if (Notification.permission !== 'granted') await Notification.requestPermission();
+    if (Notification.permission === 'granted') { new Notification('Claude Sessions', { body: t('Notification de test : si tu la vois, tout fonctionne.') }); out.textContent = t('Envoyée.'); }
+    else out.textContent = t('Refusée par le navigateur : autorise les notifications pour ce site.');
+  };
 
   F.openSettings = async (which = 'general') => {
     fill();

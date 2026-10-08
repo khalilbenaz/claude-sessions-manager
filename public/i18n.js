@@ -154,6 +154,13 @@ const EN = {
   "Langue des réponses de Claude": "Claude's reply language",
   "Celle de l'interface": "Same as the interface",
   "Réglage de Claude Code": "Claude Code setting",
+  "Tester la notification": "Test notification",
+  "Envoyée. Rien ne s’affiche ? Vérifie les notifications de Claude Sessions dans les réglages du système (et le mode Ne pas déranger / Concentration).": "Sent. Nothing shows up? Check Claude Sessions notifications in the system settings (and Do Not Disturb / Focus).",
+  "Envoyée par macOS (via « Éditeur de script ») : l’app n’est pas signée par Apple, macOS refuse ses propres notifications. Autorise « Éditeur de script » dans Réglages Système › Notifications.": "Sent by macOS (through “Script Editor”): the app is not signed by Apple, so macOS refuses its own notifications. Allow “Script Editor” in System Settings › Notifications.",
+  "Notifications non prises en charge par ce système.": "Notifications are not supported on this system.",
+  "Notification de test : si tu la vois, tout fonctionne.": "Test notification: if you see it, everything works.",
+  "Envoyée.": "Sent.",
+  "Refusée par le navigateur : autorise les notifications pour ce site.": "Blocked by the browser: allow notifications for this site.",
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',

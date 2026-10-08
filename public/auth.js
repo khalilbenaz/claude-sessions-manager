@@ -58,7 +58,7 @@
     if (Date.now() - last < 86400e3) return;
     try { localStorage.setItem(key, String(Date.now())); } catch { }
     const title = 'Claude Sessions', body = `${t('Ta connexion à Claude')} ${left(st.msLeft)} — ${t('clique pour la renouveler')}`;
-    if (window.csmNative?.platform === 'darwin' && window.csmNative.notify) return window.csmNative.notify(title, body, '');
+    if (window.csmNative?.notify) return window.csmNative.notify(title, body, '');
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     const n = new Notification(title, { body, tag: 'csm-auth', icon: 'icon.svg', silent: true });
     n.onclick = () => { window.csmNative ? window.csmNative.focus() : window.focus(); renew(); n.close(); };
