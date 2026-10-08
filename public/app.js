@@ -177,13 +177,33 @@ function setLayout(l) {
   document.querySelectorAll('[data-layout]').forEach(b => b.classList.toggle('on', b.dataset.layout === l));
 }
 
+// petite icône SVG à traits ; `d` = tracés séparés par « | »
+function svgIcon(d, size = 14) {
+  const NS = 'http://www.w3.org/2000/svg', e = document.createElementNS(NS, 'svg');
+  for (const [k, v] of Object.entries({ class: 'ic', width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) e.setAttribute(k, v);
+  for (const seg of d.split('|')) { const p = document.createElementNS(NS, 'path'); p.setAttribute('d', seg); e.appendChild(p); }
+  return e;
+}
+
+// bandeau d'aide de la vue partagée (masquable, mémorisé)
+function updatePaneHint() {
+  const h = $('#paneHint'); if (!h) return;
+  h.hidden = (LAYOUTS[layout] || 1) <= 1 || !!LS.get('csm.paneHintOff', false);
+}
+
 function renderPaneFrames() {
+  updatePaneHint();
+  const order = sorted().map(x => x.id);
   paneEls().forEach((p, i) => {
     p.classList.toggle('focused', i === focusedPane && (LAYOUTS[layout] || 1) > 1);
     const s = sessions.get(panes[i]);
     p.querySelector('.phead .dot').className = `dot ${s ? s.status : ''}`;
     p.querySelector('.phead .pn').textContent = s ? s.name : t('(vide — glisser une session ici)');
     p.querySelector('.phead .pb').textContent = s?.worktree ? `⎇ ${s.worktree.branch}` : '';
+    p.querySelector('.phead .pnum').textContent = s ? order.indexOf(s.id) + 1 : '';
+    p.querySelector('.phead .pnum').hidden = !s;
+    const ask = !!(s && window.csmFeatures.paneAsk?.(s.id)); // autorisation en attente : Oui / Toujours / Non
+    p.querySelector('.phead .pperm').hidden = !ask;
   });
   window.csmFeatures.lockOverlays?.();
 }
@@ -191,8 +211,13 @@ function renderPaneFrames() {
 function makePane() {
   const p = document.createElement('div');
   p.className = 'pane';
-  p.innerHTML = '<div class="phead"><span class="dot"></span><span class="pn"></span><span class="pb"></span><button class="pclose">✕</button></div><div class="pslot"></div>';
+  p.innerHTML = '<div class="phead"><span class="pnum"></span><span class="dot"></span><span class="pn"></span><span class="pb"></span><span class="pperm" hidden></span><button class="pclose">✕</button></div><div class="pslot"></div>';
   p.querySelector('.pclose').title = t('Vider ce panneau');
+  for (const [label, choice, cls] of [[t('Oui'), 'yes', 'primary'], [t('Toujours'), 'always', ''], [t('Non'), 'no', 'danger']]) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label;
+    b.onclick = e => { e.stopPropagation(); const id = panes[paneEls().indexOf(p)]; if (id) window.csmFeatures.answerPerm?.(id, choice); };
+    p.querySelector('.pperm').appendChild(b);
+  }
   const idx = () => paneEls().indexOf(p);
   p.addEventListener('mousedown', () => { const k = idx(); if (k !== focusedPane) { focusedPane = k; if (panes[k]) select(panes[k]); else renderPaneFrames(); } });
   p.querySelector('.pclose').onclick = e => { e.stopPropagation(); panes[idx()] = null; renderPanes(); };
@@ -486,7 +511,9 @@ function render() {
     li.querySelector('.n').textContent = (s.locked ? (window.csmFeatures.isLockedHere?.(s.id) ? '🔒 ' : '🔓 ') : '') + s.name;
     li.querySelector('.dot').textContent = '';
     li.querySelector('.dot').dataset.initial = (s.name || '?').trim().charAt(0).toUpperCase();
-    li.querySelector('.sub').textContent = (isRemote(s) ? '📱 ' : '') + (s.origin && window.csmFeatures?.syncMachine && s.origin !== window.csmFeatures.syncMachine ? `⇄ ${s.origin} · ` : '') + (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.quotaWait ? `⏸ ${t('quota')} ${hm(s.quotaWait)} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
+    const subEl = li.querySelector('.sub');
+    subEl.textContent = (s.origin && window.csmFeatures?.syncMachine && s.origin !== window.csmFeatures.syncMachine ? `⇄ ${s.origin} · ` : '') + (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.quotaWait ? `⏸ ${t('quota')} ${hm(s.quotaWait)} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
+    if (isRemote(s)) { const ph = svgIcon('M7 3h10a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z|M11 18h2', 12); ph.classList.add('remoteIc'); ph.setAttribute('aria-label', t('Accessible depuis l’app Claude')); subEl.prepend(ph); }
     li.onclick = () => select(s.id);
     li.ondblclick = () => renameSession(s.id);
     li.querySelector('.ren').onclick = e => { e.stopPropagation(); renameSession(s.id); };
@@ -530,7 +557,7 @@ function renderBar() {
   if (!s) return;
   $('#curDot').className = `dot ${s.status}`;
   $('#curName').textContent = s.name;
-  $('#curCwd').textContent = s.cwd;
+  $('#curCwd bdi').textContent = s.cwd; // <bdi> : le chemin garde son sens de lecture, l'ellipse reste au début
   $('#curCwd').title = s.cwd + (s.claudeSessionId ? `\nsession ${s.claudeSessionId}` : '');
   $('#curMsg').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + t(s.message) : ''}`;
   $('#curMsg').className = `msg ${s.status}`;
@@ -541,7 +568,7 @@ function renderBar() {
   $('#curBranch').textContent = s.worktree ? `⎇ ${s.worktree.branch}` : '';
   $('#curBranch').title = s.worktree ? `${t('Worktree')} : ${s.worktree.path}\n${t('base')} : ${s.worktree.base}` : '';
   $('#curQueue').hidden = !s.queue?.length && !s.quotaWait;
-  $('#curQueue').textContent = (s.quotaWait ? `⏸ ${t('quota — reprise à')} ${hm(s.quotaWait)} ` : '') + (s.queue?.length ? `⏳ ${s.queue.length}` : '');
+  $('#curQueueTxt').textContent = (s.quotaWait ? `${t('quota — reprise à')} ${hm(s.quotaWait)}${s.queue?.length ? ' · ' : ''}` : '') + (s.queue?.length ? `${s.queue.length} ${t('en attente')}` : '');
   window.dispatchEvent(new CustomEvent('csm:active', { detail: s }));
 }
 
@@ -839,6 +866,7 @@ $('#btnOpen').onclick = e => active && showMenu(openItems(active), ...at(e.curre
 $('#btnMore').onclick = e => active && showMenu(moreItems(active), ...at(e.currentTarget));
 $('#emptyNew').onclick = () => openNew();
 $('#btnCompact').onclick = () => saveSettings({ compactSidebar: !SETTINGS.compactSidebar });
+$('#paneHintX').onclick = () => { LS.set('csm.paneHintOff', true); updatePaneHint(); };
 document.querySelectorAll('[data-layout]').forEach(b => { b.onclick = () => setLayout(b.dataset.layout); });
 function moreItems(id) {
   const s = sessions.get(id); if (!s) return [];
