@@ -1,0 +1,49 @@
+/* ---- refonte Atelier, étape 4 : usage de Claude */
+dialog.dbDlg { width: min(1100px, 95vw); max-height: 90vh; display: none; flex-direction: column; }
+dialog.dbDlg[open] { display: flex; }
+dialog.dbDlg form { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow-y: auto; }
+.dbKpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.dbKpi { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); }
+.dbKpi .kl { font-size: 13px; color: var(--dim); }
+.dbKpi .kv { font-size: 28px; font-weight: 600; letter-spacing: -.02em; }
+.dbKpi .kh { font-size: 12px; color: var(--dim); }
+.dbKpi.warn .kv { color: var(--warn); } .dbKpi.accent .kv { color: var(--accent); }
+.dbRow { display: flex; flex-wrap: wrap; gap: 12px; }
+.dbCard { flex: 1 1 300px; padding: 16px 18px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.dbCard.dbWide { flex: 2 1 460px; }
+.dbCard h3 { margin: 0; font-size: 15px; }
+.dbCardHead { display: flex; align-items: center; gap: 10px; } .dbCardHead button { margin-left: auto; height: 30px; }
+.dbQHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.dbQHead b { font-size: 20px; }
+.dbFc { font-size: 13px; color: var(--ok); } .dbFc.warn { color: var(--work); }
+.dbPlot { position: relative; height: 140px; border-bottom: 1px solid var(--line); }
+.dbChart { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 2px; }
+.dbChart i { flex: 1; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
+.dbChart i.none { background: var(--line2); }
+/* prévision : barres hachurées, de la même couleur que le mesuré */
+.dbChart i.fc { background: repeating-linear-gradient(135deg, var(--accent) 0 3px, transparent 3px 6px); outline: 1px solid var(--accent); outline-offset: -1px; opacity: .75; }
+.dbTh { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--work); pointer-events: none; }
+.dbAxis { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); font-family: var(--mono); }
+.dbLegend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--dim); }
+.dbLegend .k::before { content: ""; display: inline-block; width: 14px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; }
+.dbLegend .now::before { background: var(--accent); }
+.dbLegend .fc::before { background: repeating-linear-gradient(135deg, var(--accent) 0 3px, transparent 3px 6px); outline: 1px solid var(--accent); outline-offset: -1px; }
+.dbLegend .th::before { height: 0; border-top: 2px dashed var(--work); border-radius: 0; }
+.dbSeg { display: inline-flex; border: 1px solid var(--line2); border-radius: 10px; overflow: hidden; }
+.dbSeg button { height: 32px; border: 0; border-radius: 0; background: none; color: var(--dim); padding: 0 14px; }
+.dbSeg button + button { border-left: 1px solid var(--line2); }
+.dbSeg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
+.dbDlg .atTop select { height: 32px; }
+.dbCardHead #dbSchAdd { margin-left: auto; } .dbCardHead #dbSchedules { margin-left: 0; }
+.dbJobs { display: flex; flex-direction: column; gap: 8px; }
+.dbJob { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--panel); }
+.dbScroll { overflow-x: auto; }
+.dbTable { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 13px; }
+.dbTable th { text-align: left; color: var(--dim); font-weight: 500; padding: 6px 8px; }
+.dbTable td { padding: 8px; border-top: 1px solid var(--line); }
+.dbTable .num { text-align: right; font-family: var(--mono); }
+.sideStatus { cursor: pointer; }
+.sideStatus:hover .q span:first-child { color: var(--fg); }
+.dbDlg .atTop h2 { flex: none; }
+.dbTable th.num { font-family: inherit; }
+.dbDlg form { flex: 0 1 auto; }

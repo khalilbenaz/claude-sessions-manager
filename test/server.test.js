@@ -18,6 +18,7 @@ for (const d of [HOME, DATA, WORK, path.join(TMP, 'mem')]) fs.mkdirSync(d, { rec
 const ENV = {
   ...process.env, CSM_PORT: String(PORT), CSM_DATA: DATA, HOME, USERPROFILE: HOME,
   CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300', CSM_MEM_DB: path.join(TMP, 'mem', 'claude-mem.db'), CSM_NO_PLUGIN_INSTALL: '1', CSM_DEFAULT_SYNC_SERVER: 'http://127.0.0.1:9', CSM_QUOTA_MARGIN: '300', CSM_SCHEDULE_EVERY: '300', CSM_SYS_LANG: 'fr', CSM_GITHUB_API: `http://127.0.0.1:${PORT + 3}`, CSM_NO_GH_TOKEN: '1',
+  CSM_QUOTA7_MIN_H: '0.000001',
   CSM_CLAUDE: process.execPath, CSM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-claude.js')}"`,
   GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com',
 };
@@ -1421,6 +1422,66 @@ test('usage : temps de travail du jour et historique du quota pour la prévision
   assert.equal(q.forecast, null, 'pas de prévision sur quelques secondes de mesures');
   await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 0, resetAt: 0 } });
   await api('DELETE', `/api/sessions/${S.id}`);
+});
+
+test('usage : période ?days sur /api/usage et /api/worktime', async () => {
+  for (const d of [1, 7, 30]) {
+    const u = await api('GET', `/api/usage?days=${d}`);
+    assert.equal(u.days, d); assert.equal(typeof u.period.cost, 'number'); assert.ok(u.d7 && u.today && Array.isArray(u.top));
+    const w = await api('GET', `/api/worktime?days=${d}`);
+    assert.equal(w.nbDays, d); assert.equal(typeof w.period.total, 'number'); assert.ok(w.today && w.days);
+  }
+  assert.equal((await api('GET', '/api/usage')).days, 7, 'défaut : 7 jours');
+  assert.equal((await api('GET', '/api/usage?days=999')).days, 7, 'valeur hors liste : défaut');
+  assert.equal((await api('GET', '/api/quota')).pause.threshold, 95);
+});
+
+test('usage : historique et prévision du quota 7 jours (forecast7)', async () => {
+  const S = await api('POST', '/api/sessions', { cwd: WORK, name: 'usage-q7' });
+  await idle(S.id);
+  const r7 = Date.now() + 5 * 86400e3;
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 10, resetAt: 0, seven: { pct: 10, resetAt: r7 } } });
+  const q0 = await api('GET', '/api/quota');
+  assert.equal(q0.seven.pct, 10); assert.ok(q0.hist7.length >= 1, 'historique 7 j gardé'); assert.equal(q0.forecast7, null, 'une seule mesure : pas de prévision');
+  await new Promise(r => setTimeout(r, 60));
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 10, resetAt: 0, seven: { pct: 12, resetAt: r7 } } });
+  const q = await api('GET', '/api/quota');
+  assert.equal(q.hist7.at(-1).pct, 12);
+  assert.ok(q.forecast7 && q.forecast7.perHour > 0 && q.forecast7.limitAt > 0 && q.forecast7.limitAt < r7, 'limite prévue avant la réinitialisation');
+  assert.ok(fs.existsSync(path.join(DATA, 'quota7.json')), 'historique persistant');
+  // rythme lent : pas de limite avant la réinitialisation
+  await new Promise(r => setTimeout(r, 60));
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 10, resetAt: 0, seven: { pct: 12, resetAt: r7 } } });
+  assert.ok(Array.isArray((await api('GET', '/api/quota')).hist7));
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 0, resetAt: 0 } });
+  await api('DELETE', `/api/sessions/${S.id}`);
+});
+
+test('synchro : document d’usage publié (chiffré, agrégats) et reçu des autres machines', async () => {
+  const { encodeCode } = require('../lib/sync');
+  const KEY = 'u'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  try {
+    const t0 = Date.now(), k = new Date();
+    const local = `${k.getFullYear()}-${String(k.getMonth() + 1).padStart(2, '0')}-${String(k.getDate()).padStart(2, '0')}`;
+    const cell = { w: 600, c: 1.5, t: 4000 };
+    fake.put(KEY, { uid: 'csmcfg-usage-macdev000001', updatedAt: t0, origin: 'mac', data: sealed(KEY, 'csmcfg-usage-macdev000001', t0, { name: 'mac-test', platform: 'darwin', days: { [local]: cell }, sessions: { abc123: { n: 'Revue Mac', d: { [local]: cell } } } }) });
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-test', syncUsage: true });
+    const row = await waitFor(async () => { await api('POST', '/api/sync/now'); return [...fake.rows(KEY).keys()].find(u => u.startsWith('csmcfg-usage-') && u !== 'csmcfg-usage-macdev000001'); }, 10000, 'document publié');
+    const doc = fake.plain(KEY, row);
+    assert.equal(doc.name, 'pc-test'); assert.ok(doc.days && doc.sessions);
+    assert.ok(!JSON.stringify(fake.rows(KEY).get(row).data).includes('pc-test'), 'chiffré');
+    const all = await waitFor(async () => { await api('POST', '/api/sync/now'); const u = await api('GET', '/api/usage?days=7&scope=all'); return u.all.machines.length > 1 && u; }, 10000, 'reçu');
+    assert.ok(all.all.machines.some(m => m.name === 'mac-test' && m.work === 600 && m.cost === 1.5));
+    assert.ok(all.all.rows.some(r => r.machine === 'mac-test' && r.name === 'Revue Mac'));
+    assert.ok(all.all.total.work >= 600);
+    // option coupée : les autres machines ne sont plus affichées
+    await api('PUT', '/api/settings', { syncUsage: false });
+    assert.equal((await api('GET', '/api/usage?days=7&scope=all')).all.machines.length, 1);
+  } finally {
+    await api('PUT', '/api/settings', { syncCode: '', syncUsage: true });
+    fake.srv.close();
+  }
 });
 
 test('extensions : import par lien (fichier GitHub, dépôt, adresse https), mise à jour', async () => {
