@@ -1212,3 +1212,67 @@ test('langue des réponses : transmise à Claude Code (réglage language), par d
     assert.equal(await langOf({ replyLanguage: 'claude' }), undefined, 'réglage de Claude Code laissé tel quel');
   } finally { c.ws.close(); await api('PUT', '/api/settings', { replyLanguage: 'app', lang: 'auto' }); }
 });
+
+test('extensions : import d’un fichier, modèles, session typée avec sa vue et ses actions', async () => {
+  const ext = {
+    csm: 1, id: 'revue-test', name: 'Revue (test)', version: '1.2.0',
+    templates: [{ id: 'revue', name: 'Revue de code', prompt: 'relis', type: 'revue' }, { id: 'mauvais id!', name: 'x' }],
+    prompts: [{ id: 'resume', title: 'Résumer', text: 'Résume.' }],
+    sessionTypes: [{ id: 'revue', name: 'Revue', badge: 'REVUE', color: '#7A9BEA', instructions: 'Tu es en mode revue.', actions: [{ id: 'corrige', label: 'Corriger', send: 'corrige le point 1' }] }],
+  };
+  // fichiers refusés : format, identifiant, JSON
+  assert.equal((await req('POST', '/api/extensions', { content: JSON.stringify({ ...ext, csm: 2 }) })).status, 400);
+  assert.equal((await req('POST', '/api/extensions', { content: JSON.stringify({ ...ext, id: '../x' }) })).status, 400);
+  assert.equal((await req('POST', '/api/extensions', { content: '{pas du json' })).status, 400);
+  const r = await api('POST', '/api/extensions', { content: JSON.stringify(ext) });
+  assert.equal(r.id, 'revue-test'); assert.equal(r.counts.templates, 1, 'modèle invalide écarté'); assert.equal(r.counts.sessionTypes, 1);
+  assert.ok((await api('GET', '/api/extensions')).some(e => e.id === 'revue-test' && e.enabled && e.removable));
+  const tpl = (await api('GET', '/api/extensions/templates')).find(t => t.id === 'revue-test/revue');
+  assert.equal(tpl.type, 'revue-test/revue');
+  assert.ok((await api('GET', '/api/extensions/prompts')).some(p => p.id === 'revue-test/resume'));
+  assert.ok(!(await api('GET', '/api/templates')).some(t => String(t.id).startsWith('revue-test')), 'modèles de l’utilisateur intacts');
+
+  // session typée : consignes + fichier de vue transmis à Claude
+  const c = await wsClient();
+  const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'typée', type: tpl.type });
+  assert.equal(s.typeInfo.name, 'Revue'); assert.equal(s.typeInfo.actions[0].id, 'corrige');
+  await waitFor(() => (c.out[s.id] || '').includes('FAUX CLAUDE prêt'), 15000, 'démarrage');
+  c.ws.send(JSON.stringify({ t: 'input', id: s.id, d: 'montre-consignes\r' }));
+  await waitFor(() => /CONSIGNES:Tu es en mode revue\.\|VUE:oui/.test(c.out[s.id] || ''), 10000, 'consignes et fichier de vue');
+  c.ws.send(JSON.stringify({ t: 'input', id: s.id, d: 'ecris-vue\r' }));
+  const v = await waitFor(async () => (await api('GET', `/api/sessions/${s.id}/view`)).view, 10000, 'vue écrite');
+  assert.equal(v.title, 'Analyse <b>test</b>', 'texte brut conservé (échappé à l’affichage)');
+  assert.deepEqual(v.sections.map(x => x.kind), ['text', 'checklist', 'draft'], 'section inconnue écartée');
+  // actions : du type, puis d'un brouillon (texte relu par l'utilisateur)
+  await waitFor(async () => (await session(s.id)).status === 'idle', 10000, 'prête');
+  await api('POST', `/api/sessions/${s.id}/view-action`, { action: 'corrige' });
+  await waitFor(() => (c.out[s.id] || '').includes('echo: corrige le point 1'), 10000, 'action envoyée');
+  await waitFor(async () => (await session(s.id)).status === 'idle', 10000, 'prête');
+  await api('POST', `/api/sessions/${s.id}/view-action`, { section: 2, index: 0, draft: 'Bonjour relu' });
+  await waitFor(() => (c.out[s.id] || '').includes('echo: publie : Bonjour relu'), 10000, 'brouillon envoyé');
+  assert.equal((await req('POST', `/api/sessions/${s.id}/view-action`, { action: 'inexistante' })).status, 404);
+
+  // désactivée : plus de modèles ; supprimée : retirée
+  await api('POST', '/api/extensions/revue-test/enabled', { on: false });
+  assert.equal((await api('GET', '/api/extensions/templates')).length, 0);
+  await api('DELETE', '/api/extensions/revue-test');
+  assert.ok(!(await api('GET', '/api/extensions')).some(e => e.id === 'revue-test'));
+  c.ws.close();
+  await api('DELETE', `/api/sessions/${s.id}`);
+});
+
+test('extensions : fournies par un plugin Claude Code (dossier csm/), non supprimables', async () => {
+  const plug = path.join(HOME, 'plugin-prive');
+  fs.mkdirSync(path.join(plug, 'csm'), { recursive: true });
+  fs.writeFileSync(path.join(plug, 'csm', 'metier.csm.json'), JSON.stringify({ csm: 1, id: 'metier-prive', name: 'Métier privé', templates: [{ id: 'modele', name: 'Modèle métier' }] }));
+  const cfg = path.join(HOME, '.claude', 'plugins');
+  fs.mkdirSync(cfg, { recursive: true });
+  const f = path.join(cfg, 'installed_plugins.json'), old = fs.existsSync(f) ? fs.readFileSync(f) : null;
+  fs.writeFileSync(f, JSON.stringify({ version: 2, plugins: { 'prive@prive': [{ installPath: plug }] } }));
+  try {
+    const e = await waitFor(async () => (await api('GET', '/api/extensions')).find(x => x.id === 'metier-prive'), 40000, 'extension du plugin');
+    assert.equal(e.source, 'plugin prive'); assert.equal(e.removable, false);
+    assert.ok((await api('GET', '/api/extensions/templates')).some(t => t.id === 'metier-prive/modele'));
+    assert.equal((await req('DELETE', '/api/extensions/metier-prive')).status, 404, 'se retire en désinstallant le plugin');
+  } finally { if (old) fs.writeFileSync(f, old); else fs.rmSync(f, { force: true }); }
+});

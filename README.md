@@ -17,7 +17,7 @@ Une seule fenêtre pour piloter plusieurs sessions [Claude Code](https://docs.cl
 9. [Historique et sessions ouvertes dans un terminal](#9-historique-et-sessions-ouvertes-dans-un-terminal)
 10. [Images et fichiers](#10-images-et-fichiers)
 11. [Palette, recherche, prompts, file d'attente, envoi groupé](#11-palette-recherche-prompts-file-dattente-envoi-groupé) — et [demandes programmées](#11-bis-demandes-programmées)
-12. [Modèles de session](#12-modèles-de-session)
+12. [Modèles de session](#12-modèles-de-session) — et [extensions](#12-bis-extensions)
 13. [Verrouiller une session par mot de passe](#13-verrouiller-une-session-par-mot-de-passe)
 14. [Notifications, zone de notification, arrière-plan](#14-notifications-zone-de-notification-arrière-plan) — et [accès depuis l'app Claude (téléphone)](#14-bis-accès-depuis-lapp-claude-téléphone) — et [connexion à Claude qui expire](#14-ter-connexion-à-claude-qui-expire--your-login-expires-in-3-days-)
 15. [Thème clair / sombre, langue](#15-thème-clair--sombre-langue)
@@ -212,6 +212,15 @@ Un **modèle** mémorise une session type : dossier, nom, groupe, modèle Claude
 - **Créer** : sur une session existante, ⋯ ou clic droit › **Enregistrer comme modèle…** (reprend son dossier, son groupe, son modèle et son mode) ; ou remplis « Nouvelle session » puis **Enregistrer comme modèle**. La liste est vide tant que tu n'en as pas créé.
 - **Utiliser** : liste *Modèle de session* en haut de « Nouvelle session », ou palette › « Lancer le modèle : … ».
 - **Gérer** : Réglages › Modèles de session (lancer, renommer, supprimer).
+
+### 12 bis. Extensions
+
+Une **extension** est un seul fichier `.csm.json` qui ajoute des **modèles de session**, des **prompts** et des **types de session** : un affichage dédié, rempli par Claude (résumé, tableaux, chronologie, liste d'actions, brouillon à relire…), et des boutons qui envoient une demande à la session. Elle n'exécute aucun code dans l'app : elle se partage donc en privé sans risque, et une nouvelle fonctionnalité métier devient une nouvelle extension, sans modifier l'application.
+
+- **Installer** : Réglages › **Extensions** › *Importer une extension…* (ou glisser le fichier sur la page). Un plugin Claude Code peut aussi en fournir (dossier `csm/` du plugin) : elles suivent ses mises à jour.
+- **Utiliser** : les modèles apparaissent dans « Nouvelle session » (groupés par extension), les prompts dans la palette. Une session d'un type affiche son **badge** en haut et un bouton pour passer de l'**Affichage** au **Terminal**.
+- **Gérer** : activer, désactiver ou supprimer chaque extension dans Réglages › Extensions.
+- **Créer** : format complet dans [docs/extensions.md](docs/extensions.md), exemple prêt à importer : [extensions/revue-de-code.csm.json](extensions/revue-de-code.csm.json).
 
 ## 13. Verrouiller une session par mot de passe
 

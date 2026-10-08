@@ -367,3 +367,37 @@ dialog.imageView img { max-width: 88vw; max-height: 82vh; object-fit: contain; b
 dialog.imageView figcaption { color: var(--dim); font-size: 12px; }
 
 .usageBar small { white-space: pre-line; }
+
+/* ---------------------------------------------------------------- extensions (public/extensions.js) */
+.extList .extItem { display: flex; align-items: flex-start; gap: 10px; }
+.extList .extMain { flex: 1; display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.extList .extMain input { margin-top: 3px; }
+section[data-st=extensions].dropping { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: 8px; }
+.typeBadge { --tc: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 6px; color: var(--tc); border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent); background: color-mix(in srgb, var(--tc) 12%, transparent); white-space: nowrap; }
+.typeView { position: absolute; inset: 0; z-index: 4; overflow: auto; background: var(--bg); padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+.typeView .tvHead { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+.typeView .tvType { --tc: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 4px 9px; border-radius: 6px; color: var(--tc); background: color-mix(in srgb, var(--tc) 14%, transparent); }
+.typeView .tvTitle { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.typeView h2 { margin: 0; font-size: 18px; }
+.typeView .tvMeta { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; }
+.typeView .tvActs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.typeView .tvBody { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; align-items: start; }
+.typeView .tvSec { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.typeView .tvSec.warn { border-color: color-mix(in srgb, var(--work) 55%, transparent); background: color-mix(in srgb, var(--work) 8%, var(--panel)); }
+.typeView .tvSec.tv-draft, .typeView .tvSec.tv-table { grid-column: 1 / -1; }
+.typeView h3 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.typeView .tvBadge { font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 999px; background: var(--panel2); color: var(--dim); }
+.typeView p { margin: 0; line-height: 1.55; white-space: pre-wrap; }
+.typeView ul, .typeView ol { margin: 0; padding-left: 18px; line-height: 1.55; }
+.typeView dl { margin: 0; display: grid; grid-template-columns: minmax(90px, max-content) 1fr; gap: 6px 14px; }
+.typeView dt { color: var(--dim); } .typeView dd { margin: 0; white-space: pre-wrap; }
+.typeView .tvTime { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.typeView .tvTime li { display: flex; gap: 12px; } .typeView .tvAt { color: var(--dim); font-family: var(--mono, monospace); font-size: 12px; min-width: 90px; }
+.typeView .tvScroll { overflow-x: auto; } .typeView table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.typeView th, .typeView td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; } .typeView th { color: var(--dim); font-weight: 500; border-top: 0; }
+.typeView .tvCheck { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.typeView .tvCheck li { display: flex; gap: 10px; align-items: flex-start; } .typeView .tvCheck li.done > span:last-child { color: var(--dim); text-decoration: line-through; }
+.typeView .tvCheck small { display: block; color: var(--dim); font-size: 12px; }
+.typeView .tvBox { width: 18px; height: 18px; flex: none; border-radius: 5px; border: 1px solid var(--hover); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--ok); }
+.typeView textarea { width: 100%; resize: vertical; font: inherit; line-height: 1.5; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+.typeView .tvEmpty { color: var(--dim); }

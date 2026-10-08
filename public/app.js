@@ -264,6 +264,10 @@ function connect() {
       if (langChanged) location.reload();
     } else if (m.t === 'schedules') {
       window.dispatchEvent(new CustomEvent('csm:schedules'));
+    } else if (m.t === 'view') {
+      window.dispatchEvent(new CustomEvent('csm:view', { detail: m.id }));
+    } else if (m.t === 'extensions') {
+      window.dispatchEvent(new CustomEvent('csm:extensions'));
     } else if (m.t === 'auth') {
       window.dispatchEvent(new CustomEvent('csm:auth', { detail: m }));
     } else if (m.t === 'sync') {
@@ -529,6 +533,7 @@ function renderBar() {
   $('#curMsg').className = `msg ${s.status}`;
   $('#btnKill').disabled = !s.alive;
   $('#btnRestart').textContent = s.alive ? t('Relancer') : (s.claudeSessionId ? t('Reprendre') : t('Relancer'));
+  window.csmFeatures?.renderTypeBar?.(s); // type de session d'une extension (public/extensions.js)
   $('#curBranch').hidden = !s.worktree;
   $('#curBranch').textContent = s.worktree ? `⎇ ${s.worktree.branch}` : '';
   $('#curBranch').title = s.worktree ? `${t('Worktree')} : ${s.worktree.path}\n${t('base')} : ${s.worktree.base}` : '';
@@ -922,11 +927,21 @@ function openNew(tpl) {
   f.worktree.checked = !!SETTINGS.worktreeDefault;
   f.remote.checked = !!SETTINGS.remoteAll;
   loadHistory();
-  loadTemplates().then(list => {
+  f.dataset.type = '';
+  Promise.all([loadTemplates(), loadExtTemplates()]).then(([list, ext]) => {
     $('#tplRow').hidden = false;
-    f.template.innerHTML = `<option value="">${list.length ? t('— aucun —') : t('— aucun modèle : « Enregistrer comme modèle » en bas —')}</option>` + list.map(x => `<option value="${x.id}"></option>`).join('');
-    list.forEach((x, i) => { f.template.options[i + 1].textContent = x.name; });
-    if (tpl) { f.template.value = tpl.id; applyTemplate(tpl); }
+    const sel = f.template;
+    sel.replaceChildren(new Option(list.length || ext.length ? t('— aucun —') : t('— aucun modèle : « Enregistrer comme modèle » en bas —'), ''));
+    for (const x of list) sel.add(new Option(x.name, x.id));
+    // modèles des extensions, regroupés par extension (lecture seule)
+    const byExt = new Map();
+    for (const x of ext) { if (!byExt.has(x.extName)) byExt.set(x.extName, []); byExt.get(x.extName).push(x); }
+    for (const [name, xs] of byExt) {
+      const g = document.createElement('optgroup'); g.label = name;
+      for (const x of xs) g.append(new Option(x.name, x.id));
+      sel.append(g);
+    }
+    if (tpl) { sel.value = tpl.id; applyTemplate(tpl); }
   });
   $('#dlgNew').showModal();
   checkRepo();
@@ -940,10 +955,13 @@ function applyTemplate(x) {
   f.model.value = x.model ?? f.model.value; f.mode.value = x.mode || '';
   f.extra.value = x.extra || ''; f.prompt.value = x.prompt || ''; f.group.value = x.group || '';
   f.worktree.checked = !!x.worktree;
+  f.dataset.type = x.type || ''; // type de session d'une extension (affichage dédié)
   if (x.prompt) f.querySelector('details').open = true;
   checkRepo();
 }
-$('#formNew').template.onchange = e => applyTemplate(templates.find(x => x.id === e.target.value));
+$('#formNew').template.onchange = e => { const f = $('#formNew'); f.dataset.type = ''; applyTemplate([...templates, ...extTemplates].find(x => x.id === e.target.value)); };
+let extTemplates = [];
+async function loadExtTemplates() { try { extTemplates = await api('GET', '/api/extensions/templates'); } catch { extTemplates = []; } return extTemplates; }
 // Worktree : proposé seulement dans un dépôt git ; nom de branche suggéré depuis le nom de la session.
 let repoTimer = null;
 function checkRepo() {
@@ -994,7 +1012,7 @@ $('#dlgNew').addEventListener('close', async () => {
   const args = [f.model.value && `--model ${f.model.value}`, f.mode.value && `--permission-mode ${f.mode.value}`, f.extra.value.trim()].filter(Boolean).join(' ');
   const cwd = f.cwd.value.trim().replace(/^"|"$/g, '');
   LS.set('csm.lastCwd', cwd);
-  const body = { cwd, name: f.name.value.trim() || undefined, args, group: f.group.value.trim() || undefined, initialPrompt: f.prompt.value.trim() || undefined, remote: f.remote.checked };
+  const body = { cwd, name: f.name.value.trim() || undefined, args, group: f.group.value.trim() || undefined, initialPrompt: f.prompt.value.trim() || undefined, remote: f.remote.checked, type: f.dataset.type || undefined };
   try {
     const s = f.worktree.checked && !$('#wtBox').hidden
       ? await api('POST', '/api/worktree/session', { ...body, branch: f.branch.value.trim() })

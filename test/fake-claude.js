@@ -69,6 +69,19 @@ async function prompt(text) {
   log({ type: 'assistant', message: { id: `msg_${turn}_${sessionId.slice(0, 6)}`, model: 'claude-haiku-4-5', role: 'assistant',
     content: [{ type: 'text', text: reply }, { type: 'tool_use', name: 'Read', input: { file_path: path.join(cwd, 'README.md') } }],
     usage: { input_tokens: 100, output_tokens: 20, cache_read_input_tokens: 1000, cache_creation_input_tokens: 0 } } });
+  // session d'un type d'extension : consignes reçues (--append-system-prompt) et vue écrite dans CSM_VIEW_FILE
+  if (/montre-consignes/.test(text)) out(`\r\nCONSIGNES:${(opt('--append-system-prompt') || '').split('\n')[0]}|VUE:${process.env.CSM_VIEW_FILE ? 'oui' : 'non'}\r\n`);
+  if (/ecris-vue/.test(text) && process.env.CSM_VIEW_FILE) {
+    fs.writeFileSync(process.env.CSM_VIEW_FILE, JSON.stringify({
+      title: 'Analyse <b>test</b>', meta: [{ label: 'État', value: 'Active' }],
+      sections: [
+        { kind: 'text', title: 'Constat', text: 'Tout <script>alert(1)</script> va bien' },
+        { kind: 'checklist', title: 'Actions', items: [{ label: 'Publier', done: false }] },
+        { kind: 'draft', title: 'Commentaire', text: 'Bonjour', actions: [{ label: 'Publier', send: 'publie : {draft}' }] },
+        { kind: 'inconnu', text: 'ignoré' },
+      ],
+    }));
+  }
   if (/montre-jeton/.test(text)) out(`\r\nJETON:${process.env.CSM_TOKEN}\r\n`);
   if (/touch (\S+)/.test(text)) fs.writeFileSync(path.join(cwd, RegExp.$1), `créé par le faux claude (${turn})\n`);
   out(`\r\n● ${reply}\r\n`);
