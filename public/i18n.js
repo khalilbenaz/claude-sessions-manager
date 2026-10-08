@@ -277,6 +277,10 @@ const EN = {
   'Rechercher, agir…': 'Search, act…', 'Oui': 'Yes', 'Toujours': 'Always', 'Non': 'No',
   'Glisse une session sur un panneau · Ctrl Alt ← → pour changer de panneau': 'Drag a session onto a pane · Ctrl Alt ← → to switch pane',
   'Accessible depuis l’app Claude': 'Available from the Claude app',
+  'Premier message': 'First message', '(envoyé dès que la session est prête)': '(sent as soon as the session is ready)', 'Que doit faire Claude ?': 'What should Claude do?',
+  'Verrouiller par mot de passe': 'Lock with a password', 'Lancer la session': 'Launch session', 'Raccourci': 'Shortcut',
+  'Dépôt git détecté': 'Git repository detected', 'branche': 'branch', 'Pas un dépôt git': 'Not a git repository',
+  'Voir les modifications': 'View changes',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',

@@ -19,6 +19,24 @@
     }
     return out.join('\n');
   }
+  // Sépare une demande d'autorisation en : phrase de la demande, outil + commande concernés, reste du contexte.
+  // Mise en page de Claude Code : « Bash command » (ou « Edit file »…), la commande indentée, puis « Do you want to proceed? ».
+  const NL = '\n';
+  const ASK = /Do you want|proceed|permission|autoris|approv/i;
+  const TOOL = /^\s*(?:(?:Bash|Read|Edit|Write|Update|MultiEdit|NotebookEdit|Glob|Grep|WebFetch|WebSearch|Task)\(.*|[A-Z][\w ]*(?:command|file))\s*$/;
+  function splitPerm(ctx) {
+    const L = ctx.split(NL);
+    let q = -1; for (let i = L.length - 1; i >= 0; i--) if (ASK.test(L[i])) { q = i; break; }
+    if (q < 0) return { ask: '', tool: '', cmd: '', rest: ctx };
+    let h = -1; for (let i = q - 1; i >= Math.max(0, q - 8); i--) if (TOOL.test(L[i])) { h = i; break; }
+    if (h < 0) return { ask: L[q].trim(), tool: '', cmd: '', rest: L.filter((_, i) => i !== q).join(NL) };
+    const call = /^\s*(\w+)\((.*)\)\s*$/.exec(L[h]);
+    const body = L.slice(h + 1, q).map(x => x.replace(/^ {1,4}/, '')).join(NL).trim();
+    return {
+      ask: L[q].trim(), tool: call ? call[1] : L[h].trim(), cmd: call ? call[2] : body,
+      rest: [...L.slice(0, h), ...L.slice(q + 1)].join(NL),
+    };
+  }
   const ago = ts => { const m = Math.max(0, Math.round((Date.now() - ts) / 60000)); return m < 1 ? t('à l’instant') : m < 60 ? `${t('il y a')} ${m} min` : `${t('il y a')} ${Math.round(m / 60)} h`; };
 
   const isPerm = (s, ctx) => /permission|autoris|approv|proceed|Do you want/i.test(`${s.message} ${ctx.slice(-400)}`);
@@ -53,7 +71,17 @@
     head.append(dot, el('b', '', s.name), el('span', `atKind k-${x.kind}${x.risk ? ' risk' : ''}`, kind), el('span', 'atWhen', ago(s.statusSince)));
     art.append(head);
     if (x.kind !== 'review' && s.message && s.message !== 'attend une réponse') art.append(el('p', '', t(s.message)));
-    if (x.ctx) art.append(el('pre', 'atCtx', x.ctx));
+    if (x.kind === 'perm') {
+      const p = splitPerm(x.ctx);
+      if (p.ask) art.append(el('p', 'atAsk', p.ask));
+      if (p.cmd) {
+        const box = el('div', 'atCmdBox');
+        if (p.tool) box.append(el('span', 'atCmdLbl', p.tool));
+        box.append(el('pre', 'atCmd', p.cmd));
+        art.append(box);
+      }
+      if (p.rest.trim()) art.append(el('pre', 'atCtx', p.rest));
+    } else if (x.ctx) art.append(el('pre', 'atCtx', x.ctx));
     const acts = el('div', 'atActs');
     const done = () => setTimeout(render, 400);
     if (x.kind === 'perm') {
@@ -67,6 +95,7 @@
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
       acts.append(inp, btn(t('Répondre'), 'primary', go));
     } else {
+      acts.append(btn(t('Voir les modifications'), 'primary', () => { $('#dlgAttention').close(); select(s.id); F.showPanel?.('changes'); }));
       acts.append(btn(t('Marquer comme vu'), '', () => { unread.delete(s.id); api('POST', `/api/sessions/${s.id}/seen`).catch(() => { }); render(); }));
     }
     acts.append(btn(t('Ouvrir la session'), 'ghost', () => { $('#dlgAttention').close(); select(s.id); }));

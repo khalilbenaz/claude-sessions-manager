@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="syncsettings.css">
 <link rel="stylesheet" href="dashboard.css">
 <link rel="stylesheet" href="workspace.css">
+<link rel="stylesheet" href="newsession.css">
 <meta name="csm-token" content="__CSM_TOKEN__">
 <meta name="csm-version" content="__CSM_VERSION__">
 </head>
@@ -157,7 +158,7 @@
 </dialog>
 <dialog id="dlgNew">
   <form method="dialog" id="formNew">
-    <h2>Nouvelle session</h2>
+    <h2 class="nsHead"><span>Nouvelle session</span> <kbd id="nsKbd" class="nsKbd" title="Raccourci"></kbd></h2>
     <div id="tplRow" hidden>
       <div class="secTitle">Partir d'un modèle</div>
       <div id="tplCards" class="tplCards" role="radiogroup" aria-label="Modèle de session"></div>
@@ -170,6 +171,7 @@
       </span>
       <datalist id="dirs"></datalist>
     </label>
+    <p id="cwdGit" class="nsGit" aria-live="polite" hidden><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="9" r="2.5"/><path d="M6 8.5v7M18 11.5c0 4-6 3-11 5"/></svg><span id="cwdGitTxt"></span></p>
     <div class="row">
       <label>Nom <input name="name" placeholder="(nom du dossier)" autocomplete="off"></label>
       <label>Groupe <input name="group" list="groups" placeholder="(aucun)" autocomplete="off"></label>
@@ -203,15 +205,16 @@
       <p class="hint" id="wtHint"></p>
     </div>
     <label class="check"><input type="checkbox" name="remote"> <span>📱 Accessible depuis l'<b>app Claude</b> (téléphone) et claude.ai/code — Remote Control de Claude Code</span></label>
+    <label class="check"><input type="checkbox" name="lockpw"> <span>Verrouiller par mot de passe</span></label>
+    <label class="nsPrompt">Premier message <span class="hint">(envoyé dès que la session est prête)</span> <textarea name="prompt" rows="3" spellcheck="false" placeholder="Que doit faire Claude ?"></textarea></label>
     <details>
       <summary>Options avancées</summary>
-      <label>Premier prompt (envoyé dès que la session est prête) <textarea name="prompt" rows="3" spellcheck="false"></textarea></label>
       <label>Arguments supplémentaires <input name="extra" placeholder="--add-dir ..." spellcheck="false"></label>
     </details>
     <menu>
       <button type="button" id="btnSaveTpl" class="left">Enregistrer comme modèle</button>
       <button value="cancel" formnovalidate>Annuler</button>
-      <button value="ok" class="primary">Lancer</button>
+      <button value="ok" class="primary">Lancer la session</button>
     </menu>
   </form>
 </dialog>
