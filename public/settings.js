@@ -161,6 +161,9 @@
     $('#syncSetup').hidden = st.enabled;
     $('#syncOn').hidden = !st.enabled;
     $('#syncCodeShow').textContent = st.code || '';
+    if (!st.enabled) setCodeShown(false);
+    const got = (st.received || 0) + (st.memReceived || 0) + (st.nmReceived || 0) + (st.cfReceived || 0);
+    $('#syncRecv').textContent = st.enabled && got ? `${got} ${t('éléments reçus')}` : '';
     const when = st.lastOk ? new Date(st.lastOk).toLocaleTimeString() : '';
     $('#syncStatus').textContent = st.invalid ? t('Code de synchro invalide : vérifie qu’il a bien 20 caractères (XXXX-XXXX-XXXX-XXXX-XXXX).')
       : !st.enabled ? t('Synchronisation désactivée.')
@@ -176,6 +179,13 @@
   }
   async function useCode(code) { await saveSettings({ syncCode: code }); await syncNow(); }
   $('#syncNow').onclick = syncNow;
+  // code masqué par défaut (le texte reste dans l'élément, c'est le CSS qui le cache)
+  function setCodeShown(on) {
+    $('#syncCodeShow').classList.toggle('masked', !on);
+    const b = $('#syncReveal'); b.textContent = t(on ? 'Masquer' : 'Afficher'); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  $('#syncReveal').onclick = () => setCodeShown($('#syncCodeShow').classList.contains('masked'));
+  $('#machAdd').onclick = () => { setCodeShown(true); $('#syncOn').scrollIntoView({ block: 'center' }); $('#syncReveal').focus(); };
   $('#syncCopy').onclick = () => clip.copy($('#syncCodeShow').textContent).then(() => toast(t('Code copié : saisis-le dans Réglages › Synchronisation sur ton autre machine. Ne le partage avec personne d’autre.')));
   $('#syncOff').onclick = async () => {
     if (!confirm(t('Désactiver la synchronisation sur cette machine ? Les sessions restent ici. Garde ton code si tu veux la réactiver.'))) return;
@@ -309,8 +319,21 @@
       const detail = Object.entries(u.parts || {}).sort((a, b) => b[1].bytes - a[1].bytes).map(([k, p]) => `${t(PART_LABEL[k] || k)} ${fmtMB(p.bytes)} (${p.n})`).join(' · ');
       $('#usageBar small').textContent = `${t('Place sur le serveur de synchro')} : ${fmtMB(u.bytes)} ${t('sur')} ${fmtMB(u.max)} · ${u.sessions} ${t('sessions')}${detail ? '\n' + detail : ''}`;
     }
-    $('#machineList').innerHTML = d.machines.map(m => `<li data-id="${esc(m.id)}"><div><b>${esc(m.name)}${m.me ? ' · ' + t('cette machine') : ''}</b><small>${esc(OS[m.platform] || m.platform || '?')} · v${esc(m.version || '?')} · ${t('mémoire')} ${esc(m.engine === 'claude-mem' ? 'claude-mem' : m.engine === 'off' ? t('désactivée') : t('intégrée'))}${m.seen ? ' · ' + t('vue') + ' ' + esc(new Date(m.seen).toLocaleString()) : ''}</small></div>
-      ${m.me ? '' : `<span class="acts"><button data-a="del">${t('Retirer')}</button></span>`}</li>`).join('');
+    const nm = d.machines.length;
+    $('#syncMachCount').textContent = `${nm} ${t(nm > 1 ? 'machines' : 'machine')}`;
+    const mine = { win32: 'ce PC', darwin: 'ce Mac' };
+    $('#machineList').textContent = '';
+    for (const m of d.machines) {
+      const li = document.createElement('li'); li.dataset.id = m.id; if (m.me) li.classList.add('me');
+      const box = document.createElement('div');
+      const b = document.createElement('b'); b.textContent = m.name;
+      if (m.me) { const tag = document.createElement('span'); tag.className = 'meTag'; tag.textContent = t(mine[m.platform] || 'cette machine'); b.append(' ', tag); }
+      const sm = document.createElement('small');
+      sm.textContent = `${OS[m.platform] || m.platform || '?'} · v${m.version || '?'} · ${t('mémoire')} ${m.engine === 'claude-mem' ? 'claude-mem' : m.engine === 'off' ? t('désactivée') : t('intégrée')}${m.seen ? ' · ' + t('vue') + ' ' + new Date(m.seen).toLocaleString() : ''}`;
+      box.append(b, sm); li.append(box);
+      if (!m.me) { const acts = document.createElement('span'); acts.className = 'acts'; const x = document.createElement('button'); x.dataset.a = 'del'; x.textContent = t('Retirer'); acts.append(x); li.append(acts); }
+      $('#machineList').append(li);
+    }
     $('#machineList').querySelectorAll('[data-a=del]').forEach(b => {
       b.onclick = async () => { await api('DELETE', `/api/sync/machines/${b.closest('li').dataset.id}`); renderMachines(true); };
     });
