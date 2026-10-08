@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.33.1] — 2026-10-08
+### Modifié
+- Icônes dessinées (traits, couleur du thème) à la place des emoji : recherche, historique, nouveau groupe, réglages, barre compacte, renommer, modifications, ouvrir, joindre, plus d'actions, dispositions, actions des groupes. Libellés accessibles (lecteurs d'écran) sur les boutons-icônes.
+
 ## [3.33.0] — 2026-10-08
 ### Ajouté
 - **Usage de Claude** (refonte, étape 4) : <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>U</kbd>, palette ou clic sur les quotas de la barre latérale. Sessions actives, demandes à traiter, temps de travail de Claude du jour (dont « sans toi », via la file d'attente), coût estimé jour / 7 jours ; quota 5 h avec historique et prévision de la limite ; prochaines tâches planifiées ; détail par session.

@@ -425,9 +425,9 @@ function groupHead(g, count) {
   h.querySelector('.gcount').textContent = count;
   if (g && g !== '📌') {
     const acts = h.querySelector('.gacts');
-    for (const [cls, icon, title, run] of [['gren', '✎', t('Renommer le groupe…'), renameGroup], ['gdel', '✕', t('Supprimer le groupe'), deleteGroup]]) {
+    for (const [cls, icon, title, run] of [['gren', '<svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', t('Renommer le groupe…'), renameGroup], ['gdel', '<svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>', t('Supprimer le groupe'), deleteGroup]]) {
       const b = document.createElement('button');
-      b.className = cls; b.textContent = icon; b.title = title;
+      b.className = cls; b.innerHTML = icon; b.title = title; b.setAttribute('aria-label', title); // icône fixe (pas de donnée)
       b.onclick = e => { e.stopPropagation(); clearTimeout(groupClickTimer); run(g); };
       b.ondblclick = e => e.stopPropagation();
       acts.appendChild(b);
@@ -482,7 +482,7 @@ function render() {
     li.draggable = true;
     li.dataset.id = s.id;
     li.title = `${s.name}\n${s.cwd}${s.worktree ? `\n⎇ ${s.worktree.branch}` : ''}\n${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + t(s.message) : ''}`;
-    li.innerHTML = `<span class="dot ${s.status}"></span><span class="n"></span><span class="acts"><button class="ren" title="Renommer">✎</button><span class="k">${i < 9 ? i + 1 : ''}${unread.has(s.id) && s.id !== active ? ' •' : ''}</span></span><span class="sub"></span>`;
+    li.innerHTML = `<span class="dot ${s.status}"></span><span class="n"></span><span class="acts"><button class="ren" title="Renommer" aria-label="Renommer"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><span class="k">${i < 9 ? i + 1 : ''}${unread.has(s.id) && s.id !== active ? ' •' : ''}</span></span><span class="sub"></span>`;
     li.querySelector('.n').textContent = (s.locked ? (window.csmFeatures.isLockedHere?.(s.id) ? '🔒 ' : '🔓 ') : '') + s.name;
     li.querySelector('.dot').textContent = '';
     li.querySelector('.dot').dataset.initial = (s.name || '?').trim().charAt(0).toUpperCase();

@@ -597,3 +597,9 @@ dialog.dbDlg form { display: flex; flex-direction: column; gap: 14px; min-height
 .dbDlg .atTop h2 { flex: none; }
 .dbTable th.num { font-family: inherit; }
 .dbDlg form { flex: 0 1 auto; }
+
+/* icônes dessinées (refonte Atelier) : suivent la couleur du texte du bouton */
+svg.ic { flex: none; vertical-align: -3px; }
+#side footer button, #bar button, .palHint { display: inline-flex; align-items: center; gap: 6px; }
+#side footer button.icon, #bar button.icon { justify-content: center; }
+.layouts button { display: inline-flex; align-items: center; justify-content: center; }
