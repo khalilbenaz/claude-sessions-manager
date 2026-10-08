@@ -1409,10 +1409,10 @@ test('quotas 5 h et 7 j : reçus de la barre d’état, servis à l’interface'
   await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 9, resetAt: r5, seven: { pct: 80, resetAt: q.seven.resetAt } } });
   let q2 = await api('GET', '/api/quota');
   assert.equal(q2.five.pct, 21); assert.equal(q2.seven.pct, 88);
-  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 3, resetAt: r5 + 5 * 3600e3 } });
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 3, resetAt: r5 + 10 * 60e3 } });
   q2 = await api('GET', '/api/quota');
   assert.equal(q2.five.pct, 3);
-  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 0, resetAt: r5 + 10 * 3600e3 } });
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 0, resetAt: r5 + 20 * 60e3 } });
   await api('DELETE', `/api/sessions/${S.id}`);
 });
 
