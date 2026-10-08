@@ -884,7 +884,7 @@ function moreItems(id) {
     [t('Modifications'), () => window.csmFeatures.showPanel('changes'), { kbd: `${MOD}+Alt+G` }],
     [t('Chronologie'), () => window.csmFeatures.showPanel('timeline')],
     [t('Consommation'), () => window.csmFeatures.showPanel('usage')],
-    [isRemote(s) ? t('Désactiver l’accès depuis l’app Claude') : t('📱 Accès depuis l’app Claude (téléphone)'), () => setRemote(id, !isRemote(s))],
+    [isRemote(s) ? t('Désactiver l’accès depuis l’app Claude') : t('Accès depuis l’app Claude (téléphone)'), () => setRemote(id, !isRemote(s))],
     [t('Exporter la conversation…'), () => window.csmFeatures.exportConversation(s), { disabled: !s.claudeSessionId }],
     [t('Enregistrer comme modèle…'), () => saveSessionAsTemplate(id)],
     '-',

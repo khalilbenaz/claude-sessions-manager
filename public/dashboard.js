@@ -54,7 +54,7 @@
     return [plot, axis];
   }
   const CH5 = { span: 5 * 3600e3, slot: 10 * 60e3, tick: 3600e3, ticks: 6, label: hm };
-  const CH7 = { span: 7 * 86400e3, slot: 86400e3, tick: 86400e3, ticks: 7, label: ts => `${t(DAYS[new Date(ts).getDay()])} ${hm(ts)}` };
+  const CH7 = { span: 7 * 86400e3, slot: 86400e3, tick: 86400e3, ticks: 7, label: ts => t(DAYS[new Date(ts).getDay()]) };
 
   // « 12 sessions sur ce PC · 3 sur le Mac », d'après l'origine des sessions (machine qui les a créées)
   function machineSummary(machines) {

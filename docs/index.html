@@ -238,7 +238,7 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
   </div>
 
   <section id="nouveautes">
-    <p class="eyebrow">Nouveautés 3.33</p>
+    <p class="eyebrow">Nouveautés 3.33 → 3.35</p>
     <h2>Une refonte complète, pensée pour travailler à plusieurs Claude</h2>
     <p class="sub">Nouvelle interface « Atelier », un endroit pour tout ce qui vous attend, l'usage de Claude en un coup d'œil, et des extensions pour ajouter vos propres types de session sans écrire de code.</p>
     <div class="grid">
@@ -262,7 +262,7 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
         <ul>
           <li>Envoi groupé : le même message à tous les panneaux visibles</li>
           <li>« En file si occupée » : il attend que Claude ait fini</li>
-          <li>Le panneau actif est entouré, son état reste visible</li>
+          <li>Une autorisation ? Oui / Toujours / Non directement dans le panneau</li>
         </ul>
       </div>
       <div class="window themed"><div class="tb"><i></i><i></i><i></i><span>Vue partagée 2×2</span></div><img class="dark" src="img/split.png" width="1440" height="900" loading="lazy" alt="Grille de quatre sessions avec la barre d'envoi groupé en bas"><img class="light" src="img/split-light.png" width="1440" height="900" loading="lazy" alt="Grille de quatre sessions avec la barre d'envoi groupé en bas"></div>
@@ -291,7 +291,8 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
         <ul>
           <li>Quotas 5 h et 7 jours toujours en bas de la barre latérale, même avec votre propre barre d'état</li>
           <li>La file d'attente se met en pause près de la limite, puis repart</li>
-          <li>Tokens et coût par session sur 7 jours, tâches planifiées</li>
+          <li>Prévision aussi pour le quota 7 jours ; période jour, 7 ou 30 jours</li>
+          <li>Toutes vos machines additionnées (totaux chiffrés, jamais de conversation)</li>
         </ul>
         <p class="kbds"><kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Alt</kbd>+<kbd>U</kbd>, ou un clic sur les quotas.</p>
       </div>
@@ -362,7 +363,7 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
       <div class="card"><h3><svg class="i"><use href="#i-branch"/></svg>Un worktree par session</h3><p>Chaque session a sa branche ; fusion en un clic quand c'est prêt.</p></div>
       <div class="card"><h3><svg class="i"><use href="#i-diff"/></svg>Panneau Modifications</h3><p>Fichiers modifiés, diff coloré, annuler un fichier, commit avec message proposé.</p></div>
       <div class="card"><h3><svg class="i"><use href="#i-folder"/></svg>Groupes</h3><p>Créez, renommez, supprimez des groupes ; glissez-y vos sessions. Épinglez les plus importantes.</p></div>
-      <div class="card"><h3><svg class="i"><use href="#i-cmd"/></svg>Palette de commandes</h3><p><kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> : sessions, conversations, modèles, prompts et actions, en quelques lettres.</p></div>
+      <div class="card"><h3><svg class="i"><use href="#i-cmd"/></svg>Palette de commandes</h3><p><kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> : sessions, conversations, modèles, prompts et actions rangés par sections ; <code>&gt;</code> pour les commandes, <code>/</code> pour les prompts.</p></div>
       <div class="card"><h3><svg class="i"><use href="#i-queue"/></svg>File d'attente et prompts</h3><p>Des demandes qui partent quand Claude a fini, une bibliothèque de prompts, un envoi à plusieurs sessions.</p></div>
       <div class="card"><h3><svg class="i"><use href="#i-clock"/></svg>Demandes programmées</h3><p>Un prompt, ou un modèle lancé, à heure fixe : une fois, ou certains jours.</p></div>
       <div class="card"><h3><svg class="i"><use href="#i-gauge"/></svg>La file suit votre quota</h3><p>Pause près de la limite des 5 h, reprise à la réinitialisation ; les sessions coupées reprennent avec « continue ».</p></div>

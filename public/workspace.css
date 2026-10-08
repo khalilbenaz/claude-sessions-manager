@@ -45,3 +45,7 @@ body.compact #side footer .syncFoot { display: none; }
 .phead .pperm[hidden] { display: none; }
 .phead .pperm button { height: 22px; padding: 0 8px; font-size: 11.5px; }
 .phead .pperm ~ .pclose { margin-left: 4px; }
+
+/* le chemin prend la place libre de la barre (il ne dicte pas sa largeur : contain) */
+#bar .curId { flex: 1 1 auto; min-width: 0; } /* largeur naturelle + part de la place libre ; rétrécit avant les boutons */
+#bar .curId .cwd { contain: inline-size; width: 100%; }
