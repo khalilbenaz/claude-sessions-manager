@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.34.1] — 2026-10-08
+### Corrigé
+- « Erreur JavaScript dans le processus principal : EPIPE » à la vérification des mises à jour (sortie standard fermée).
+- « Création impossible : Terminal is not defined » : une fenêtre chargée pendant le redémarrage du serveur (mise à jour) se recharge seule ; **F5** recharge la fenêtre.
+- Quota de la barre latérale et de l'usage différent de celui de la console : la valeur ancienne d'une session inactive n'écrase plus la plus récente ; dernière valeur toujours transmise, relevée toutes les 10 s.
+- Notifications « Ta connexion à Claude expire… » envoyées par les instances de test (développement) : plus aucune notification système depuis une instance de test.
+- Nouvelle session : modèles sur une ligne, quatre par rangée, sans défilement.
+
 ## [3.34.0] — 2026-10-08
 ### Ajouté
 - **Extensions par lien** : Réglages › Extensions accepte un lien GitHub (fichier, dossier, dépôt entier : `.csm.json` à la racine, dans `csm/` ou `extensions/`), un gist ou une adresse https. Dépôt privé via la CLI GitHub connectée (jeton envoyé seulement à l'API GitHub, sans redirection). **Mettre à jour** réimporte depuis le même lien.
