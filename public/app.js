@@ -948,6 +948,7 @@ function openNew(tpl) {
   });
   $('#dlgNew').showModal();
   checkRepo();
+  const kb = $('#nsKbd'); if (kb) kb.textContent = IS_MAC ? '⌘⌥N' : 'Ctrl Alt N';
   f.cwd.select();
 }
 function applyTemplate(x) {
@@ -959,7 +960,6 @@ function applyTemplate(x) {
   f.extra.value = x.extra || ''; f.prompt.value = x.prompt || ''; f.group.value = x.group || '';
   f.worktree.checked = !!x.worktree;
   f.dataset.type = x.type || ''; // type de session d'une extension (affichage dédié)
-  if (x.prompt) f.querySelector('details').open = true;
   checkRepo();
 }
 $('#formNew').template.onchange = e => { const f = $('#formNew'); f.dataset.type = ''; applyTemplate([...templates, ...extTemplates].find(x => x.id === e.target.value)); };
@@ -967,18 +967,25 @@ let extTemplates = [];
 async function loadExtTemplates() { try { extTemplates = await api('GET', '/api/extensions/templates'); } catch { extTemplates = []; } return extTemplates; }
 // Worktree : proposé seulement dans un dépôt git ; nom de branche suggéré depuis le nom de la session.
 let repoTimer = null;
+// Indication sous le dossier : dépôt git (branche courante) ou non. r = réponse de suggest-branch, null = rien à dire.
+function showGit(r) {
+  const p = $('#cwdGit'); if (!p) return;
+  p.hidden = !r; p.classList.toggle('repo', !!r?.repo);
+  if (r) $('#cwdGitTxt').textContent = r.repo ? `${t('Dépôt git détecté')} · ${t('branche')} ${r.base}` : t('Pas un dépôt git');
+}
 function checkRepo() {
   clearTimeout(repoTimer);
   repoTimer = setTimeout(async () => {
     const f = $('#formNew');
-    const cwd = f.cwd.value.trim(); if (!cwd) { $('#wtBox').hidden = true; return; }
+    const cwd = f.cwd.value.trim(); if (!cwd) { $('#wtBox').hidden = true; showGit(null); return; }
     try {
       const r = await api('GET', `/api/git/suggest-branch?cwd=${encodeURIComponent(cwd)}&name=${encodeURIComponent(f.name.value || cwd.split(/[\\/]/).filter(Boolean).pop() || 'session')}`);
+      showGit(r);
       $('#wtBox').hidden = !r.repo;
       if (!r.repo) { f.worktree.checked = false; return; }
       if (!f.branch.dataset.touched) f.branch.value = r.branch;
       $('#wtHint').textContent = f.worktree.checked ? `${t('Dossier')} : ${r.root}.worktrees/… · ${t('base')} : ${r.base}` : '';
-    } catch { $('#wtBox').hidden = true; }
+    } catch { $('#wtBox').hidden = true; showGit(null); }
     $('#wtBranchRow').hidden = !f.worktree.checked;
   }, 250);
 }
@@ -1003,7 +1010,7 @@ $('#btnBrowse').onclick = async () => {
     // Application : boîte de dialogue native d'Electron ; navigateur : dialogue système ouvert par le serveur.
     const path = window.csmNative ? await window.csmNative.pickFolder(initial) : (await api('POST', '/api/pick-folder', { initial })).path;
     if (path) {
-      f.cwd.value = path;
+      f.cwd.value = path; checkRepo();
       if (!f.name.value.trim()) f.name.placeholder = path.split(/[\\/]/).filter(Boolean).pop() || '(nom du dossier)';
     }
   } catch (e) { alert(`Sélecteur indisponible : ${e.message}`); }
@@ -1015,12 +1022,14 @@ $('#dlgNew').addEventListener('close', async () => {
   const args = [f.model.value && `--model ${f.model.value}`, f.mode.value && `--permission-mode ${f.mode.value}`, f.extra.value.trim()].filter(Boolean).join(' ');
   const cwd = f.cwd.value.trim().replace(/^"|"$/g, '');
   LS.set('csm.lastCwd', cwd);
+  const wantLock = f.lockpw.checked;
   const body = { cwd, name: f.name.value.trim() || undefined, args, group: f.group.value.trim() || undefined, initialPrompt: f.prompt.value.trim() || undefined, remote: f.remote.checked, type: f.dataset.type || undefined };
   try {
     const s = f.worktree.checked && !$('#wtBox').hidden
       ? await api('POST', '/api/worktree/session', { ...body, branch: f.branch.value.trim() })
       : await api('POST', '/api/sessions', body);
     sessions.set(s.id, s); ensureTerm(s.id); select(s.id);
+    if (wantLock) window.csmFeatures.setPassword?.(s.id); // même flux que « Verrouiller par mot de passe… »
   } catch (e) { alert(`${t('Création impossible')} : ${e.message}`); return; }
   delete f.branch.dataset.touched;
   askNotify();
