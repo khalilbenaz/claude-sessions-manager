@@ -15,8 +15,9 @@ const STATUS_LABEL = { starting: t('démarrage'), working: t('travaille'), atten
 // Réglages (serveur) : voir lib/settings.js. Valeurs par défaut en attendant la réponse.
 let SETTINGS = { theme: 'system', fontSize: 14, fontFamily: '', defaultModel: 'opus', defaultMode: '', notifications: true, sound: 'off', dnd: false, waitingMinutes: 10, longRunMinutes: 0, worktreeDefault: false, compactSidebar: false, autoUpdate: true, autoRestart: true, syncMinutes: 5, onboarded: true };
 const THEMES = {
-  dark: { background: '#101114', foreground: '#e6e6e6', cursor: '#d97757', selectionBackground: '#3a4150' },
-  light: { background: '#fbfaf8', foreground: '#1f1b18', cursor: '#c4613f', selectionBackground: '#d9d2c7', black: '#1f1b18', brightBlack: '#6b6560', white: '#8b8580', brightWhite: '#1f1b18', yellow: '#9a6b00', brightYellow: '#8a5a00', green: '#1f7a3f', brightGreen: '#1a6b36', cyan: '#0e6f86', brightCyan: '#0b5f73', blue: '#1f5fbf', brightBlue: '#1a4fa0', magenta: '#8a3fa0', brightMagenta: '#7a2f90', red: '#c0392b', brightRed: '#a93226' },
+  // refonte Atelier : fond graphite / ivoire, curseur argile
+  dark: { background: '#0e0f11', foreground: '#d6d3cc', cursor: '#d97757', cursorAccent: '#0e0f11', selectionBackground: '#34363c' },
+  light: { background: '#fbfaf8', foreground: '#2a2a2d', cursor: '#b8552f', cursorAccent: '#fbfaf8', selectionBackground: '#e2dfd8', black: '#1c1c1e', brightBlack: '#5e6168', white: '#8a8d93', brightWhite: '#1c1c1e', yellow: '#9a6b00', brightYellow: '#8a5a00', green: '#1f7a3f', brightGreen: '#1a6b36', cyan: '#0e6f86', brightCyan: '#0b5f73', blue: '#1f5fbf', brightBlue: '#1a4fa0', magenta: '#8a3fa0', brightMagenta: '#7a2f90', red: '#c0392b', brightRed: '#a93226' },
 };
 const themeName = () => SETTINGS.theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : SETTINGS.theme;
 const termTheme = () => THEMES[themeName()] || THEMES.dark;
@@ -63,7 +64,7 @@ function ensureTerm(id) {
   el.className = 'term';
   $('#park').appendChild(el);
   const term = new Terminal({
-    fontFamily: SETTINGS.fontFamily || '"Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", Menlo, monospace', fontSize: LS.get('csm.font', SETTINGS.fontSize || 14),
+    fontFamily: SETTINGS.fontFamily || '"JetBrains Mono", "Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", Menlo, monospace', fontSize: LS.get('csm.font', SETTINGS.fontSize || 14),
     cursorBlink: true, scrollback: 10000, allowProposedApi: true, macOptionIsMeta: true,
     theme: termTheme(), minimumContrastRatio: termContrast(),
   });
@@ -264,6 +265,8 @@ function connect() {
       if (langChanged) location.reload();
     } else if (m.t === 'schedules') {
       window.dispatchEvent(new CustomEvent('csm:schedules'));
+    } else if (m.t === 'quota') {
+      window.dispatchEvent(new CustomEvent('csm:quota'));
     } else if (m.t === 'view') {
       window.dispatchEvent(new CustomEvent('csm:view', { detail: m.id }));
     } else if (m.t === 'extensions') {
@@ -1192,7 +1195,13 @@ window.csmNative?.onAction(a => {
 });
 
 window.csmFeatures = {}; // rempli par panel.js, settings.js, palette.js
-loadSettings().finally(() => { connect(); setLayout(layout); window.dispatchEvent(new Event('csm:ready')); document.documentElement.dataset.ready = '1'; }); // réglages et langue définitifs (repère pour les tests)
+// polices embarquées chargées avant de mesurer les terminaux (sinon largeur des caractères fausse)
+const fontsReady = (document.fonts?.load ? Promise.all(['400 13px "JetBrains Mono"', '500 13px "JetBrains Mono"', '400 14px "IBM Plex Sans"'].map(f => document.fonts.load(f))) : Promise.resolve()).catch(() => { });
+// police arrivée après l'ouverture des terminaux : nouvelle mesure des caractères, puis ajustement
+fontsReady.then(() => { for (const tt of terms.values()) { tt.term.options.fontFamily = tt.term.options.fontFamily; } fitAll(true); });
+// fenêtre de nouveau visible (sortie de la zone de notification…) : terminaux réajustés et redessinés
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => fitAll(true), 50); });
+loadSettings().then(() => Promise.race([fontsReady, new Promise(r => setTimeout(r, 1500))])).finally(() => { connect(); setLayout(layout); window.dispatchEvent(new Event('csm:ready')); document.documentElement.dataset.ready = '1'; }); // réglages et langue définitifs (repère pour les tests)
 
 // ------------------------------------------------------------------ version du serveur
 // Le serveur survit aux mises à jour de l'app : s'il tourne un ancien code, les nouvelles routes manquent.

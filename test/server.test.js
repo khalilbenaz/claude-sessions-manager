@@ -1397,3 +1397,13 @@ test('synchro : plugins Claude Code — publiés, installés ailleurs (après va
     await api('PUT', '/api/settings', { syncCode: '' }); fake.srv.close();
   }
 });
+
+test('quotas 5 h et 7 j : reçus de la barre d’état, servis à l’interface', async () => {
+  const S = await api('POST', '/api/sessions', { cwd: WORK, name: 'quota-ui' });
+  await idle(S.id);
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 21, resetAt: Date.now() + 3600e3, seven: { pct: 88, resetAt: Date.now() + 2 * 86400e3 } } });
+  const q = await api('GET', '/api/quota');
+  assert.equal(q.five.pct, 21); assert.equal(q.seven.pct, 88);
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 0, resetAt: 0 } });
+  await api('DELETE', `/api/sessions/${S.id}`);
+});

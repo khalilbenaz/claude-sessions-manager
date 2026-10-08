@@ -192,6 +192,10 @@ const EN = {
   "En cours…": "Working…",
   "Fait : redémarre les sessions pour charger le plugin": "Done: restart sessions to load the plugin",
   "Ignoré": "Ignored",
+  "Quota 5 h": "5-hour quota",
+  "Quota 7 j": "7-day quota",
+  "reset": "reset",
+  "Synchro : erreur": "Sync: error",
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
