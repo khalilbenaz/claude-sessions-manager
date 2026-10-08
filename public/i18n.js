@@ -274,6 +274,9 @@ const EN = {
   'ce PC': 'this PC', 'ce Mac': 'this Mac', 'le PC': 'the PC', 'le Mac': 'the Mac', 'session sur': 'session on', 'sessions sur': 'sessions on', 'sur': 'on',
   'Usage de Claude (temps, coût, tokens par jour et par session, chiffrés ; jamais de conversation)': 'Claude usage (time, cost, tokens per day and per session, encrypted; never any conversation)',
   'Quota 7 jours : prévision': '7-day quota: forecast', 'Pas encore de quota sur 7 jours.': 'No 7-day quota yet.', 'Prévision dès quelques heures de mesures.': 'Forecast after a few hours of measurements.',
+  'Rechercher, agir…': 'Search, act…', 'Oui': 'Yes', 'Toujours': 'Always', 'Non': 'No',
+  'Glisse une session sur un panneau · Ctrl Alt ← → pour changer de panneau': 'Drag a session onto a pane · Ctrl Alt ← → to switch pane',
+  'Accessible depuis l’app Claude': 'Available from the Claude app',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
