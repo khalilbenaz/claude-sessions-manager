@@ -3,6 +3,12 @@ const $ = s => document.querySelector(s);
 const TOKEN = document.querySelector('meta[name="csm-token"]').content;
 const IS_MAC = /Mac/i.test(navigator.platform || navigator.userAgent);
 const LS = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } } };
+// Page chargée pendant un redémarrage du serveur (mise à jour) : le terminal (xterm) n'a pas pu se charger.
+// On recharge la page dès que le serveur répond, au lieu de laisser « Terminal is not defined » à la création.
+if (typeof Terminal === 'undefined' || typeof FitAddon === 'undefined') {
+  const n = Number(sessionStorage.getItem('csm.reloadXterm') || 0);
+  if (n < 5) { sessionStorage.setItem('csm.reloadXterm', String(n + 1)); setTimeout(() => location.reload(), 1500 * (n + 1)); }
+} else sessionStorage.removeItem('csm.reloadXterm');
 
 const sessions = new Map(); // id -> public view
 const terms = new Map();    // id -> { term, fit, el }
