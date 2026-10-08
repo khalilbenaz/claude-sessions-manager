@@ -1324,3 +1324,42 @@ test('synchro : une extension importée ici s’installe sur les autres machines
     await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get('csmext-ext-synchro').deleted === 1; }, 10000, 'suppression envoyée');
   } finally { await api('PUT', '/api/settings', { syncCode: '' }); fake.srv.close(); }
 });
+
+test('synchro : extensions fournies par un plugin — copie sur les machines sans le plugin, version locale gardée sinon', async () => {
+  const { encodeCode } = require('../lib/sync');
+  const KEY = 'p'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  const plug = path.join(HOME, 'plugin-sync');
+  const cfg = path.join(HOME, '.claude', 'plugins');
+  fs.mkdirSync(path.join(plug, 'csm'), { recursive: true }); fs.mkdirSync(cfg, { recursive: true });
+  const inst = path.join(cfg, 'installed_plugins.json'), old = fs.existsSync(inst) ? fs.readFileSync(inst) : null;
+  const write = v => fs.writeFileSync(path.join(plug, 'csm', 'equipe.csm.json'), JSON.stringify({ csm: 1, id: 'equipe', name: 'Équipe', version: v, templates: [{ id: 'modele', name: `Modèle ${v}` }] }));
+  const setPlugin = on => fs.writeFileSync(inst, JSON.stringify({ version: 2, plugins: on ? { 'equipe-plugin@x': [{ installPath: plug }] } : {} }));
+  const docOf = () => fake.plain(KEY, 'csmext-equipe');
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-plugin' });
+    await api('POST', '/api/sync/now');
+    // plugin installé ici : son extension est publiée (avec la provenance)
+    write('1.0.0'); setPlugin(true);
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return docOf()?.ext?.version === '1.0.0'; }, 10000, 'extension du plugin publiée');
+    assert.equal(docOf().kind, 'plugin'); assert.equal(docOf().plugin, 'equipe-plugin');
+    // une autre machine a une version plus récente du même plugin : la nôtre n'est plus republiée (pas de ping-pong)
+    const t1 = Date.now() + 1000;
+    fake.put(KEY, { uid: 'csmext-equipe', updatedAt: t1, origin: 'MacBook', data: sealed(KEY, 'csmext-equipe', t1, { ext: { csm: 1, id: 'equipe', name: 'Équipe', version: '2.0.0', templates: [{ id: 'modele', name: 'Modèle 2' }] }, enabled: true, kind: 'plugin', plugin: 'equipe-plugin' }) });
+    await api('POST', '/api/sync/now'); await api('POST', '/api/sync/now');
+    assert.equal(docOf().ext.version, '2.0.0', 'version la plus haute conservée');
+    const local = (await api('GET', '/api/extensions')).find(e => e.id === 'equipe');
+    assert.equal(local.source, 'plugin equipe-plugin', 'le plugin installé ici prime sur la copie reçue');
+    // plugin désinstallé ici : la copie reçue (2.0.0) prend le relais, marquée « reçue »
+    setPlugin(false);
+    const got = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/extensions')).find(e => e.id === 'equipe' && e.source === 'reçue'); }, 10000, 'copie reçue utilisée');
+    assert.equal(got.version, '2.0.0'); assert.match(got.from, /MacBook \(plugin equipe-plugin\)/);
+    assert.ok((await api('GET', '/api/extensions/templates')).some(t => t.id === 'equipe/modele'), 'modèles disponibles sans le plugin');
+    // l'autre machine désinstalle le plugin : copie retirée ici
+    fake.put(KEY, { uid: 'csmext-equipe', updatedAt: Date.now() + 5000, deleted: 1, data: {} });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return !(await api('GET', '/api/extensions')).some(e => e.id === 'equipe'); }, 10000, 'copie retirée');
+  } finally {
+    if (old) fs.writeFileSync(inst, old); else fs.rmSync(inst, { force: true });
+    await api('PUT', '/api/settings', { syncCode: '' }); fake.srv.close();
+  }
+});
