@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="palette.css">
 <link rel="stylesheet" href="syncsettings.css">
+<link rel="stylesheet" href="dashboard.css">
 <meta name="csm-token" content="__CSM_TOKEN__">
 <meta name="csm-version" content="__CSM_VERSION__">
 </head>
@@ -125,18 +126,24 @@
   <form method="dialog">
     <div class="atTop">
       <h2 id="dbTitle">Usage de Claude</h2>
-      <span class="hint">Aujourd'hui, sur cette machine</span>
+      <span class="hint" id="dbScopeHint">Sur cette machine</span>
       <span class="spacer"></span>
+      <div class="dbSeg" id="dbPeriod" role="group" aria-label="Période">
+        <button type="button" data-d="1" aria-pressed="true">Jour</button><button type="button" data-d="7" aria-pressed="false">7 jours</button><button type="button" data-d="30" aria-pressed="false">30 jours</button>
+      </div>
+      <select id="dbScope" aria-label="Machines" hidden><option value="me">Cette machine</option><option value="all">Toutes les machines</option></select>
       <button value="close">Fermer</button>
     </div>
     <div id="dbKpis" class="dbKpis"></div>
     <div class="dbRow">
       <section class="dbCard dbWide" aria-labelledby="dbQT"><h3 id="dbQT">Quota 5 h : prévision</h3><div id="dbQuota"></div></section>
-      <section class="dbCard" aria-labelledby="dbJT"><div class="dbCardHead"><h3 id="dbJT">Tâches planifiées</h3><button type="button" id="dbSchedules">Gérer</button></div><div id="dbJobs" class="dbJobs"></div></section>
+      <section class="dbCard dbWide" aria-labelledby="dbQ7T"><h3 id="dbQ7T">Quota 7 jours : prévision</h3><div id="dbQuota7"></div></section>
+      <section class="dbCard" aria-labelledby="dbJT"><div class="dbCardHead"><h3 id="dbJT">Tâches planifiées</h3><button type="button" id="dbSchAdd">Ajouter</button><button type="button" id="dbSchedules">Gérer</button></div><div id="dbJobs" class="dbJobs"></div></section>
     </div>
     <section class="dbCard" aria-labelledby="dbST">
-      <h3 id="dbST">Par session (7 jours)</h3>
-      <div class="dbScroll"><table class="dbTable"><thead><tr><th>Session</th><th class="num">Travail aujourd'hui</th><th class="num">Tokens</th><th class="num">Coût estimé</th></tr></thead><tbody id="dbRows"></tbody></table></div>
+      <h3 id="dbST">Par session</h3>
+      <p id="dbMachines" class="hint"></p>
+      <div class="dbScroll"><table class="dbTable"><thead><tr><th>Session</th><th id="dbColMachine" hidden>Machine</th><th class="num">Travail</th><th class="num">Tokens</th><th class="num">Coût estimé</th></tr></thead><tbody id="dbRows"></tbody></table></div>
       <p id="dbNote" class="hint"></p>
     </section>
   </form>
@@ -448,6 +455,7 @@
           <label class="sw"><input type="checkbox" role="switch" data-set="syncGroups"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Groupes</b><small>Groupes vides compris, dans l'ordre</small></span></label>
           <label class="sw"><input type="checkbox" role="switch" data-set="syncTemplates"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Modèles de session</b><small>Chiffrés</small></span></label>
           <label class="sw"><input type="checkbox" role="switch" data-set="syncPlugins"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Plugins Claude Code</b><small>Les mêmes sur toutes les machines ; validation demandée si « Me demander… » est coché</small></span></label>
+          <label class="sw"><input type="checkbox" role="switch" data-set="syncUsage"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Usage de Claude</b><small>Temps, coût et tokens par jour et par session, chiffrés ; jamais de conversation</small></span></label>
           <div id="plugPending" hidden><p class="hint"><b>Plugins à valider</b></p><ul id="plugList" class="results"></ul></div>
           <label class="sw"><input type="checkbox" role="switch" data-set="syncExtensions"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Extensions importées</b><small>Installées sur les autres machines, chiffrées</small></span></label>
           <label class="sw"><input type="checkbox" role="switch" data-set="syncSessionMemory"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Mémoire des sessions</b><small>Celle choisie dans Réglages › Général, et ce choix lui-même, chiffrés</small></span></label>
