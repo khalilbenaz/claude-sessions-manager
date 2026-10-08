@@ -49,3 +49,7 @@ body.compact #side footer .syncFoot { display: none; }
 /* le chemin prend la place libre de la barre (il ne dicte pas sa largeur : contain) */
 #bar .curId { flex: 1 1 auto; min-width: 0; } /* largeur naturelle + part de la place libre ; rétrécit avant les boutons */
 #bar .curId .cwd { contain: inline-size; width: 100%; }
+
+/* barre latérale réduite : la flèche du bouton pointe vers l'extérieur (déplier) */
+#btnCompact svg path:last-child { transform-box: fill-box; transform-origin: center; transition: transform .15s; }
+body.compact #btnCompact svg path:last-child { transform: scaleX(-1); }

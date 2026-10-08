@@ -281,6 +281,7 @@ const EN = {
   'Verrouiller par mot de passe': 'Lock with a password', 'Lancer la session': 'Launch session', 'Raccourci': 'Shortcut',
   'Dépôt git détecté': 'Git repository detected', 'branche': 'branch', 'Pas un dépôt git': 'Not a git repository',
   'Voir les modifications': 'View changes',
+  'Déplier la barre latérale': 'Expand the sidebar', 'Réduire la barre latérale': 'Collapse the sidebar',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
