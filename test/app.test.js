@@ -183,6 +183,14 @@ test('synchro : créer un code l’affiche en clair, prêt à copier', async () 
     await win.waitForSelector('#syncOn:not([hidden])');
     assert.match(await win.textContent('#syncCodeShow'), /^([0-9A-HJKMNP-TV-Z]{4}-){4}[0-9A-HJKMNP-TV-Z]{4}$/);
     assert.equal(await win.isHidden('#syncSetup'), true);
+    // carte d'en-tête : code masqué par défaut, bouton Afficher ; options en interrupteurs ; carte « Ajouter une machine »
+    assert.equal(await win.evaluate(() => document.querySelector('#syncCodeShow').classList.contains('masked')), true);
+    await win.click('#syncReveal');
+    assert.equal(await win.evaluate(() => document.querySelector('#syncCodeShow').classList.contains('masked')), false);
+    assert.equal(await win.evaluate(() => document.querySelectorAll('.syncWhat input[role=switch][data-set]').length >= 6), true);
+    assert.equal(await win.evaluate(() => { const i = document.querySelector('.syncWhat input[role=switch]:not([data-set])'); return i.checked && i.disabled; }), true);
+    await win.waitForSelector('#machineList li.me');
+    assert.equal(await win.isVisible('#machAdd'), true);
     await win.waitForFunction(() => /✓/.test(document.querySelector('#syncStatus').textContent));
     if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT });
     await win.evaluate(() => { window.confirm = () => true; });

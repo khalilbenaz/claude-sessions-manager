@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="xterm.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="palette.css">
+<link rel="stylesheet" href="syncsettings.css">
 <meta name="csm-token" content="__CSM_TOKEN__">
 <meta name="csm-version" content="__CSM_VERSION__">
 </head>
@@ -426,28 +427,30 @@
       </section>
       <section data-st="sync" hidden>
         <p class="hint">Retrouve tes sessions (nom, dossier, modèle, groupe) et leurs conversations sur tes autres machines. Les conversations sont chiffrées avec ton code avant l’envoi : le serveur ne peut pas les lire. Seules les machines qui partagent le même code se voient.</p>
-        <div id="syncSetup">
+        <div id="syncSetup" class="syncCard">
           <p><b>Première machine</b> : crée un code, puis saisis-le sur tes autres machines.</p>
           <button type="button" id="syncNew" class="primary">Créer un code</button>
           <p><b>J'ai déjà un code</b> (créé sur une autre machine) :</p>
           <div class="row"><input id="syncJoinCode" class="mono" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" spellcheck="false" autocomplete="off"><button type="button" id="syncJoin" class="primary">Activer</button></div>
         </div>
-        <div id="syncOn" hidden>
-          <label>Ton code de synchro</label>
-          <div class="row"><code id="syncCodeShow" class="syncCode mono"></code><button type="button" id="syncCopy">Copier</button></div>
+        <div id="syncOn" class="syncCard syncHead" hidden>
+          <label for="syncCodeShow">Ton code de synchro</label>
+          <div class="row"><code id="syncCodeShow" class="syncCode mono masked"></code><button type="button" id="syncReveal" aria-pressed="false">Afficher</button><button type="button" id="syncCopy">Copier</button></div>
           <p class="hint">Saisis ce code sur tes autres machines (Réglages › Synchronisation › J'ai déjà un code). Ne le partage avec personne d'autre : qui a le code voit tes sessions.</p>
-          <div class="row"><button type="button" id="syncNow">Synchroniser maintenant</button><button type="button" id="syncOff" class="danger">Désactiver</button></div>
+          <div class="row"><button type="button" id="syncNow" class="primary">Synchroniser maintenant</button><button type="button" id="syncOff" class="danger">Désactiver</button></div>
+          <p class="syncMeta"><span id="syncMachCount"></span><span id="syncRecv"></span></p>
         </div>
+        <p id="syncStatus" class="hint"></p>
         <fieldset class="syncWhat">
           <legend>À synchroniser</legend>
-          <label class="check"><input type="checkbox" checked disabled> <span>Sessions : nom, dossier, modèle, groupe de chaque session, épinglage, couleur</span></label>
-          <label class="check"><input type="checkbox" data-set="syncTranscripts"> <span>Synchroniser aussi les conversations (historique et contexte, chiffrés)</span></label>
-          <label class="check"><input type="checkbox" data-set="syncGroups"> <span>Liste des groupes (groupes vides compris, dans l'ordre)</span></label>
-          <label class="check"><input type="checkbox" data-set="syncTemplates"> <span>Modèles de session (chiffrés)</span></label>
-          <label class="check"><input type="checkbox" data-set="syncPlugins"> <span>Plugins Claude Code (les mêmes sur toutes les machines ; validation demandée si « Me demander… » est coché)</span></label>
+          <label class="sw"><input type="checkbox" role="switch" checked disabled><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Sessions</b><small>Nom, dossier, modèle, groupe de chaque session, épinglage, couleur</small></span></label>
+          <label class="sw"><input type="checkbox" role="switch" data-set="syncTranscripts"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Conversations</b><small>Historique et contexte, chiffrés</small></span></label>
+          <label class="sw"><input type="checkbox" role="switch" data-set="syncGroups"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Groupes</b><small>Groupes vides compris, dans l'ordre</small></span></label>
+          <label class="sw"><input type="checkbox" role="switch" data-set="syncTemplates"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Modèles de session</b><small>Chiffrés</small></span></label>
+          <label class="sw"><input type="checkbox" role="switch" data-set="syncPlugins"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Plugins Claude Code</b><small>Les mêmes sur toutes les machines ; validation demandée si « Me demander… » est coché</small></span></label>
           <div id="plugPending" hidden><p class="hint"><b>Plugins à valider</b></p><ul id="plugList" class="results"></ul></div>
-          <label class="check"><input type="checkbox" data-set="syncExtensions"> <span>Extensions importées (installées sur les autres machines, chiffrées)</span></label>
-          <label class="check"><input type="checkbox" data-set="syncSessionMemory"> <span>Mémoire des sessions (celle choisie dans Réglages › Général, et ce choix lui-même, chiffrés)</span></label>
+          <label class="sw"><input type="checkbox" role="switch" data-set="syncExtensions"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Extensions importées</b><small>Installées sur les autres machines, chiffrées</small></span></label>
+          <label class="sw"><input type="checkbox" role="switch" data-set="syncSessionMemory"><span class="swTrack" aria-hidden="true"></span><span class="swText"><b>Mémoire des sessions</b><small>Celle choisie dans Réglages › Général, et ce choix lui-même, chiffrés</small></span></label>
         </fieldset>
         <fieldset class="syncWhat">
           <legend>Configuration de Claude (chiffrée, la plus récente gagne)</legend>
@@ -469,13 +472,13 @@
         <fieldset class="syncWhat" id="machinesBox">
           <legend>Machines</legend>
           <div id="usageBar" class="usageBar" hidden><div><span></span></div><small></small></div>
-          <ul id="machineList" class="results"></ul>
+          <ul id="machineList" class="results machCards"></ul>
+          <button type="button" id="machAdd" class="machAdd"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><b>Ajouter une machine</b><small>Saisir ce code sur l'autre machine</small></button>
           <p class="hint">« Retirer » enlève une machine de la liste, mais elle garde le code : pour lui couper vraiment l'accès, change de code. L'ancien espace est alors effacé du serveur, et tu saisis le nouveau code sur tes autres machines.</p>
           <button type="button" id="syncRotate" class="danger">Changer de code (couper l'accès d'une machine)…</button>
         </fieldset>
         <label>Synchroniser automatiquement <select data-set="syncMinutes"><option value="5">toutes les 5 minutes</option><option value="10">toutes les 10 minutes</option><option value="30">toutes les 30 minutes</option><option value="60">toutes les heures</option></select></label>
         <p class="hint">Ce que tu modifies sur cette machine part tout de suite ; l'intervalle règle la récupération des changements des autres machines. « Synchroniser maintenant » reste disponible.</p>
-        <p id="syncStatus" class="hint"></p>
         <details>
           <summary>Avancé</summary>
           <label>Nom de cette machine <input data-set="syncMachine" id="syncMachine" spellcheck="false"></label>

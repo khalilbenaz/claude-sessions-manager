@@ -1,0 +1,38 @@
+/* Réglages › Synchronisation, présentation « Atelier » : carte d'en-tête, interrupteurs, machines en cartes. */
+.syncCard { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 14px 16px; margin: 10px 0 8px; max-width: 520px; }
+.syncCard p { margin: 0 0 8px; }
+.syncCard .row { margin-bottom: 8px; }
+.syncHead > label { color: var(--dim); font-size: 12px; margin-bottom: 4px; }
+.syncHead .syncCode { font-size: 22px; letter-spacing: 1.5px; padding: 10px 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.syncCode.masked { -webkit-text-security: disc; user-select: none; }
+.syncMeta { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--dim); font-size: 12px; margin: 0; }
+.syncMeta span:empty { display: none; }
+.syncMeta span + span::before { content: "·"; margin-right: 14px; }
+.syncHead + #syncStatus { margin: 0 0 10px; }
+
+/* interrupteurs accessibles : la case reste dans le DOM (focus clavier, lecteurs d'écran), la piste est dessinée à côté */
+dialog label.sw { position: relative; display: flex; flex-direction: row; align-items: flex-start; gap: 12px; padding: 8px 0; max-width: none; color: var(--fg); cursor: pointer; }
+label.sw input { position: absolute; opacity: 0; width: 38px; height: 22px; margin: 0; cursor: inherit; }
+.swTrack { flex: none; width: 38px; height: 22px; border-radius: 11px; background: var(--off); position: relative; transition: background .15s; margin-top: 1px; }
+.swTrack::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+label.sw input:checked + .swTrack { background: var(--accent); }
+label.sw input:checked + .swTrack::after { transform: translateX(16px); }
+label.sw input:focus-visible + .swTrack { outline: 2px solid var(--link); outline-offset: 2px; }
+label.sw input:disabled + .swTrack { opacity: .55; }
+label.sw:has(input:disabled) { cursor: default; }
+.swText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.swText b { font-size: 13px; font-weight: 600; }
+.swText small { color: var(--dim); font-size: 12px; line-height: 1.35; }
+.syncWhat label.sw + label.sw { border-top: 1px solid var(--line); }
+
+/* machines en cartes */
+.machCards { display: grid; gap: 8px; padding: 0; list-style: none; }
+.machCards li { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel); }
+.machCards li.me { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.machCards li div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.machCards li small { color: var(--dim); }
+.meTag { font-size: 11px; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 7px; margin-left: 4px; white-space: nowrap; }
+.machAdd { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; max-width: 520px; text-align: left; padding: 10px 12px 10px 40px; margin: 8px 0; border: 1px dashed var(--line); border-radius: 10px; background: none; color: var(--fg); cursor: pointer; position: relative; }
+.machAdd:hover { border-color: var(--accent); }
+.machAdd small { color: var(--dim); }
+.machAdd svg { position: absolute; left: 12px; top: 13px; color: var(--accent); }
