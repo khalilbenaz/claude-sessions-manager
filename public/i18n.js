@@ -258,6 +258,9 @@ const EN = {
   "Pas encore de consommation sur 7 jours.": "No usage over 7 days yet.",
   "Usage de Claude (temps, coût, quota, tâches)": "Claude usage (time, cost, quota, tasks)",
   'Tous': 'All', 'Mes modèles': 'My templates', 'Chercher un modèle…': 'Search templates…', 'Chercher un modèle': 'Search templates', 'Aucun modèle ne correspond.': 'No matching template.', 'importée par lien': 'imported from a link', 'Mettre à jour': 'Update', 'Importer un fichier…': 'Import a file…', 'Importer le lien': 'Import link', 'Lien de l\'extension': 'Extension link', 'ou un lien : https://github.com/compte/depot (fichier, dossier, dépôt ou gist)': 'or a link: https://github.com/account/repo (file, folder, repository or gist)', 'Dépôt GitHub : les fichiers': 'GitHub repository: the', 'à la racine ou dans': 'files at the root or in', 'ou': 'or', 'Dépôt privé : connecte la CLI GitHub (': 'Private repository: sign in the GitHub CLI (',
+  // palette : sections, pied, synchro
+  'Actions': 'Actions', 'Modèles': 'Templates', 'ouvrir': 'open', 'dans un panneau': 'in a pane', 'commandes': 'commands', 'prompts': 'prompts',
+  'Synchroniser maintenant': 'Sync now', 'Synchronisé': 'Synced', 'Accès depuis l’app Claude (téléphone)': 'Access from the Claude app (phone)',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',

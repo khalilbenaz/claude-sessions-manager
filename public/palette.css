@@ -1,0 +1,18 @@
+/* Palette de commandes (Ctrl/⌘+K) : sections, surlignage, pied d'aide. Chargé après style.css. */
+dialog.palette { width: min(680px, 92vw); overflow: hidden; }
+#palList { padding: 4px 6px 6px; max-height: 52vh; }
+#palList li { grid-template-columns: 22px 1fr auto; min-height: 40px; }
+#palList li.palSec { display: block; min-height: 0; padding: 10px 10px 4px; border-radius: 0; cursor: default;
+  font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--dim2); }
+#palList li.palSec:first-child { padding-top: 6px; }
+#palList .pi { display: flex; align-items: center; justify-content: center; color: var(--dim); }
+#palList li.sel .pi { color: var(--accent); }
+#palList .pi.dot { display: block; }
+#palList .pl .lb { color: var(--fg); }
+#palList .pl small { color: var(--dim); }
+#palList mark { background: transparent; color: var(--accent); font-weight: 600; border-radius: 2px;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 60%, transparent); }
+#palList .pk kbd { font-size: 11px; color: var(--dim); background: var(--panel2); border: 1px solid var(--line2); border-radius: 5px; padding: 1px 6px; }
+.palFoot { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 9px 16px; border-top: 1px solid var(--line); background: var(--panel);
+  color: var(--dim); font-size: 11.5px; }
+.palFoot kbd { font-size: 10.5px; color: var(--fg2); background: var(--panel2); border: 1px solid var(--line2); border-radius: 4px; padding: 0 5px; margin-right: 2px; }
