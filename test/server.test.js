@@ -1198,7 +1198,7 @@ test('langue des réponses : transmise à Claude Code (réglage language), par d
   const langOf = async opts => {
     await api('PUT', '/api/settings', opts);
     const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'langue' });
-    await idle(s.id);
+    await waitFor(() => (c.out[s.id] || '').includes('FAUX CLAUDE prêt'), 15000, 'démarrage');
     const m = (c.out[s.id] || '').match(/LANGUE:([a-z]+)/);
     await api('DELETE', `/api/sessions/${s.id}`);
     return m ? m[1] : undefined;
