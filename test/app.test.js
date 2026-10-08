@@ -89,6 +89,32 @@ test('vue partagée et palette', async () => {
   await win.keyboard.press('Escape');
 });
 
+test('palette : sections, surlignage, préfixe > et Ctrl+Entrée dans un panneau', async () => {
+  const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await win.click('[data-layout="1"]');
+  await win.keyboard.press(mod + '+K');
+  await win.waitForSelector('#dlgPalette[open]');
+  await win.waitForSelector('#palList li.palSec');
+  const heads = await win.$$eval('#palList li.palSec', l => l.map(x => x.textContent));
+  assert.ok(heads.length >= 2 && /Sessions|sessions/i.test(heads[0]) && heads.some(h => /Actions/i.test(h)), heads.join('|'));
+  assert.ok(await win.$('#palFoot kbd'));
+  await win.keyboard.type('deux');
+  await win.waitForSelector('#palList li.sel .pl mark');
+  assert.match(await win.textContent('#palList li.sel .pl mark'), /deux/i);
+  // Ctrl+Entrée : ouvre la session sélectionnée dans un panneau (passe en 2 colonnes)
+  await win.keyboard.press(mod + '+Enter');
+  await win.waitForFunction(() => layout === '2c' && visibleIds().length === 2);
+  // préfixe > : seulement des actions
+  await win.keyboard.press(mod + '+K');
+  await win.waitForSelector('#dlgPalette[open]');
+  await win.keyboard.type('>');
+  await win.waitForSelector('#palList li.palSec');
+  const heads2 = await win.$$eval('#palList li.palSec', l => l.map(x => x.textContent));
+  assert.equal(heads2.length, 1);
+  assert.match(heads2[0], /Actions/i);
+  await win.keyboard.press('Escape');
+});
+
 test('vue partagée : envoi groupé aux sessions affichées depuis la barre du bas', async () => {
   await win.click('[data-layout="2c"]');
   await win.waitForSelector('#splitBar:not([hidden])');
