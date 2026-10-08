@@ -16,7 +16,7 @@
     <div class="brand"><img src="icon.svg" alt=""> <span class="lbl">Sessions</span></div>
     <button id="btnNew" class="primary" title="Nouvelle session (Ctrl+Alt+N)">+ <span class="lbl">Nouvelle</span></button>
   </header>
-  <button id="btnPalette" class="palHint" title="Palette de commandes">🔍 <span class="lbl">Rechercher…</span> <kbd class="lbl" id="palKbd">Ctrl+K</kbd></button>
+  <button id="btnPalette" class="palHint" title="Palette de commandes"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg> <span class="lbl">Rechercher…</span> <kbd class="lbl" id="palKbd">Ctrl+K</kbd></button>
   <ul id="list"></ul>
   <section id="ext" hidden>
     <div class="extHead">
@@ -27,10 +27,10 @@
   </section>
   <div id="sideStatus" class="sideStatus" hidden aria-live="polite"></div>
   <footer>
-    <button id="btnHistory" title="Reprendre une ancienne session (Ctrl+Alt+H)">🕘 <span class="lbl">Historique</span></button>
-    <button id="btnNewGroup" class="icon" title="Nouveau groupe">🗂</button>
-    <button id="btnSettings" class="icon" title="Réglages (Ctrl+,)">⚙</button>
-    <button id="btnCompact" class="icon" title="Barre latérale compacte">⇤</button>
+    <button id="btnHistory" title="Reprendre une ancienne session (Ctrl+Alt+H)"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg> <span class="lbl">Historique</span></button>
+    <button id="btnNewGroup" class="icon" title="Nouveau groupe" aria-label="Nouveau groupe"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg></button>
+    <button id="btnSettings" class="icon" title="Réglages (Ctrl+,)" aria-label="Réglages"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    <button id="btnCompact" class="icon" title="Barre latérale compacte" aria-label="Barre latérale compacte"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m15 10-2 2 2 2"/></svg></button>
     <span id="conn" class="conn off" title="Connexion au serveur"></span>
   </footer>
 </aside>
@@ -44,7 +44,7 @@
   <div id="bar">
     <span id="curDot" class="dot"></span>
     <span id="curName" class="name" title="Double-clic pour renommer"></span>
-    <button id="btnRename" class="ren show" title="Renommer (Ctrl+Alt+R)">✎</button>
+    <button id="btnRename" class="ren show" title="Renommer (Ctrl+Alt+R)" aria-label="Renommer"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
     <span id="curBranch" class="branch" hidden></span>
     <span id="curCwd" class="cwd"></span>
     <span id="curMsg" class="msg"></span>
@@ -54,17 +54,17 @@
     <span class="spacer"></span>
     <button id="btnAttention" class="atBtn" hidden title="Centre d'attention : demandes de toutes les sessions (Ctrl+Alt+I)">À traiter <b id="atCount"></b></button>
     <span class="layouts" role="group" aria-label="Disposition">
-      <button data-layout="1" class="icon" title="Une session">▢</button>
-      <button data-layout="2c" class="icon" title="Deux colonnes">◫</button>
-      <button data-layout="2r" class="icon" title="Deux lignes">⊟</button>
-      <button data-layout="4" class="icon" title="Grille 2×2">⊞</button>
+      <button data-layout="1" class="icon" title="Une session" aria-label="Une session"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+      <button data-layout="2c" class="icon" title="Deux colonnes" aria-label="Deux colonnes"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 4v16"/></svg></button>
+      <button data-layout="2r" class="icon" title="Deux lignes" aria-label="Deux lignes"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16"/></svg></button>
+      <button data-layout="4" class="icon" title="Grille 2×2" aria-label="Grille 2×2"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 4v16M4 12h16"/></svg></button>
     </span>
-    <button id="btnChanges" title="Fichiers modifiés par la session (Ctrl+Alt+G)">± <span id="changesCount">Modifications</span></button>
-    <button id="btnOpen" title="Ouvrir le dossier dans…">↗ Ouvrir</button>
-    <button id="btnAttach" class="icon" title="Joindre une image ou un fichier (ou glisser-déposer / coller dans le terminal)">📎</button>
+    <button id="btnChanges" title="Fichiers modifiés par la session (Ctrl+Alt+G)"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v14M5 10h14"/><path d="M5 21h14"/></svg> <span id="changesCount">Modifications</span></button>
+    <button id="btnOpen" title="Ouvrir le dossier dans…"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg> Ouvrir</button>
+    <button id="btnAttach" class="icon" title="Joindre une image ou un fichier (ou glisser-déposer / coller dans le terminal)" aria-label="Joindre un fichier"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 12-8.6 8.6a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.3-2.3L16 8"/></svg></button>
     <input type="file" id="fileInput" multiple hidden>
     <button id="btnRestart" title="Relancer / reprendre la conversation">Reprendre</button>
-    <button id="btnMore" class="icon" title="Plus d'actions">⋯</button>
+    <button id="btnMore" class="icon" title="Plus d'actions" aria-label="Plus d'actions"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button>
     <button id="btnKill" hidden>Arrêter</button>
     <button id="btnClose" class="danger" title="Fermer et retirer de la liste">Fermer</button>
   </div>
