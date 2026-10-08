@@ -309,7 +309,7 @@ test('extensions : modèle dans Nouvelle session, affichage dédié rempli par C
   await win.waitForFunction(() => {
     // relu toutes les 2 s si besoin (machine lente)
     if (!window.__extT || Date.now() - window.__extT > 2000) { window.__extT = Date.now(); window.csmFeatures.renderExtensions(); }
-    return /Extension e2e/.test(document.querySelector('#extList').textContent);
+    return /Extension e2e/.test(document.querySelector('#extsList').textContent);
   }, null, { timeout: 30000 });
   await win.evaluate(() => document.querySelector('#dlgSettings').close());
   // Nouvelle session depuis le modèle de l'extension

@@ -265,7 +265,7 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
           <li>Le panneau actif est entouré, son état reste visible</li>
         </ul>
       </div>
-      <div class="window"><div class="tb"><i></i><i></i><i></i><span>Vue partagée 2×2</span></div><img src="img/split.png" width="1440" height="900" loading="lazy" alt="Grille de quatre sessions avec la barre d'envoi groupé en bas"></div>
+      <div class="window themed"><div class="tb"><i></i><i></i><i></i><span>Vue partagée 2×2</span></div><img class="dark" src="img/split.png" width="1440" height="900" loading="lazy" alt="Grille de quatre sessions avec la barre d'envoi groupé en bas"><img class="light" src="img/split-light.png" width="1440" height="900" loading="lazy" alt="Grille de quatre sessions avec la barre d'envoi groupé en bas"></div>
     </div>
 
     <div class="feature rev">
@@ -280,7 +280,7 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
         </ul>
         <p class="kbds"><kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Alt</kbd>+<kbd>I</kbd> ou le bouton « À traiter » de la barre du haut.</p>
       </div>
-      <div class="window"><div class="tb"><i></i><i></i><i></i><span>À traiter</span></div><img src="img/attention.png" width="1440" height="900" loading="lazy" alt="Centre d'attention : une autorisation à risque avec ses boutons, et un résultat à relire"></div>
+      <div class="window themed"><div class="tb"><i></i><i></i><i></i><span>À traiter</span></div><img class="dark" src="img/attention.png" width="1440" height="900" loading="lazy" alt="Centre d'attention : une autorisation à risque avec ses boutons, et un résultat à relire"><img class="light" src="img/attention-light.png" width="1440" height="900" loading="lazy" alt="Centre d'attention : une autorisation à risque avec ses boutons, et un résultat à relire"></div>
     </div>
 
     <div class="feature">
@@ -289,13 +289,13 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
         <h3>Votre quota, avant qu'il ne vous surprenne</h3>
         <p>Le tableau de bord du jour : sessions actives, demandes en attente, temps de travail de Claude et coût estimé. La courbe du quota 5 h prévoit l'heure de la limite au rythme actuel.</p>
         <ul>
-          <li>Quotas 5 h et 7 jours toujours en bas de la barre latérale</li>
+          <li>Quotas 5 h et 7 jours toujours en bas de la barre latérale, même avec votre propre barre d'état</li>
           <li>La file d'attente se met en pause près de la limite, puis repart</li>
           <li>Tokens et coût par session sur 7 jours, tâches planifiées</li>
         </ul>
         <p class="kbds"><kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Alt</kbd>+<kbd>U</kbd>, ou un clic sur les quotas.</p>
       </div>
-      <div class="window"><div class="tb"><i></i><i></i><i></i><span>Usage de Claude</span></div><img src="img/usage.png" width="1440" height="900" loading="lazy" alt="Tableau de bord : indicateurs du jour, prévision du quota 5 heures, détail par session"></div>
+      <div class="window themed"><div class="tb"><i></i><i></i><i></i><span>Usage de Claude</span></div><img class="dark" src="img/usage.png" width="1440" height="900" loading="lazy" alt="Tableau de bord : indicateurs du jour, prévision du quota 5 heures, détail par session"><img class="light" src="img/usage-light.png" width="1440" height="900" loading="lazy" alt="Tableau de bord : indicateurs du jour, prévision du quota 5 heures, détail par session"></div>
     </div>
 
     <div class="feature rev" id="extensions">
@@ -305,12 +305,13 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
         <p>Une extension est un simple fichier <code>.csm.json</code> : modèles de session, prompts, et types de session qui donnent à Claude des consignes et affichent son résultat dans une vue dédiée (tableaux, listes à cocher, alertes…), avec des boutons d'action.</p>
         <ul>
           <li>Aucun code exécuté : un format déclaratif, affiché en texte</li>
-          <li>Partagez-la en privé : un fichier à importer, ou fournie par un plugin Claude Code</li>
+          <li>Importez un fichier, ou collez un lien GitHub (fichier, dossier, dépôt, gist), même privé</li>
+          <li>Ou fournie par un plugin Claude Code, qui l'apporte avec ses skills</li>
           <li>Synchronisée avec vos autres machines si vous le souhaitez</li>
         </ul>
         <p class="kbds"><a href="https://github.com/khalilbenaz/claude-sessions-manager/blob/main/docs/extensions.md">Le format des extensions</a> · <a href="https://github.com/khalilbenaz/claude-sessions-manager/blob/main/extensions/revue-de-code.csm.json">un exemple : Revue de code</a></p>
       </div>
-      <div class="window"><div class="tb"><i></i><i></i><i></i><span>Revue de code</span></div><img src="img/extension.png" width="1440" height="900" loading="lazy" alt="Session de type Revue de code : résumé, tableau des problèmes, liste à vérifier et boutons d'action"></div>
+      <div class="window themed"><div class="tb"><i></i><i></i><i></i><span>Revue de code</span></div><img class="dark" src="img/extension.png" width="1440" height="900" loading="lazy" alt="Session de type Revue de code : résumé, tableau des problèmes, liste à vérifier et boutons d'action"><img class="light" src="img/extension-light.png" width="1440" height="900" loading="lazy" alt="Session de type Revue de code : résumé, tableau des problèmes, liste à vérifier et boutons d'action"></div>
     </div>
 
     <div class="feature">
@@ -319,12 +320,13 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
         <h3>Une session prête en un clic</h3>
         <p>Partez d'un modèle : dossier, modèle de Claude, mode d'autorisation, worktree git, groupe et premier prompt. Les modèles des extensions apparaissent au même endroit.</p>
         <ul>
+          <li>Beaucoup de modèles ? Filtrez par provenance ou cherchez-les</li>
           <li>Opus, Sonnet ou Haiku d'un clic</li>
           <li>Un worktree par session : plusieurs Claude sur le même dépôt, sans conflit</li>
           <li>Accessible depuis l'app Claude sur votre téléphone, d'une case</li>
         </ul>
       </div>
-      <div class="window"><div class="tb"><i></i><i></i><i></i><span>Nouvelle session</span></div><img src="img/new-session.png" width="1440" height="900" loading="lazy" alt="Fenêtre Nouvelle session avec les cartes de modèles, le dossier, le groupe et le choix du modèle"></div>
+      <div class="window themed"><div class="tb"><i></i><i></i><i></i><span>Nouvelle session</span></div><img class="dark" src="img/new-session.png" width="1440" height="900" loading="lazy" alt="Fenêtre Nouvelle session avec les cartes de modèles, le dossier, le groupe et le choix du modèle"><img class="light" src="img/new-session-light.png" width="1440" height="900" loading="lazy" alt="Fenêtre Nouvelle session avec les cartes de modèles, le dossier, le groupe et le choix du modèle"></div>
     </div>
   </section>
 
@@ -335,7 +337,7 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
     <div class="syncBox">
       <div class="syncList">
         <h3>Ce qui peut vous suivre (au choix)</h3>
-        <div class="row"><svg class="i"><use href="#i-terminal"/></svg><div><b>Sessions et conversations</b><span>La liste des sessions et leur historique, reprenables là où elles en étaient.</span></div></div>
+        <div class="row"><svg class="i"><use href="#i-terminal"/></svg><div><b>Sessions et conversations</b><span>La liste des sessions (noms, groupes, épinglage, en moins d'une minute) et leur historique, reprenables là où elles en étaient.</span></div></div>
         <div class="row"><svg class="i"><use href="#i-folder"/></svg><div><b>Groupes et modèles</b><span>Vos groupes, quelle session dans quel groupe, et vos modèles de session.</span></div></div>
         <div class="row"><svg class="i"><use href="#i-puzzle"/></svg><div><b>Extensions importées</b><span>Installées sur les autres machines, chiffrées pendant le transfert.</span></div></div>
         <div class="row"><svg class="i"><use href="#i-plug"/></svg><div><b>Plugins Claude Code</b><span>Les mêmes plugins partout, installés après votre accord.</span></div></div>
@@ -415,7 +417,7 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
           <tr><td><b>Terminal</b></td><td><ul><li><b>Taille du texte, police</b> ; <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>−</kbd> / <kbd>0</kbd> pour zoomer.</li></ul></td></tr>
           <tr><td><b>Notifications</b></td><td><ul><li><b>Notifications système</b> cliquables, <b>pastille</b> avec le nombre de sessions qui vous attendent, bouton de test.</li><li><b>Son</b>, <b>Ne pas déranger</b>, <b>rappel</b> si une session attend, <b>alerte</b> si un tour dure trop.</li></ul></td></tr>
           <tr><td><b>Sécurité</b></td><td><ul><li><b>Reverrouiller</b> les sessions verrouillées quand la fenêtre est masquée ou après une inactivité.</li></ul></td></tr>
-          <tr><td><b>Extensions</b></td><td><ul><li><b>Importer</b> un fichier <code>.csm.json</code>, activer, désactiver ou retirer une extension ; celles fournies par un plugin sont signalées.</li></ul></td></tr>
+          <tr><td><b>Extensions</b></td><td><ul><li><b>Importer</b> un fichier <code>.csm.json</code> ou un <b>lien GitHub</b> (mise à jour d'un clic), activer, désactiver ou retirer une extension ; celles fournies par un plugin sont signalées.</li></ul></td></tr>
           <tr><td><b>Modèles, Prompts, Programmées</b></td><td><ul><li>Vos <b>modèles de session</b>, votre <b>bibliothèque de prompts</b> et vos <b>demandes programmées</b> (une fois ou certains jours, « Lancer » pour exécuter tout de suite).</li></ul></td></tr>
           <tr><td><b>Mémoire</b></td><td><ul><li><b>Recherche</b> dans la mémoire intégrée, les notes de Claude Code et claude-mem ; <b>corriger</b>, note « À retenir », <b>oublier</b>.</li></ul></td></tr>
           <tr><td><b>Synchronisation</b></td><td><ul><li><b>Créer un code / J'ai déjà un code</b>. Gardez-le secret : qui l'a voit vos sessions.</li><li><b>À synchroniser</b> : sessions (toujours), et au choix <b>conversations</b>, <b>groupes</b>, <b>modèles</b>, <b>extensions importées</b>, <b>plugins Claude Code</b>, <b>mémoire</b>, <b>configuration de Claude</b>.</li><li><b>Me demander avant d'appliquer</b> (recommandé), <b>Fichiers reçus</b> avec journal et <b>Restaurer</b>.</li><li><b>Machines</b> et place occupée, <b>changer de code</b> pour couper l'accès d'une machine, <b>racines de dossiers</b> pour retrouver un projet rangé ailleurs.</li></ul></td></tr>

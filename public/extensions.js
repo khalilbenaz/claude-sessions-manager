@@ -18,7 +18,7 @@
 
   // ---------------------------------------------------------------- Réglages › Extensions
   async function renderList() {
-    const ul = $('#extList'); if (!ul) return;
+    const ul = $('#extsList'); if (!ul) return;
     let list = [];
     try { list = await api('GET', '/api/extensions'); } catch (e) { ul.replaceChildren(el('li', { class: 'hint', text: e.message })); return; }
     if (!list.length) { ul.replaceChildren(el('li', { class: 'hint', text: t('Aucune extension. Importe un fichier .csm.json reçu ou créé pour toi.') })); return; }
@@ -33,9 +33,10 @@
       return el('li', { class: 'extItem' },
         el('label', { class: 'extMain' }, sw,
           el('span', {},
-            el('b', { text: `${x.name} ` }), el('span', { class: 'hint', text: `${x.version || ''} · ${x.from ? `${t('reçue de')} ${x.from}` : t(x.source)}` }),
+            el('b', { text: `${x.name} ` }), el('span', { class: 'hint', text: `${x.version || ''} · ${x.from ? `${t('reçue de')} ${x.from}` : x.url ? t('importée par lien') : t(x.source)}` }),
             el('div', { class: 'hint', text: x.error ? `${t('Invalide')} : ${x.error}` : (x.description || parts.join(' · ')) }),
             x.description && parts.length ? el('div', { class: 'hint', text: parts.join(' · ') }) : null)),
+        x.url ? el('button', { type: 'button', text: t('Mettre à jour'), title: x.url, onclick: () => importUrl(x.url) }) : null,
         x.removable ? el('button', { type: 'button', class: 'danger', text: t('Supprimer'), onclick: async () => {
           if (!confirm(`${t('Supprimer l’extension')} « ${x.name} » ?`)) return;
           try { await api('DELETE', `/api/extensions/${encodeURIComponent(x.id)}`); renderList(); } catch (e) { toast(e.message, true); }
@@ -51,6 +52,21 @@
     }
     renderList();
   }
+  // lien GitHub (fichier, dossier, dépôt), gist ou adresse https : récupéré par le serveur (lib/extfetch.js)
+  async function importUrl(url) {
+    url = String(url || '').trim(); if (!url) { $('#extUrl').focus(); return; }
+    const btn = $('#extUrlGo'); btn.disabled = true;
+    try {
+      const r = await api('POST', '/api/extensions', { url });
+      toast(r.imported.map(x => `${x.replaced ? t('Extension mise à jour') : t('Extension ajoutée')} : ${x.name}`).join(' · '));
+      for (const e of r.errors || []) toast(e, true);
+      $('#extUrl').value = '';
+    } catch (e) { toast(e.message, true); }
+    btn.disabled = false;
+    renderList();
+  }
+  $('#extUrlGo').onclick = () => importUrl($('#extUrl').value);
+  $('#extUrl').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); importUrl($('#extUrl').value); } });
   $('#extImport').onclick = () => $('#extFile').click();
   $('#extFile').onchange = () => { importFiles([...$('#extFile').files]); $('#extFile').value = ''; };
   const zone = $('section[data-st=extensions]');

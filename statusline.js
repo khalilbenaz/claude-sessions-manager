@@ -72,15 +72,41 @@ function report(p, cb) {
   req.end(body);
 }
 
+// --relay : l'utilisateur a sa propre barre d'état. On relève les quotas pour l'app, puis on affiche la sienne
+// telle quelle (même entrée, même sortie), avec la priorité de Claude Code : projet local > projet > utilisateur.
+function userStatusCommand(cwd) {
+  const fs = require('fs'), path = require('path'), home = require('os').homedir();
+  const files = [];
+  if (cwd) files.push(path.join(cwd, '.claude', 'settings.local.json'), path.join(cwd, '.claude', 'settings.json'));
+  files.push(path.join(home, '.claude', 'settings.local.json'), path.join(home, '.claude', 'settings.json'));
+  for (const f of files) {
+    try { const sl = JSON.parse(fs.readFileSync(f, 'utf8')).statusLine; if (sl?.command && !/statusline\.js"?\s+--relay/.test(sl.command)) return sl.command; } catch { }
+  }
+  return '';
+}
+function relay(input, p, cb) {
+  const cmd = userStatusCommand(p.workspace?.current_dir || p.cwd);
+  if (!cmd) { try { process.stdout.write(render(p) + '\n'); } catch { } return cb(); }
+  let done = false; const end = () => { if (!done) { done = true; cb(); } };
+  try {
+    const ch = require('child_process').spawn(cmd, { shell: true, stdio: ['pipe', 'inherit', 'ignore'], windowsHide: true, cwd: p.workspace?.current_dir || p.cwd || undefined });
+    ch.on('error', end); ch.on('exit', end);
+    ch.stdin.on('error', () => { }); ch.stdin.end(input);
+    setTimeout(() => { try { ch.kill(); } catch { } end(); }, 4500);
+  } catch { end(); }
+}
+
 if (require.main === module) {
   let input = '', finished = false;
   const done = () => {
     if (finished) return; finished = true;
     let p = {}; try { p = JSON.parse(input || '{}'); } catch { }
-    try { process.stdout.write(render(p) + '\n'); } catch { }
-    let out = false; const exit = () => { if (!out) { out = true; process.exit(0); } };
-    try { report(p, exit); } catch { exit(); }
-    setTimeout(exit, 1800);
+    let pending = 2; const exit = () => { if (--pending <= 0) process.exit(0); };
+    if (process.argv.includes('--relay')) relay(input, p, exit);
+    else { try { process.stdout.write(render(p) + '\n'); } catch { } exit(); }
+    let reported = false; const rep = () => { if (!reported) { reported = true; exit(); } };
+    try { report(p, rep); } catch { rep(); }
+    setTimeout(() => process.exit(0), 5000);
   };
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', c => { input += c; });

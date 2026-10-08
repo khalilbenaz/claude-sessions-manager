@@ -10,7 +10,7 @@ Une extension **n'exécute aucun code** dans l'application : elle décrit, Claud
 
 ## Installer
 
-- **Réglages › Extensions › Importer une extension…**, ou glisser le fichier sur cette page. Réimporter un fichier du même `id` le met à jour.
+- **Réglages › Extensions › Importer un fichier…**, ou glisser le fichier sur cette page, ou coller un **lien** : fichier GitHub, dossier, dépôt (ses `.csm.json` à la racine, dans `csm/` ou `extensions/`), gist ou adresse https. Dépôt privé : CLI GitHub connectée (`gh auth login`). **Mettre à jour** réimporte depuis le même lien. Réimporter un fichier du même `id` le met à jour.
 - **Par un plugin Claude Code** : les fichiers `*.csm.json` du dossier `csm/` d'un plugin installé sont chargés automatiquement (pratique pour une équipe : le plugin se met à jour, les extensions suivent). Ils se retirent en désinstallant le plugin.
 - Chaque extension se désactive ou se supprime dans la même page.
 - **Synchronisation** : avec un code de synchro, une extension importée est installée sur toutes tes machines (chiffrée) ; désactivation et suppression suivent. Une extension fournie par un plugin ne voyage qu'avec son plugin : la synchro des plugins propose de l'installer sur les autres machines, l'extension arrive avec lui. Taille utile pour la synchro : environ 50 Ko de JSON.

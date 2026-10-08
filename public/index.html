@@ -416,8 +416,10 @@
       </section>
       <section data-st="extensions" hidden>
         <p class="hint">Une extension est un fichier <code>.csm.json</code> qui ajoute des modèles de session, des prompts et des types de session (un affichage dédié et des actions), sans rien exécuter dans l'app. Partage-le en privé ; un plugin Claude Code peut aussi en fournir. Glisse un fichier ici ou :</p>
-        <div class="row"><button type="button" id="extImport" class="primary">Importer une extension…</button><input type="file" id="extFile" accept=".json,application/json" multiple hidden></div>
-        <ul id="extList" class="results extList"></ul>
+        <div class="row"><button type="button" id="extImport" class="primary">Importer un fichier…</button><input type="file" id="extFile" accept=".json,application/json" multiple hidden></div>
+        <div class="row extUrlRow"><input type="url" id="extUrl" placeholder="ou un lien : https://github.com/compte/depot (fichier, dossier, dépôt ou gist)" spellcheck="false" autocomplete="off" aria-label="Lien de l'extension"><button type="button" id="extUrlGo">Importer le lien</button></div>
+        <p class="hint">Dépôt GitHub : les fichiers <code>.csm.json</code> à la racine ou dans <code>csm/</code> ou <code>extensions/</code>. Dépôt privé : connecte la CLI GitHub (<code>gh auth login</code>).</p>
+        <ul id="extsList" class="results extList"></ul>
         <p class="hint"><a href="https://github.com/khalilbenaz/claude-sessions-manager/blob/main/docs/extensions.md" target="_blank" rel="noopener">Créer une extension : le format</a></p>
       </section>
       <section data-st="sync" hidden>

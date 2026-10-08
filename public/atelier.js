@@ -23,21 +23,59 @@
       c.classList.toggle('on', on); c.setAttribute('aria-checked', on ? 'true' : 'false');
     }
   }
-  // reconstruit les cartes à partir de la liste déroulante (options + groupes d'extensions)
-  function renderCards() {
-    const box = $('#tplCards'); if (!box) return;
-    const cards = [card('', t('Session vide'), t('Dossier et modèle seulement'))];
+  // reconstruit les cartes à partir de la liste déroulante (options + groupes d'extensions). Beaucoup de
+  // modèles : filtres par provenance (mes modèles, chaque extension) et recherche, au lieu de faire défiler.
+  const LSk = 'csm.tplFilter';
+  let filter = (() => { try { return localStorage.getItem(LSk) || 'all'; } catch { return 'all'; } })(), query = '';
+  function entries() {
+    const out = [];
     for (const node of f.template.children) {
       if (node.tagName === 'OPTION' && node.value) {
         const x = (typeof templates !== 'undefined' ? templates : []).find(y => y.id === node.value);
-        cards.push(card(node.value, node.textContent, x?.cwd ? x.cwd.split(/[\\/]/).filter(Boolean).pop() : ''));
+        out.push({ v: node.value, name: node.textContent, desc: x?.cwd ? x.cwd.split(/[\\/]/).filter(Boolean).pop() : '', group: 'mine' });
       } else if (node.tagName === 'OPTGROUP') {
-        for (const o of node.children) cards.push(card(o.value, o.textContent, '', node.label));
+        for (const o of node.children) out.push({ v: o.value, name: o.textContent, desc: '', badge: node.label, group: node.label });
       }
     }
-    box.replaceChildren(...cards);
+    return out;
+  }
+  function chip(key, label, n) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tplChip'; b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', filter === key ? 'true' : 'false'); b.classList.toggle('on', filter === key);
+    b.append(label); if (n != null) { const c = document.createElement('span'); c.className = 'n'; c.textContent = n; b.append(c); }
+    b.onclick = () => { filter = key; try { localStorage.setItem(LSk, key); } catch { } renderCards(); };
+    return b;
+  }
+  function renderCards() {
+    const box = $('#tplCards'); if (!box) return;
+    let bar = $('#tplFilters');
+    if (!bar) { bar = document.createElement('div'); bar.id = 'tplFilters'; bar.className = 'tplFilters'; bar.setAttribute('role', 'tablist'); box.before(bar); }
+    const all = entries();
+    const groups = [...new Set(all.map(e => e.group))];
+    if (filter !== 'all' && !groups.includes(filter)) filter = 'all';
+    // la sélection courante reste visible : on bascule sur son groupe si elle est cachée par le filtre
+    const cur = all.find(e => e.v === f.template.value);
+    if (cur && filter !== 'all' && cur.group !== filter) filter = cur.group;
+    const chips = groups.length > 1 ? [chip('all', t('Tous'), all.length), ...groups.map(g => chip(g, g === 'mine' ? t('Mes modèles') : g, all.filter(e => e.group === g).length))] : [];
+    if (all.length > 6) {
+      let s = $('#tplSearch');
+      if (!s) {
+        s = document.createElement('input'); s.id = 'tplSearch'; s.type = 'search'; s.placeholder = t('Chercher un modèle…');
+        s.setAttribute('aria-label', t('Chercher un modèle')); s.autocomplete = 'off';
+        s.oninput = () => { query = s.value.trim().toLowerCase(); renderCards(); s.focus(); };
+        s.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); box.querySelector('.tplCard:not(.blank)')?.click(); } };
+      }
+      chips.push(s);
+    }
+    bar.replaceChildren(...chips); bar.hidden = !chips.length;
+    const shown = all.filter(e => (filter === 'all' || e.group === filter) && (!query || `${e.name} ${e.desc} ${e.badge || ''}`.toLowerCase().includes(query)));
+    const blank = card('', t('Session vide'), t('Dossier et modèle seulement')); blank.classList.add('blank');
+    box.replaceChildren(blank, ...shown.map(e => card(e.v, e.name, e.desc, filter === 'all' ? e.badge : '')));
+    if (!shown.length && query) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = t('Aucun modèle ne correspond.'); box.append(p); }
     syncCards();
   }
+  F.renderTemplateCards = renderCards;
   new MutationObserver(renderCards).observe(f.template, { childList: true, subtree: true });
   f.template.addEventListener('change', syncCards);
 
@@ -52,7 +90,11 @@
   f.model.addEventListener('change', syncModel);
   // valeurs posées par le code (ouverture, modèle de session) : surveillées à l'ouverture de la fenêtre
   const dlg = $('#dlgNew');
-  new MutationObserver(() => { if (dlg.open) { syncModel(); syncCards(); } }).observe(dlg, { attributes: true, attributeFilter: ['open'] });
+  new MutationObserver(() => {
+    if (!dlg.open) return;
+    query = ''; const s = $('#tplSearch'); if (s) s.value = '';
+    syncModel(); renderCards();
+  }).observe(dlg, { attributes: true, attributeFilter: ['open'] });
   f.addEventListener('input', () => { syncModel(); });
   f.template.addEventListener('change', () => setTimeout(syncModel, 0));
 
