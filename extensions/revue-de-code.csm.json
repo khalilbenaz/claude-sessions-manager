@@ -1,0 +1,34 @@
+{
+  "csm": 1,
+  "id": "revue-de-code",
+  "name": "Revue de code",
+  "version": "1.0.0",
+  "description": "Relecture des modifications en cours, avec la liste des problèmes et les actions pour les corriger.",
+  "author": "Claude Sessions",
+  "templates": [
+    {
+      "id": "revue",
+      "name": "Revue de code",
+      "description": "Relit le diff, sans rien modifier",
+      "mode": "plan",
+      "prompt": "Relis les modifications en cours (git diff) et remplis l'affichage de la session.",
+      "type": "revue"
+    }
+  ],
+  "prompts": [
+    { "id": "revue-securite", "title": "Revue sécurité", "text": "Relis les modifications sous l'angle sécurité : injections, secrets, droits, données non validées.", "tags": "revue sécurité" }
+  ],
+  "sessionTypes": [
+    {
+      "id": "revue",
+      "name": "Revue de code",
+      "badge": "REVUE",
+      "color": "#7A9BEA",
+      "instructions": "Tu fais une revue de code. Ne modifie aucun fichier tant que l'utilisateur ne le demande pas. Dans l'affichage : une section « text » Résumé, une section « table » Problèmes (colonnes Gravité, Fichier, Problème), une section « checklist » À vérifier.",
+      "actions": [
+        { "id": "corriger", "label": "Corriger les problèmes graves", "send": "Corrige les problèmes de gravité haute de la revue, un commit par correction, puis mets à jour l'affichage.", "primary": true, "confirm": true },
+        { "id": "tests", "label": "Écrire les tests manquants", "send": "Écris les tests qui manquent pour les problèmes relevés, puis mets à jour l'affichage." }
+      ]
+    }
+  ]
+}

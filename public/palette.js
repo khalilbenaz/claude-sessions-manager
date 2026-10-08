@@ -5,7 +5,12 @@
   const F = window.csmFeatures;
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   let prompts = [];
-  const loadPrompts = async () => { try { prompts = await api('GET', '/api/prompts'); } catch { prompts = []; } return prompts; };
+  let extPrompts = []; // prompts des extensions actives (lecture seule)
+  const loadPrompts = async () => {
+    try { prompts = await api('GET', '/api/prompts'); } catch { prompts = []; }
+    try { extPrompts = await api('GET', '/api/extensions/prompts'); } catch { extPrompts = []; }
+    return prompts;
+  };
   window.addEventListener('csm:prompts', e => { prompts = e.detail; });
 
   // Correspondance floue : toutes les lettres de la requête, dans l'ordre ; bonus début de mot / contiguïté.
@@ -71,6 +76,7 @@
       ...sorted().map(s => ({ kind: 'session', icon: '●', cls: s.status, label: s.name, sub: `${s.worktree ? '⎇ ' + s.worktree.branch + ' · ' : ''}${s.cwd}`, run: () => select(s.id) })),
       ...templates.map(x => ({ kind: 'template', icon: '⚡', label: `${t('Lancer le modèle')} : ${x.name}`, sub: x.cwd, run: () => openNew(x) })),
       ...prompts.map(p => ({ kind: 'prompt', icon: '📝', label: `${t('Prompt')} : ${p.title}`, sub: p.text.slice(0, 90), run: () => insertPrompt(active, p) })),
+      ...extPrompts.map(p => ({ kind: 'prompt', icon: '🧩', label: `${t('Prompt')} : ${p.title}`, sub: `${p.extName} · ${p.text.slice(0, 80)}`, run: () => insertPrompt(active, p) })),
       ...actions(),
       ...(q.length >= 2 ? historyCache.filter(h => !h.managed).slice(0, 200).map(h => ({ kind: 'history', icon: '🕘', label: h.title, sub: `${h.cwd || ''} · ${new Date(h.mtime).toLocaleDateString()}`, run: () => resumeHistory(h) })) : []),
     ];

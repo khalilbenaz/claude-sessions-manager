@@ -48,6 +48,8 @@
     <span id="curCwd" class="cwd"></span>
     <span id="curMsg" class="msg"></span>
     <span id="curQueue" class="qbadge" hidden title="Prompts en attente"></span>
+    <span id="curType" class="typeBadge" hidden></span>
+    <button id="btnView" type="button" hidden title="Basculer entre l'affichage du type de session et le terminal">Terminal</button>
     <span class="spacer"></span>
     <span class="layouts" role="group" aria-label="Disposition">
       <button data-layout="1" class="icon" title="Une session">▢</button>
@@ -272,6 +274,7 @@
       <button data-st="security">Sécurité</button>
       <button data-st="templates">Modèles de session</button>
       <button data-st="prompts">Prompts</button>
+      <button data-st="extensions">Extensions</button>
       <button data-st="schedules">Programmées</button>
       <button data-st="memory">Mémoire</button>
       <button data-st="sync">Synchronisation</button>
@@ -363,6 +366,12 @@
       <section data-st="prompts" hidden>
         <p class="hint">Snippets réutilisables, insérés dans la session active depuis la palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) ou le menu ⋯.</p>
         <button type="button" id="openPrompts">Ouvrir la bibliothèque de prompts</button>
+      </section>
+      <section data-st="extensions" hidden>
+        <p class="hint">Une extension est un fichier <code>.csm.json</code> qui ajoute des modèles de session, des prompts et des types de session (un affichage dédié et des actions), sans rien exécuter dans l'app. Partage-le en privé ; un plugin Claude Code peut aussi en fournir. Glisse un fichier ici ou :</p>
+        <div class="row"><button type="button" id="extImport" class="primary">Importer une extension…</button><input type="file" id="extFile" accept=".json,application/json" multiple hidden></div>
+        <ul id="extList" class="results extList"></ul>
+        <p class="hint"><a href="https://github.com/khalilbenaz/claude-sessions-manager/blob/main/docs/extensions.md" target="_blank" rel="noopener">Créer une extension : le format</a></p>
       </section>
       <section data-st="sync" hidden>
         <p class="hint">Retrouve tes sessions (nom, dossier, modèle, groupe) et leurs conversations sur tes autres machines. Les conversations sont chiffrées avec ton code avant l’envoi : le serveur ne peut pas les lire. Seules les machines qui partagent le même code se voient.</p>
@@ -521,5 +530,6 @@
 <script src="palette.js"></script>
 <script src="lock.js"></script>
 <script src="auth.js"></script>
+<script src="extensions.js"></script>
 </body>
 </html>

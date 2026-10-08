@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.25.0] — 2026-10-08
+### Ajouté
+- **Extensions** : un fichier `.csm.json` ajoute des modèles de session, des prompts et des types de session (affichage dédié rempli par Claude : résumé, tableaux, chronologie, cases à cocher, brouillon à relire ; boutons d'action qui envoient une demande à la session). Purement déclaratif, rien n'est exécuté dans l'app. Import dans Réglages › Extensions (ou glisser-déposer), activation, suppression ; un plugin Claude Code peut en fournir (dossier `csm/`). Format : docs/extensions.md ; exemple : extensions/revue-de-code.csm.json.
+
 ## [3.24.0] — 2026-10-08
 ### Ajouté
 - Pastille avec le **nombre** de sessions en attente sur l'icône : overlay de la barre des tâches Windows (avant : un point) et icône du Dock sur macOS quand la pastille native est masquée (app non signée).

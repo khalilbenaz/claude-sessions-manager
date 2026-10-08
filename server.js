@@ -149,7 +149,7 @@ const STORE = path.join(DATA, 'sessions.json');
 const sessions = new Map();
 
 // Champs ajoutés par les modules (lib/*) : mémorisés et envoyés à l'interface tels quels.
-const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'quotaWait', 'alerts', 'remote', 'syncId', 'origin', 'syncCwd'];
+const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'quotaWait', 'alerts', 'remote', 'syncId', 'origin', 'syncCwd', 'type'];
 const extra = s => Object.fromEntries(EXTRA_FIELDS.filter(k => s[k] !== undefined).map(k => [k, s[k]]));
 
 // Appelés après chaque écriture de sessions.json (lib/sync : repère les changements à envoyer).
@@ -190,6 +190,7 @@ function publicView(s) {
     id: s.id, name: s.name, cwd: s.cwd, args: s.args, status: s.status, message: s.message,
     claudeSessionId: s.lock ? null : s.claudeSessionId, createdAt: s.createdAt, lastActivity: s.lastActivity,
     statusSince: s.statusSince, alive: !!s.pty, order: s.order, ...extra(s),
+    typeInfo: s.type ? ctx.typeInfo?.(s) || null : undefined, // type de session d'une extension (lib/extensions.js)
     // verrouillée : ni message (peut citer une commande), ni texte des prompts en attente
     ...(s.lock ? { locked: true, lockHint: s.lock.hint || '', message: '', queue: s.queue ? s.queue.map(q => ({ id: q.id, text: '' })) : undefined } : {}),
   };
@@ -269,10 +270,12 @@ function spawnSession(s, { resume, fork } = {}) {
   if (resume) args.push('--resume', resume);
   if (resume && fork) args.push('--fork-session'); // ponctuel : jamais mémorisé dans s.args
   args.push(...(ctx.remoteArgs?.(s) || [])); // accès depuis l'app Claude (lib/remote.js)
+  args.push(...(ctx.typeArgs?.(s) || [])); // type de session d'une extension : consignes (lib/extensions.js)
   const env = { ...process.env, CSM_ID: s.id, CSM_PORT: String(PORT), CSM_TOKEN: HOOK_TOKEN, COLORTERM: 'truecolor' };
   // Si le serveur a été lancé depuis une session Claude, ne pas propager son identité (sinon session "enfant" non persistée).
   for (const k of Object.keys(env)) if (/^(CLAUDECODE|CLAUDE_CODE_|CLAUDE_PID$|CLAUDE_EFFORT$|AI_AGENT$|ELECTRON_RUN_AS_NODE$)/i.test(k)) delete env[k];
   Object.assign(env, ctx.memEnv?.() || {}); // mémoire claude-mem synchronisée, séparée de celle du terminal
+  Object.assign(env, ctx.typeEnv?.(s) || {}); // type de session : fichier de la vue (CSM_VIEW_FILE)
   let p;
   try {
     p = pty.spawn(CLAUDE, args, {
@@ -811,7 +814,7 @@ const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
   renameSession, history, transcriptPath, setStatus, lockedResume, splitArgs, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
 };
-for (const mod of ['lock', 'git', 'settings', 'auth', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync', 'schedule']) {
+for (const mod of ['lock', 'git', 'settings', 'auth', 'extensions', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync', 'schedule']) {
   try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }
 }
 

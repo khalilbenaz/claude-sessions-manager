@@ -283,6 +283,37 @@ test('notifications et pastille : test depuis les réglages, nombre sur l’icô
   if (process.platform === 'win32') assert.equal(await app.evaluate(({ BrowserWindow }) => !!BrowserWindow.getAllWindows()[0]), true);
 });
 
+test('extensions : modèle dans Nouvelle session, affichage dédié rempli par Claude, action', async () => {
+  const ext = { csm: 1, id: 'ext-e2e', name: 'Extension e2e', templates: [{ id: 'rev', name: 'Revue e2e', type: 'rev' }],
+    sessionTypes: [{ id: 'rev', name: 'Revue', badge: 'REVUE', color: '#7A9BEA', instructions: 'mode revue', actions: [{ id: 'go', label: 'Corriger', send: 'corrige-e2e', primary: true }] }] };
+  await win.evaluate(c => api('POST', '/api/extensions', { content: c }), JSON.stringify(ext));
+  // Réglages › Extensions : listée
+  await win.evaluate(() => window.csmFeatures.openSettings('extensions'));
+  await win.click('.setNav [data-st=extensions]');
+  await win.waitForFunction(() => /Extension e2e/.test(document.querySelector('#extList').textContent));
+  await win.evaluate(() => document.querySelector('#dlgSettings').close());
+  // Nouvelle session depuis le modèle de l'extension
+  await win.click('#btnNew');
+  await win.waitForFunction(() => [...document.querySelectorAll('#formNew [name=template] optgroup option')].some(o => o.textContent === 'Revue e2e'));
+  await win.selectOption('#formNew [name=template]', 'ext-e2e/rev');
+  await win.fill('#formNew [name=cwd]', WORK);
+  await win.click('#formNew button[value=ok]');
+  const id = await win.waitForFunction(() => [...sessions.values()].find(s => s.typeInfo?.name === 'Revue' && s.status === 'idle')?.id, null, { timeout: 60000 }).then(h => h.jsonValue());
+  await win.waitForSelector('#curType:not([hidden])');
+  assert.equal(await win.textContent('#curType'), 'REVUE');
+  // Claude écrit la vue : affichée en texte (le HTML reste du texte)
+  await win.evaluate(id => send({ t: 'input', id, d: 'ecris-vue\r' }), id);
+  await win.waitForFunction(id => /Analyse <b>test<\/b>/.test(terms.get(id).el.querySelector('.typeView')?.textContent || ''), id, { timeout: 20000 });
+  assert.equal(await win.evaluate(id => terms.get(id).el.querySelector('.typeView script, .typeView b'), id), null, 'aucun HTML interprété');
+  // action du type : envoyée à la session
+  await win.click('.term.show .typeView .tvHead button:has-text("Corriger")');
+  await win.waitForFunction(id => { const b = terms.get(id).term.buffer.active; for (let y = 0; y < b.length; y++) if (b.getLine(y).translateToString().includes('echo: corrige-e2e')) return true; return false; }, id, { timeout: 20000 });
+  // bascule vers le terminal
+  await win.click('#btnView');
+  assert.equal(await win.evaluate(id => terms.get(id).el.querySelector('.typeView').hidden, id), true);
+  await win.evaluate(() => api('DELETE', '/api/extensions/ext-e2e'));
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));
