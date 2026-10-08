@@ -149,7 +149,7 @@ Pour **suivre plusieurs sessions en même temps** : boutons de disposition dans 
 
 - **Placer une session** : glisse-la depuis la barre latérale sur un panneau, ou clique-la (elle va dans le panneau actif, surligné en orange).
 - **Changer de panneau** : clic dans le panneau ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> ; ✕ en haut d'un panneau le vide.
-- Chaque terminal garde sa propre taille ; la disposition est mémorisée.
+- Chaque terminal garde sa propre taille ; la disposition est mémorisée. L'en-tête d'un panneau montre le numéro de la session ; quand elle demande une autorisation, **Oui / Toujours / Non** y répondent sans quitter la grille.
 - **Envoyer à tous les panneaux** : la barre sous la grille envoie un même message à toutes les sessions affichées (« Envoyer à N panneaux ») ; une session qui travaille le reçoit en file d'attente (case *en file si occupée*).
 - **Mode focus** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>) : masque la barre latérale.
 
@@ -166,7 +166,7 @@ La fusion est refusée s'il reste des modifications non commitées, si le dépô
 
 ## 8. Panneau Modifications, Chronologie, Consommation
 
-**Usage de Claude** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>U</kbd>, palette, ou clic sur les quotas en bas de la barre latérale) : sessions actives, demandes à traiter, **temps de travail de Claude** aujourd'hui (dont le temps « sans toi », pendant que la file d'attente envoyait les demandes), coût estimé du jour et des 7 jours ; **quota 5 h** avec son historique et une **prévision** (« au rythme actuel, limite atteinte vers 15:40 ») ; prochaines **tâches planifiées** ; détail **par session** (temps du jour, tokens et coût sur 7 jours).
+**Usage de Claude** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>U</kbd>, palette, ou clic sur les quotas en bas de la barre latérale) : sessions actives, demandes à traiter, **temps de travail de Claude** aujourd'hui (dont le temps « sans toi », pendant que la file d'attente envoyait les demandes), coût estimé du jour et des 7 jours ; **quota 5 h** avec son historique et une **prévision** (« au rythme actuel, limite atteinte vers 15:40 ») ; prochaines **tâches planifiées** (avec la session ou le modèle visé ; *Ajouter*, *Gérer*) ; détail **par session**. **Période** au choix : jour, 7 jours ou 30 jours. Graphique du quota 5 h avec les heures, la prévision en hachuré jusqu'à la réinitialisation et le seuil de pause de la file ; **quota 7 jours** avec sa propre prévision (rythme des dernières 24 h). Avec la synchro, **Cette machine / Toutes les machines** additionne l'usage de tes machines (colonne Machine) : chaque machine ne partage que des totaux chiffrés par jour et par session, jamais de conversation (option *Usage de Claude* de la synchro).
 
 Bouton **± Modifications** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd>) ou ⋯ : panneau latéral à trois onglets pour la session active.
 
@@ -195,7 +195,7 @@ Le fichier est copié dans un dossier temporaire et son chemin collé dans ta li
 
 ## 11. Palette, recherche, prompts, file d'attente, envoi groupé
 
-- **Palette de commandes** (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>) : quelques lettres pour aller à une session, reprendre une conversation, lancer un modèle, insérer un prompt ou exécuter une action (disposition, thème, réglages, diagnostic, verrouillage…). Les actions récentes remontent en tête.
+- **Palette de commandes** (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>) : quelques lettres pour aller à une session, reprendre une conversation, lancer un modèle, insérer un prompt ou exécuter une action (disposition, thème, réglages, diagnostic, verrouillage…). Les actions récentes remontent en tête. Résultats rangés par **sections** (Sessions, Actions, Prompts, Modèles, Conversations), terme surligné ; `>` ne montre que les commandes, `/` que les prompts ; <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Entrée</kbd> ouvre la session choisie dans un panneau de la vue partagée.
 - **Rechercher dans les sessions** (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Maj</kbd>+<kbd>F</kbd>) : un texte dans le contenu de tous les terminaux ouverts ; clic = y aller.
 - **Bibliothèque de prompts** (⋯ › Insérer un prompt…, palette, Réglages › Prompts) : tes demandes réutilisables. Elle démarre avec 8 prompts prêts à l'emploi (relire les modifications, écrire les tests, expliquer du code, préparer un commit, corriger un bug, proposer un plan, documenter, résumer), modifiables et supprimables ; **+ Nouveau** pour ajouter les tiens. **Insérer** les place dans la ligne de saisie (tu relis, puis Entrée) ; **Envoyer** les soumet. Variables : `{dossier}`, `{branche}`, `{nom}`, `{selection}` (texte sélectionné dans le terminal).
 - **File d'attente** (⋯ › File d'attente…, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Q</kbd>) : des prompts envoyés **un par un, automatiquement, chaque fois que Claude a fini** le précédent — « implémente », puis « ajoute les tests », puis « relis ». Le badge ⏳ indique le nombre en attente.

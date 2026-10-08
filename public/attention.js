@@ -40,7 +40,7 @@
   const ago = ts => { const m = Math.max(0, Math.round((Date.now() - ts) / 60000)); return m < 1 ? t('à l’instant') : m < 60 ? `${t('il y a')} ${m} min` : `${t('il y a')} ${Math.round(m / 60)} h`; };
 
   const isPerm = (s, ctx) => /permission|autoris|approv|proceed|Do you want/i.test(`${s.message} ${ctx.slice(-400)}`);
-  const CHOICE = { yes: '1', always: '2', no: '' };
+  const CHOICE = { yes: '1', always: '2', no: '\x1b' };
 
   function items() {
     const out = [];

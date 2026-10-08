@@ -2,6 +2,17 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.35.0] — 2026-10-08
+### Ajouté
+- **Usage de Claude** : période Jour / 7 jours / 30 jours ; quota 5 h avec heures, prévision hachurée et seuil de pause ; **quota 7 jours avec sa propre prévision** (historique conservé) ; tâches planifiées avec « Ajouter » et leur cible ; vue **toutes les machines** (agrégats chiffrés via la synchro, option « Usage de Claude », jamais de conversation).
+- **Palette** : résultats par sections (Sessions, Actions, Prompts, Modèles, Conversations), terme surligné, préfixes `>` (commandes) et `/` (prompts), **Ctrl/⌘+Entrée** ouvre une session dans un panneau, « Synchroniser maintenant », dossier et machine d'origine de chaque session.
+- **Réglages › Synchronisation** : carte d'en-tête (code masqué, Afficher / Copier, Synchroniser maintenant, état), options en interrupteurs, machines en cartes avec « Ajouter une machine ».
+- **Espace de travail** : chemin complet sous le nom de la session et état en pastille ; « Synchronisé · machine » sur la ligne des boutons ; recherche « Rechercher, agir… » avec Ctrl K ; rappel de file d'attente.
+- **Vue partagée** : bandeau d'aide masquable, numéro des sessions, boutons **Oui / Toujours / Non** dans le panneau qui demande une autorisation.
+- **Nouvelle session** : premier message visible, case « Verrouiller par mot de passe », raccourci affiché, « Dépôt git détecté · branche … » sous le dossier, bouton « Lancer la session ».
+- **Centre d'attention** : commande demandée isolée dans un bloc, « Voir les modifications » pour un résultat à relire.
+### Corrigé
+- Document d'usage synchronisé : recalculé aussitôt si la machine est renommée.
 ## [3.34.1] — 2026-10-08
 ### Corrigé
 - « Erreur JavaScript dans le processus principal : EPIPE » à la vérification des mises à jour (sortie standard fermée).

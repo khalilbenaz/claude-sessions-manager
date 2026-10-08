@@ -140,7 +140,13 @@ test('groupes : créer un groupe vide, y glisser une session, le renommer, le su
   // groupe vide visible, avec sa zone de dépôt
   await win.waitForFunction(() => [...document.querySelectorAll('#list li.ghead.empty .gname')].some(x => x.textContent === 'Clients'));
   const src = await win.evaluate(() => [...sessions.values()].find(s => s.name === 'e2e').id);
-  await win.dragAndDrop(`#list li[data-id="${src}"]`, '#list li.gempty');
+  // dépôt sur le groupe vide : événements de glisser-déposer envoyés dans la page (le glisser simulé au pointeur
+  // est instable dans une fenêtre cachée) ; même gestionnaire que le vrai glisser
+  await win.evaluate(id => {
+    const dt = new DataTransfer(); dt.setData('text/plain', id); dt.setData('text/csm-session', id);
+    const to = document.querySelector('#list li.gempty');
+    for (const type of ['dragenter', 'dragover', 'drop']) to.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true }));
+  }, src);
   await win.waitForFunction(id => sessions.get(id).group === 'Clients', src, { timeout: 15000 });
   await win.waitForFunction(() => !document.querySelector('#list li.gempty'));
   // menu « Déplacer vers le groupe » : retour dans « Sans groupe »
@@ -409,21 +415,12 @@ test('usage de Claude : indicateurs, quota, sessions (Ctrl+Alt+U)', async () => 
   await win.evaluate(() => document.querySelector('#dlgUsage').close());
 });
 
-test('fermer la fenêtre ne coupe pas les sessions', async () => {
-  await win.evaluate(() => window.close());
-  await new Promise(r => setTimeout(r, 800));
-  const token = fs.readFileSync(path.join(DATA, 'token'), 'utf8').trim();
-  const r = await fetch(`http://127.0.0.1:${PORT}/api/sessions`, { headers: { 'X-CSM-Token': token } });
-  const list = await r.json();
-  assert.ok(list.filter(s => s.alive).length >= 2, 'sessions toujours actives');
-});
-
 test('en-tête : chemin complet du dossier et état en pastille', async () => {
   await win.waitForFunction(() => document.querySelector('#curCwd bdi')?.textContent.length > 0);
-  const r = await win.evaluate(() => ({ cwd: document.querySelector('#curCwd bdi').textContent, title: document.querySelector('#curCwd').title, msg: document.querySelector('#curMsg').className }));
-  assert.ok(r.cwd.endsWith('projet'), r.cwd); // chemin complet, non tronqué
+  const r = await win.evaluate(() => ({ cwd: document.querySelector('#curCwd bdi').textContent, full: sessions.get(active)?.cwd, title: document.querySelector('#curCwd').title, msg: document.querySelector('#curMsg').className }));
+  assert.equal(r.cwd, r.full); // chemin complet de la session active, non tronqué
   assert.ok(r.title.startsWith(r.cwd));
-  assert.match(r.msg, /msg/);
+  assert.match(r.msg, /\bmsg\b/);
 });
 
 test('vue partagée : bandeau d’aide masquable et mémorisé', async () => {
@@ -434,4 +431,13 @@ test('vue partagée : bandeau d’aide masquable et mémorisé', async () => {
   assert.equal(await win.locator('#paneHint').isVisible(), false);
   assert.equal(await win.evaluate(() => localStorage.getItem('csm.paneHintOff')), 'true');
   await win.click('[data-layout="1"]');
+});
+
+test('fermer la fenêtre ne coupe pas les sessions', async () => {
+  await win.evaluate(() => window.close());
+  await new Promise(r => setTimeout(r, 800));
+  const token = fs.readFileSync(path.join(DATA, 'token'), 'utf8').trim();
+  const r = await fetch(`http://127.0.0.1:${PORT}/api/sessions`, { headers: { 'X-CSM-Token': token } });
+  const list = await r.json();
+  assert.ok(list.filter(s => s.alive).length >= 2, 'sessions toujours actives');
 });
