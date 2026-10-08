@@ -617,3 +617,10 @@ svg.ic { flex: none; vertical-align: -3px; }
 .tplChip.on { color: var(--fg); border-color: var(--accent); background: var(--sel); }
 #tplSearch { margin-left: auto; height: 30px; width: 200px; max-width: 100%; }
 .tplCard .tn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* modèles d'une ligne (nom + provenance en petit) : 4 par rangée, tout visible sans défilement */
+.tplCards { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
+.tplCard { min-height: 0; padding: 7px 10px; gap: 1px; }
+.tplCard .tn { font-size: 13px; }
+.tplCard .td, .tplCard .tb { font-size: 11px; margin-top: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tplCard .tb { font-weight: 500; letter-spacing: 0; }
