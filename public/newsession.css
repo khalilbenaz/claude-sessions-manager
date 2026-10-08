@@ -1,0 +1,12 @@
+/* Nouvelle session et centre d'attention : écarts avec la maquette Atelier */
+.nsHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.nsKbd { font: 12px/1 var(--mono, ui-monospace, monospace); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line2); background: var(--bg); color: var(--dim); }
+.nsGit { display: flex; align-items: center; gap: 6px; margin: -4px 0 12px; font-size: 12px; color: var(--dim); }
+.nsGit.repo { color: var(--accent); }
+.nsGit .ic { flex: none; }
+.nsPrompt textarea { width: 100%; min-height: 76px; resize: vertical; }
+.atAsk { font-weight: 600; }
+.atCmdBox { display: flex; flex-direction: column; gap: 4px; }
+.atCmdLbl { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.atCmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--term); color: var(--fg); border: 1px solid var(--line2); font-family: var(--mono, ui-monospace, monospace); font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; max-height: 160px; overflow: auto; }
+.atCard.risk .atCmd { border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
