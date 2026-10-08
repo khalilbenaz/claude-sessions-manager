@@ -267,6 +267,13 @@ const EN = {
   'Les mêmes sur toutes les machines ; validation demandée si « Me demander… » est coché': 'The same on every machine; approval asked if “Ask me…” is checked',
   'Extensions importées': 'Imported extensions', 'Installées sur les autres machines, chiffrées': 'Installed on the other machines, encrypted', 'Mémoire des sessions': 'Session memory',
   'Celle choisie dans Réglages › Général, et ce choix lui-même, chiffrés': 'The one chosen in Settings › General, and that choice itself, encrypted',
+  'Sur cette machine': 'On this machine', 'Toutes les machines': 'All machines', 'Cette machine': 'This machine', 'Machine': 'Machine', 'Machines': 'Machines', 'Période': 'Period',
+  'Jour': 'Day', '30 jours': '30 days', 'Travail': 'Work', 'Ajouter': 'Add', 'Par session': 'Per session', 'Pas encore de consommation sur cette période.': 'No usage over this period yet.',
+  'Pause de la file à': 'Queue pauses at', 'Pause de la file désactivée': 'Queue pause is off', 'Seuil de la pause': 'Pause threshold', 'seuil de pause': 'pause threshold', 'mesuré': 'measured', 'prévision': 'forecast',
+  'modèle supprimé': 'template deleted', 'session supprimée': 'session deleted',
+  'ce PC': 'this PC', 'ce Mac': 'this Mac', 'le PC': 'the PC', 'le Mac': 'the Mac', 'session sur': 'session on', 'sessions sur': 'sessions on', 'sur': 'on',
+  'Usage de Claude (temps, coût, tokens par jour et par session, chiffrés ; jamais de conversation)': 'Claude usage (time, cost, tokens per day and per session, encrypted; never any conversation)',
+  'Quota 7 jours : prévision': '7-day quota: forecast', 'Pas encore de quota sur 7 jours.': 'No 7-day quota yet.', 'Prévision dès quelques heures de mesures.': 'Forecast after a few hours of measurements.',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
