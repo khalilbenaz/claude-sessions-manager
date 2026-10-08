@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.28.0] — 2026-10-08
+### Ajouté
+- Synchro des **plugins Claude Code** : les machines d'un espace ont les mêmes plugins (marketplaces GitHub). Plugin reçu : validation dans Réglages › Synchronisation (« Plugins à valider ») si « Me demander… » est coché, sinon installation automatique. Une machine qui n'a pas un plugin ne le fait jamais retirer ailleurs ; une désinstallation réelle est propagée et toujours proposée, jamais appliquée seule. Marketplaces locaux jamais partagés.
+
 ## [3.27.0] — 2026-10-08
 ### Ajouté
 - Synchro des **extensions fournies par un plugin** : copiées sur les machines qui n'ont pas le plugin (« reçue de *machine* (plugin *nom*) ») ; une machine qui a le plugin garde sa version ; seule la version la plus haute circule (pas d'aller-retour entre deux versions) ; copie retirée quand le plugin est désinstallé à la source, et gardée en réserve si le plugin local est désinstallé.
