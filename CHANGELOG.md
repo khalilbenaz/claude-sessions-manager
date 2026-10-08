@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [Non publié]
+### Modifié
+- **Site refait** dans le style Atelier (clair / sombre, polices intégrées, icônes dessinées) avec de vraies captures : nouveautés 3.33, vue partagée, centre d'attention, usage de Claude, extensions, modèles, synchro (conversations, groupes, modèles, extensions, plugins). Captures régénérables par `node test/site-shots.js` (instance isolée, contenu de démonstration).
+
 ## [3.33.1] — 2026-10-08
 ### Modifié
 - Icônes dessinées (traits, couleur du thème) à la place des emoji : recherche, historique, nouveau groupe, réglages, barre compacte, renommer, modifications, ouvrir, joindre, plus d'actions, dispositions, actions des groupes. Libellés accessibles (lecteurs d'écran) sur les boutons-icônes.
