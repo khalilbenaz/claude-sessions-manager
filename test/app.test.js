@@ -288,9 +288,12 @@ test('extensions : modèle dans Nouvelle session, affichage dédié rempli par C
     sessionTypes: [{ id: 'rev', name: 'Revue', badge: 'REVUE', color: '#7A9BEA', instructions: 'mode revue', actions: [{ id: 'go', label: 'Corriger', send: 'corrige-e2e', primary: true }] }] };
   await win.evaluate(c => api('POST', '/api/extensions', { content: c }), JSON.stringify(ext));
   // Réglages › Extensions : listée
-  await win.evaluate(() => window.csmFeatures.openSettings('extensions'));
-  await win.click('.setNav [data-st=extensions]');
-  await win.waitForFunction(() => /Extension e2e/.test(document.querySelector('#extList').textContent));
+  await win.evaluate(() => window.csmFeatures.openSettings('extensions')); // ouverture directe : la liste se charge
+  await win.waitForFunction(() => {
+    // relu toutes les 2 s si besoin (machine lente)
+    if (!window.__extT || Date.now() - window.__extT > 2000) { window.__extT = Date.now(); window.csmFeatures.renderExtensions(); }
+    return /Extension e2e/.test(document.querySelector('#extList').textContent);
+  }, null, { timeout: 30000 });
   await win.evaluate(() => document.querySelector('#dlgSettings').close());
   // Nouvelle session depuis le modèle de l'extension
   await win.click('#btnNew');

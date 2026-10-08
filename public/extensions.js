@@ -58,6 +58,10 @@
   zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('dropping'); });
   zone.addEventListener('drop', e => { zone.classList.remove('dropping'); const fs = [...(e.dataTransfer?.files || [])]; if (fs.length) { e.preventDefault(); e.stopPropagation(); importFiles(fs); } });
   document.querySelector('.setNav [data-st=extensions]')?.addEventListener('click', renderList);
+  // ouverture directe sur la page Extensions (palette, lien) : la liste se charge aussi
+  const open0 = F.openSettings;
+  if (open0) F.openSettings = async (which, ...rest) => { const r = await open0(which, ...rest); if (which === 'extensions') renderList(); return r; };
+  F.renderExtensions = renderList;
   window.addEventListener('csm:extensions', () => { if (!zone.hidden) renderList(); });
 
   // ---------------------------------------------------------------- vue d'une session typée

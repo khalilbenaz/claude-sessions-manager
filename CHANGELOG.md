@@ -5,6 +5,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; ve
 ## [3.28.0] — 2026-10-08
 ### Ajouté
 - Synchro des **plugins Claude Code** : les machines d'un espace ont les mêmes plugins (marketplaces GitHub). Plugin reçu : validation dans Réglages › Synchronisation (« Plugins à valider ») si « Me demander… » est coché, sinon installation automatique. Une machine qui n'a pas un plugin ne le fait jamais retirer ailleurs ; une désinstallation réelle est propagée et toujours proposée, jamais appliquée seule. Marketplaces locaux jamais partagés.
+### Corrigé
+- Réglages ouverts directement sur la page Extensions (palette, lien) : la liste se charge (avant : seulement après un clic sur l'onglet).
 
 ## [3.27.0] — 2026-10-08
 ### Ajouté
