@@ -539,3 +539,28 @@ dialog label.check input { margin-top: 0; }
 .splitBar input#sbText:focus { outline: none; border-color: var(--accent); }
 .splitBar .sbQueue { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); }
 .splitBar button { height: 36px; }
+
+/* ---- refonte Atelier, étape 3 : centre d'attention */
+.atBtn { height: 32px; border-radius: 999px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; background: var(--panel2); border-color: var(--line2); }
+.atBtn b { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--dim2); color: var(--bg); font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+.atBtn.hot b { background: var(--warn); color: #fff; }
+dialog.atDlg { width: min(980px, 94vw); max-height: 88vh; display: none; flex-direction: column; }
+dialog.atDlg[open] { display: flex; }
+dialog.atDlg form { display: flex; flex-direction: column; min-height: 0; }
+.atTop { display: flex; align-items: center; gap: 10px; }
+.atTop h2 { margin: 0; flex: 1; }
+.atTop h2 span { color: var(--accent); }
+.atList { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; padding: 4px 2px; margin-top: 8px; }
+.atCard { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); }
+.atCard.risk { border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.atHead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.atKind { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--panel2); }
+.atKind.k-perm { color: var(--ok); } .atKind.risk { color: var(--warn); } .atKind.k-question { color: var(--work); } .atKind.k-review { color: var(--link); }
+.atWhen { margin-left: auto; font-size: 12px; color: var(--dim); }
+.atCard p { margin: 0; line-height: 1.5; }
+.atCtx { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--term); color: var(--fg2); font-size: 12px; line-height: 1.5; white-space: pre-wrap; max-height: 180px; overflow: auto; }
+.atActs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.atActs input { flex: 1 1 260px; height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel); color: var(--fg); }
+.atActs button { height: 36px; }
+.atActs button.ghost { margin-left: auto; background: none; border-color: transparent; color: var(--dim); }
+.atEmpty { padding: 40px; text-align: center; color: var(--dim); border: 1px dashed var(--line2); border-radius: 14px; }

@@ -52,6 +52,7 @@
     <span id="curType" class="typeBadge" hidden></span>
     <button id="btnView" type="button" hidden title="Basculer entre l'affichage du type de session et le terminal">Terminal</button>
     <span class="spacer"></span>
+    <button id="btnAttention" class="atBtn" hidden title="Centre d'attention : demandes de toutes les sessions (Ctrl+Alt+I)">À traiter <b id="atCount"></b></button>
     <span class="layouts" role="group" aria-label="Disposition">
       <button data-layout="1" class="icon" title="Une session">▢</button>
       <button data-layout="2c" class="icon" title="Deux colonnes">◫</button>
@@ -107,6 +108,17 @@
   </div>
 </main>
 
+<dialog id="dlgAttention" class="wide atDlg" aria-labelledby="atTitle">
+  <form method="dialog">
+    <div class="atTop">
+      <h2 id="atTitle">À traiter <span id="atTitleCount"></span></h2>
+      <button type="button" id="atReadOnly" hidden></button>
+      <button value="close">Fermer</button>
+    </div>
+    <p class="hint">Les demandes de toutes tes sessions : autorise, réponds ou relis sans changer de session. Les réponses sont envoyées comme au clavier (1 = oui, 2 = oui pour ce projet, Échap = non).</p>
+    <div id="atList" class="atList"></div>
+  </form>
+</dialog>
 <dialog id="dlgNew">
   <form method="dialog" id="formNew">
     <h2>Nouvelle session</h2>
@@ -551,5 +563,6 @@
 <script src="extensions.js"></script>
 <script src="sidestatus.js"></script>
 <script src="atelier.js"></script>
+<script src="attention.js"></script>
 </body>
 </html>

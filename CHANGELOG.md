@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.32.0] — 2026-10-08
+### Ajouté
+- **Centre d'attention** (refonte, étape 3) : bouton « À traiter N » dans la barre du haut, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>I</kbd>, palette. Autorisations de toutes les sessions avec leur contexte (Autoriser, Toujours pour ce projet, Refuser), commandes risquées signalées en premier, « Autoriser les lectures seules » ; questions avec réponse directe ; tâches terminées à relire.
+
 ## [3.31.0] — 2026-10-08
 ### Modifié
 - **Nouvelle session** (refonte, étape 2) : modèles présentés en cartes (« Partir d'un modèle », ceux des extensions marqués de leur nom), modèle Claude en boutons (Opus, Sonnet, Haiku, Défaut).
