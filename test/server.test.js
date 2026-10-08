@@ -1545,3 +1545,14 @@ test('barre d’état : relais vers celle de l’utilisateur, quotas toujours re
   assert.match(out, /MA BARRE Opus/);
   assert.doesNotMatch(out, /5h/);
 });
+test('rappel « Claude is waiting for your input » : la session reste prête (pas une question)', async () => {
+  const S = await api('POST', '/api/sessions', { cwd: WORK, name: 'rappel-idle' });
+  await idle(S.id);
+  await api('POST', '/api/hook', { csm: S.id, event: 'attention', data: { message: 'Claude is waiting for your input', notification_type: 'idle_prompt' } });
+  assert.equal((await session(S.id)).status, 'idle');
+  await api('POST', '/api/hook', { csm: S.id, event: 'attention', data: { message: 'Claude needs your permission to use Bash' } });
+  assert.equal((await session(S.id)).status, 'attention');
+  await api('POST', '/api/hook', { csm: S.id, event: 'attention', data: { message: 'Claude is waiting for your input' } });
+  assert.equal((await session(S.id)).status, 'idle');
+  await api('DELETE', `/api/sessions/${S.id}`);
+});
