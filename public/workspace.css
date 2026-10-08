@@ -1,0 +1,47 @@
+/* Espace de travail et vue partagée (maquette « Atelier ») : en-tête de session, bas de barre latérale, bandeau et panneaux. */
+
+/* En-tête : nom + pastille d'état, chemin complet dessous */
+#bar .curId { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 0 1 auto; }
+#bar .idRow { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#bar .curId .cwd { display: block; flex: none; max-width: 100%; min-width: 0; direction: rtl; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+#bar .curId .cwd bdi { unicode-bidi: isolate; }
+@container (max-width: 640px) { #bar .curId .cwd { display: block; } }
+#bar .idRow .msg { flex: none; font-weight: 500; }
+#bar .idRow .msg.attention { background: color-mix(in srgb, var(--warn) 16%, transparent); }
+#bar .idRow .msg.working { background: color-mix(in srgb, var(--work) 16%, transparent); }
+#bar .idRow .msg.idle { background: color-mix(in srgb, var(--ok) 16%, transparent); }
+
+/* Rappel de file d'attente */
+#curQueue { display: inline-flex; align-items: center; gap: 5px; color: var(--dim); }
+#curQueue[hidden] { display: none; }
+#curQueue .ic { flex: none; }
+
+/* Sous-titre d'une session accessible à distance */
+#list .sub .remoteIc { vertical-align: -2px; margin-right: 4px; color: var(--accent); }
+
+/* Bas de la barre latérale sur une seule ligne */
+#side footer { flex-wrap: nowrap; }
+#side footer .syncFoot { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); }
+#side footer .syncFoot[hidden] { display: none; }
+#side footer .syncFoot span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#side footer .syncFoot b { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+#side footer .syncFoot.bad b { background: var(--warn); }
+#side footer .syncFoot:not([hidden]) ~ #btnHistory .lbl { display: none; }
+body.compact #side footer .syncFoot { display: none; }
+
+/* Champ de recherche : raccourci toujours visible */
+.palHint kbd { flex: none; }
+
+/* Vue partagée : bandeau d'aide */
+.paneHint { display: flex; align-items: center; gap: 8px; padding: 5px 14px; font-size: 12px; color: var(--dim); background: var(--panel); border-bottom: 1px solid var(--line); }
+.paneHint[hidden] { display: none; }
+.paneHint span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.paneHint button { background: none; border: none; padding: 2px 4px; color: var(--dim); height: auto; }
+
+/* Vue partagée : en-tête de panneau */
+.phead .pnum { flex: none; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 4px; background: var(--panel2); color: var(--dim); font-size: 10.5px; line-height: 16px; text-align: center; font-family: var(--mono); }
+.phead .pnum[hidden] { display: none; }
+.phead .pperm { display: inline-flex; gap: 4px; margin-left: auto; }
+.phead .pperm[hidden] { display: none; }
+.phead .pperm button { height: 22px; padding: 0 8px; font-size: 11.5px; }
+.phead .pperm ~ .pclose { margin-left: 4px; }

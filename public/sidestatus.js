@@ -26,13 +26,18 @@
     const parts = [];
     if (quota?.five) parts.push(...line(t('Quota 5 h'), quota.five));
     if (quota?.seven) parts.push(...line(t('Quota 7 j'), quota.seven));
-    if (sync?.enabled) {
-      const s = document.createElement('div'); s.className = `syncLine${sync.lastError ? ' bad' : ''}`;
-      const dot = document.createElement('b');
-      const txt = document.createElement('span');
-      txt.textContent = sync.lastError ? t('Synchro : erreur') : `${t('Synchronisé')}${sync.lastOk ? ` · ${hm(sync.lastOk)}` : ''}`;
-      s.append(dot, txt); s.title = sync.lastError || '';
-      parts.push(s);
+    // état de la synchro : sur la même ligne que les boutons du bas de la barre latérale
+    const foot = $('#syncFoot');
+    if (foot) {
+      foot.hidden = !sync?.enabled;
+      if (sync?.enabled) {
+        const machine = window.csmFeatures?.syncMachine;
+        const dot = document.createElement('b'), txt = document.createElement('span');
+        txt.textContent = sync.lastError ? t('Synchro : erreur') : `${t('Synchronisé')}${machine ? ` · ${machine}` : sync.lastOk ? ` · ${hm(sync.lastOk)}` : ''}`;
+        foot.className = `syncFoot${sync.lastError ? ' bad' : ''}`;
+        foot.title = sync.lastError || (sync.lastOk ? hm(sync.lastOk) : '');
+        foot.replaceChildren(dot, txt);
+      }
     }
     box.replaceChildren(...parts);
     box.hidden = !parts.length;
