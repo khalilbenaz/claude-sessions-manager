@@ -350,6 +350,15 @@ test('centre d’attention : demande d’autorisation affichée et acceptée dep
   await win.evaluate(() => document.querySelector('#dlgAttention').close());
 });
 
+test('usage de Claude : indicateurs, quota, sessions (Ctrl+Alt+U)', async () => {
+  await win.keyboard.press(process.platform === 'darwin' ? 'Meta+Alt+u' : 'Control+Alt+u');
+  await win.waitForSelector('#dlgUsage[open] #dbKpis .dbKpi', { timeout: 15000 });
+  assert.equal(await win.evaluate(() => document.querySelectorAll('#dbKpis .dbKpi').length), 4);
+  assert.match(await win.textContent('#dbKpis'), /Sessions actives/);
+  await win.waitForFunction(() => document.querySelector('#dbRows').children.length > 0);
+  await win.evaluate(() => document.querySelector('#dlgUsage').close());
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));

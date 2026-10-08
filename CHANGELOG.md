@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.33.0] — 2026-10-08
+### Ajouté
+- **Usage de Claude** (refonte, étape 4) : <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>U</kbd>, palette ou clic sur les quotas de la barre latérale. Sessions actives, demandes à traiter, temps de travail de Claude du jour (dont « sans toi », via la file d'attente), coût estimé jour / 7 jours ; quota 5 h avec historique et prévision de la limite ; prochaines tâches planifiées ; détail par session.
+
 ## [3.32.0] — 2026-10-08
 ### Ajouté
 - **Centre d'attention** (refonte, étape 3) : bouton « À traiter N » dans la barre du haut, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>I</kbd>, palette. Autorisations de toutes les sessions avec leur contexte (Autoriser, Toujours pour ce projet, Refuser), commandes risquées signalées en premier, « Autoriser les lectures seules » ; questions avec réponse directe ; tâches terminées à relire.

@@ -769,6 +769,7 @@ server.on('upgrade', (req, sock, head) => {
       if (s.lock && !ctx.wsCan?.(s, ws)) return; // verrouillée : ni saisie ni redimensionnement
       if (m.t === 'input' && s.pty) {
         s.pty.write(m.d);
+        if (m.d.includes('\r')) s.fromQueue = false; // demande tapée par l'utilisateur (tableau d'usage)
         if ((m.d === '\x03' || m.d === '\x1b') && (s.status === 'working' || s.status === 'attention')) watchInterrupt(s);
       }
       else if (m.t === 'resize' && m.cols > 10 && m.rows > 3) {

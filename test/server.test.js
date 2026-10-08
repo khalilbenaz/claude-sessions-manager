@@ -1407,3 +1407,18 @@ test('quotas 5 h et 7 j : reçus de la barre d’état, servis à l’interface'
   await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 0, resetAt: 0 } });
   await api('DELETE', `/api/sessions/${S.id}`);
 });
+
+test('usage : temps de travail du jour et historique du quota pour la prévision', async () => {
+  const w = await api('GET', '/api/worktime');
+  assert.equal(typeof w.today.total, 'number'); assert.equal(typeof w.today.queued, 'number'); assert.ok(w.today.sessions);
+  const S = await api('POST', '/api/sessions', { cwd: WORK, name: 'usage-q' });
+  await idle(S.id);
+  const r = Date.now() + 3 * 3600e3;
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 30, resetAt: r } });
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 31, resetAt: r } });
+  const q = await api('GET', '/api/quota');
+  assert.ok(q.hist.length >= 2, 'historique gardé'); assert.equal(q.hist.at(-1).pct, 31);
+  assert.equal(q.forecast, null, 'pas de prévision sur quelques secondes de mesures');
+  await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 0, resetAt: 0 } });
+  await api('DELETE', `/api/sessions/${S.id}`);
+});

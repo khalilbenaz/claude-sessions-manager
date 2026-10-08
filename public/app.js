@@ -1165,6 +1165,7 @@ function globalShortcut(e) {
   if (k === 'q' && active) { window.csmFeatures.openQueue(active); return true; }
   if (k === 'b') { window.csmFeatures.openBroadcast(); return true; }
   if (k === 'i') { window.csmFeatures.openAttention?.(); return true; }
+  if (k === 'u') { window.csmFeatures.openUsage?.(); return true; }
   if (k === 'f') { document.body.classList.toggle('focusmode'); requestAnimationFrame(() => fitAll(true)); return true; }
   if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
     const vis = panes.slice(0, LAYOUTS[layout] || 1);

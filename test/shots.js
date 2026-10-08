@@ -50,7 +50,7 @@ for (const k of Object.keys(env)) if (/^(CLAUDECODE|CLAUDE_CODE_|ELECTRON_RUN_AS
     await win.evaluate(() => document.querySelector('#dlgSettings').close());
     for (const extra of (process.argv[3] || '').split(',').filter(Boolean)) {
       await win.evaluate(code => eval(code), fs.readFileSync(extra, 'utf8')); // étapes supplémentaires (fichier JS évalué dans la page)
-      await new Promise(r => setTimeout(r, 1200));
+      await new Promise(r => setTimeout(r, 4500));
       await win.screenshot({ path: path.join(OUT, path.basename(extra, '.js') + '.png') });
     }
   } finally {
