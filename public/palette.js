@@ -218,6 +218,7 @@
     if (n) toast(`${t('Envoyé à')} ${n} ${t(n > 1 ? 'sessions' : 'session')}`);
   }
 
+  F.sendTo = sendTo;
   F.openBroadcast = () => {
     const alive = sorted().filter(s => s.alive);
     $('#bcList').innerHTML = alive.map(s => `<label class="check"><input type="checkbox" value="${s.id}" ${visibleIds().includes(s.id) ? 'checked' : ''}> <span class="dot ${s.status}"></span> <span>${esc(s.name)}</span></label>`).join('')

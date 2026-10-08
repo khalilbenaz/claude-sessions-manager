@@ -148,6 +148,7 @@ Pour **suivre plusieurs sessions en même temps** : boutons de disposition dans 
 - **Placer une session** : glisse-la depuis la barre latérale sur un panneau, ou clique-la (elle va dans le panneau actif, surligné en orange).
 - **Changer de panneau** : clic dans le panneau ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> ; ✕ en haut d'un panneau le vide.
 - Chaque terminal garde sa propre taille ; la disposition est mémorisée.
+- **Envoyer à tous les panneaux** : la barre sous la grille envoie un même message à toutes les sessions affichées (« Envoyer à N panneaux ») ; une session qui travaille le reçoit en file d'attente (case *en file si occupée*).
 - **Mode focus** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>) : masque la barre latérale.
 
 ## 7. Worktrees git : plusieurs Claude sur le même dépôt
@@ -211,6 +212,7 @@ Un **modèle** mémorise une session type : dossier, nom, groupe, modèle Claude
 
 - **Créer** : sur une session existante, ⋯ ou clic droit › **Enregistrer comme modèle…** (reprend son dossier, son groupe, son modèle et son mode) ; ou remplis « Nouvelle session » puis **Enregistrer comme modèle**. La liste est vide tant que tu n'en as pas créé.
 - **Utiliser** : liste *Modèle de session* en haut de « Nouvelle session », ou palette › « Lancer le modèle : … ».
+- **Utiliser** : en haut de « Nouvelle session », section *Partir d'un modèle* : un clic sur une carte remplit le formulaire (les modèles des extensions portent le nom de leur extension). Le modèle Claude se choisit en un clic (Opus, Sonnet, Haiku, Défaut).
 - **Gérer** : Réglages › Modèles de session (lancer, renommer, supprimer).
 
 ### 12 bis. Extensions

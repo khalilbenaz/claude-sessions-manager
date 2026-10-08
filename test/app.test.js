@@ -89,6 +89,23 @@ test('vue partagée et palette', async () => {
   await win.keyboard.press('Escape');
 });
 
+test('vue partagée : envoi groupé aux sessions affichées depuis la barre du bas', async () => {
+  await win.click('[data-layout="2c"]');
+  await win.waitForSelector('#splitBar:not([hidden])');
+  const ids = await win.evaluate(() => visibleIds().filter(id => sessions.get(id)?.alive));
+  assert.equal(ids.length, 2);
+  assert.match(await win.textContent('#sbCount'), /2/);
+  await win.fill('#sbText', 'groupe-e2e');
+  await win.click('#splitBar button[type=submit]');
+  try {
+    for (const id of ids) await win.waitForFunction(id => { const b = terms.get(id).term.buffer.active; for (let y = 0; y < b.length; y++) if (b.getLine(y).translateToString().includes('echo: groupe-e2e')) return true; return false; }, id, { timeout: 30000 });
+  } catch (e) {
+    const diag = await win.evaluate(ids => ids.map(id => { const s = sessions.get(id), b = terms.get(id).term.buffer.active, l = []; for (let y = Math.max(0, b.length - 8); y < b.length; y++) l.push(b.getLine(y).translateToString().trim()); return { name: s.name, status: s.status, queue: s.queue, tail: l.filter(Boolean) }; }), ids);
+    throw new Error(e.message + ' — ' + JSON.stringify(diag));
+  } finally { await win.click('[data-layout="1"]'); }
+  await win.waitForSelector('#splitBar', { state: 'hidden' });
+});
+
 test('groupes : créer un groupe vide, y glisser une session, le renommer, le supprimer', async () => {
   await win.click('#btnNewGroup');
   await win.waitForSelector('#dlgRename[open]');
@@ -298,7 +315,10 @@ test('extensions : modèle dans Nouvelle session, affichage dédié rempli par C
   // Nouvelle session depuis le modèle de l'extension
   await win.click('#btnNew');
   await win.waitForFunction(() => [...document.querySelectorAll('#formNew [name=template] optgroup option')].some(o => o.textContent === 'Revue e2e'));
-  await win.selectOption('#formNew [name=template]', 'ext-e2e/rev');
+  // carte du modèle de l'extension (nouvelle fenêtre) : sélectionnée au clic
+  await win.click('#tplCards .tplCard:has-text("Revue e2e")');
+  assert.equal(await win.evaluate(() => document.querySelector('#formNew [name=template]').value), 'ext-e2e/rev');
+  assert.equal(await win.evaluate(() => document.querySelector('#tplCards .tplCard.on .tn').textContent), 'Revue e2e');
   await win.fill('#formNew [name=cwd]', WORK);
   await win.click('#formNew button[value=ok]');
   const id = await win.waitForFunction(() => [...sessions.values()].find(s => s.typeInfo?.name === 'Revue' && s.status === 'idle')?.id, null, { timeout: 60000 }).then(h => h.jsonValue());

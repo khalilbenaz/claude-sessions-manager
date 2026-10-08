@@ -516,3 +516,26 @@ ul.results li { border-radius: 10px; }
 dialog input[type=checkbox], dialog input[type=radio], dialog input[type=file], dialog input[type=color] { height: auto; padding: 0; border-radius: 4px; }
 dialog label.check { align-items: center; margin-bottom: 8px; }
 dialog label.check input { margin-top: 0; }
+
+/* ---- refonte Atelier, étape 2 : Nouvelle session, vue partagée */
+.srOnly { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
+#dlgNew { width: min(760px, 94vw); }
+.secTitle { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin: 0 0 8px; }
+.tplCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-bottom: 14px; max-height: 210px; overflow-y: auto; padding: 2px; }
+.tplCard { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; min-height: 62px; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line2); position: relative; }
+.tplCard .tn { font-weight: 600; font-size: 14px; color: var(--fg); }
+.tplCard .td { font-size: 12px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tplCard .tb { font-size: 10px; font-weight: 600; letter-spacing: .04em; color: var(--accent); margin-top: 2px; }
+.tplCard.on { background: var(--sel); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.fieldCol { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; margin-bottom: 10px; }
+.flabel { color: var(--dim); font-size: 13px; }
+.seg { display: flex; gap: 6px; }
+.seg button { flex: 1; height: 38px; border-radius: 9px; background: var(--bg); border-color: var(--line2); color: var(--fg); }
+.seg button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.splitBar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; padding: 10px 12px; background: var(--panel); border-top: 1px solid var(--line); }
+.splitBar .sbLabel { color: var(--dim); font-size: 13px; }
+.splitBar .sbChip { height: 28px; padding: 0 10px; border-radius: 999px; background: var(--sel); display: inline-flex; align-items: center; font-size: 13px; }
+.splitBar input#sbText { flex: 1 1 260px; height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line2); background: var(--bg); color: var(--fg); }
+.splitBar input#sbText:focus { outline: none; border-color: var(--accent); }
+.splitBar .sbQueue { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); }
+.splitBar button { height: 36px; }
