@@ -393,6 +393,8 @@
           <label class="check"><input type="checkbox" data-set="syncTranscripts"> <span>Synchroniser aussi les conversations (historique et contexte, chiffrés)</span></label>
           <label class="check"><input type="checkbox" data-set="syncGroups"> <span>Liste des groupes (groupes vides compris, dans l'ordre)</span></label>
           <label class="check"><input type="checkbox" data-set="syncTemplates"> <span>Modèles de session (chiffrés)</span></label>
+          <label class="check"><input type="checkbox" data-set="syncPlugins"> <span>Plugins Claude Code (les mêmes sur toutes les machines ; validation demandée si « Me demander… » est coché)</span></label>
+          <div id="plugPending" hidden><p class="hint"><b>Plugins à valider</b></p><ul id="plugList" class="results"></ul></div>
           <label class="check"><input type="checkbox" data-set="syncExtensions"> <span>Extensions importées (installées sur les autres machines, chiffrées)</span></label>
           <label class="check"><input type="checkbox" data-set="syncSessionMemory"> <span>Mémoire des sessions (celle choisie dans Réglages › Général, et ce choix lui-même, chiffrés)</span></label>
         </fieldset>

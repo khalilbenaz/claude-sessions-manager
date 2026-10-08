@@ -1363,3 +1363,46 @@ test('synchro : extensions fournies par un plugin — copie sur les machines san
     await api('PUT', '/api/settings', { syncCode: '' }); fake.srv.close();
   }
 });
+
+test('synchro : plugins Claude Code — publiés, installés ailleurs (après validation), jamais retirés par une machine qui ne les a pas', async () => {
+  const { encodeCode } = require('../lib/sync');
+  const KEY = 'q'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  const dir = path.join(HOME, '.claude', 'plugins'); fs.mkdirSync(dir, { recursive: true });
+  const files = ['installed_plugins.json', 'known_marketplaces.json'].map(f => path.join(dir, f));
+  const saved = files.map(f => (fs.existsSync(f) ? fs.readFileSync(f) : null));
+  fs.writeFileSync(files[0], JSON.stringify({ version: 2, plugins: { 'outil@equipe': [{ installPath: path.join(dir, 'x') }], 'local@dossier': [{ installPath: path.join(dir, 'y') }] } }));
+  fs.writeFileSync(files[1], JSON.stringify({ equipe: { source: { source: 'github', repo: 'moi/equipe' } }, dossier: { source: { source: 'directory', path: 'C:/ici' } } }));
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-plug', claudeSyncReview: true });
+    // publié : seulement le plugin d'un marketplace GitHub (pas celui d'un dossier local)
+    const row = await waitFor(async () => { await api('POST', '/api/sync/now'); return [...fake.rows(KEY).keys()].find(u => u.startsWith('csmplug-')); }, 10000, 'plugin publié');
+    assert.deepEqual(fake.plain(KEY, row), { plugin: 'outil', marketplace: 'equipe', repo: 'moi/equipe', enabled: true });
+    assert.equal([...fake.rows(KEY).keys()].filter(u => u.startsWith('csmplug-')).length, 1, 'marketplace local jamais partagé');
+    // reçu d'une autre machine : en attente de validation, puis installé
+    const t1 = Date.now(), uid = 'csmplug-revue--outils';
+    fake.put(KEY, { uid, updatedAt: t1, origin: 'MacBook', data: sealed(KEY, uid, t1, { plugin: 'revue', marketplace: 'outils', repo: 'moi/outils', enabled: true }) });
+    const pend = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/sync/plugins')).pending.find(p => p.uid === uid); }, 10000, 'plugin en attente');
+    assert.equal(pend.action, 'install'); assert.equal(pend.from, 'MacBook');
+    await api('POST', '/api/sync/plugins/decide', { uid, apply: true });
+    const inst = JSON.parse(fs.readFileSync(files[0], 'utf8'));
+    assert.ok(inst.plugins['revue@outils'], 'installé'); assert.ok(JSON.parse(fs.readFileSync(files[1], 'utf8')).outils, 'marketplace ajouté');
+    // une machine qui n'a pas un plugin ne le fait pas retirer : plugin reçu puis ignoré ici, rien n'est effacé
+    const t2 = Date.now(), uid2 = 'csmplug-autre--outils';
+    fake.put(KEY, { uid: uid2, updatedAt: t2, origin: 'MacBook', data: sealed(KEY, uid2, t2, { plugin: 'autre', marketplace: 'outils', repo: 'moi/outils', enabled: true }) });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/sync/plugins')).pending.some(p => p.uid === uid2); }, 10000, 'second plugin en attente');
+    await api('POST', '/api/sync/plugins/decide', { uid: uid2, apply: false });
+    await api('POST', '/api/sync/now'); await api('POST', '/api/sync/now');
+    assert.equal(fake.rows(KEY).get(uid2).deleted, 0, 'pas d’effacement envoyé par une machine qui ne l’a pas');
+    // désinstallé ici (où il était) : effacement propagé ; désinstallé ailleurs : proposé ici, jamais appliqué seul
+    fs.writeFileSync(files[0], JSON.stringify({ version: 2, plugins: { 'revue@outils': inst.plugins['revue@outils'] } }));
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get(row)?.deleted === 1; }, 10000, 'désinstallation propagée');
+    fake.put(KEY, { uid, updatedAt: Date.now() + 5000, deleted: 1, data: {} });
+    const un = await waitFor(async () => { await api('POST', '/api/sync/now'); return (await api('GET', '/api/sync/plugins')).pending.find(p => p.uid === uid && p.action === 'uninstall'); }, 10000, 'désinstallation proposée');
+    assert.ok(un);
+    assert.ok(JSON.parse(fs.readFileSync(files[0], 'utf8')).plugins['revue@outils'], 'pas désinstallé sans accord');
+  } finally {
+    files.forEach((f, i) => { if (saved[i]) fs.writeFileSync(f, saved[i]); else fs.rmSync(f, { force: true }); });
+    await api('PUT', '/api/settings', { syncCode: '' }); fake.srv.close();
+  }
+});

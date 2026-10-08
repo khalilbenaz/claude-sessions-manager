@@ -44,6 +44,31 @@
       if (k.startsWith('sync')) setTimeout(() => syncNow(), 300);
     });
   });
+  // Plugins Claude Code reçus d'une autre machine : à installer (ou désinstaller) après validation
+  async function renderPlugins() {
+    let v; try { v = await api('GET', '/api/sync/plugins'); } catch { return; }
+    $('#plugPending').hidden = !v.pending.length;
+    const ul = $('#plugList'); ul.replaceChildren();
+    for (const p of v.pending) {
+      const li = document.createElement('li');
+      const txt = document.createElement('div');
+      const b = document.createElement('b'); b.textContent = `${p.action === 'uninstall' ? t('Désinstaller') : t('Installer')} ${p.plugin}`;
+      const sm = document.createElement('small'); sm.textContent = ` ${p.repo} · ${t('depuis')} ${p.from || '?'}${p.error ? ` · ${t('Échec')} : ${p.error}` : ''}`;
+      txt.append(b, sm);
+      const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = p.action === 'uninstall' ? t('Désinstaller') : t('Installer');
+      const no = document.createElement('button'); no.type = 'button'; no.textContent = t('Ignorer');
+      const go = apply => async () => {
+        ok.disabled = no.disabled = true; ok.textContent = apply ? t('En cours…') : ok.textContent;
+        try { await api('POST', '/api/sync/plugins/decide', { uid: p.uid, apply }); toast(apply ? t('Fait : redémarre les sessions pour charger le plugin') : t('Ignoré')); }
+        catch (e) { toast(e.message, true); }
+        renderPlugins();
+      };
+      ok.onclick = go(true); no.onclick = go(false);
+      li.append(txt, ok, no); ul.append(li);
+    }
+  }
+  window.addEventListener('csm:sync', () => renderPlugins());
+  document.querySelector('.setNav [data-st=sync]')?.addEventListener('click', renderPlugins);
   $('#soundTest').onclick = () => playSound($('[data-set=sound]').value);
   // Notification de test : par l'app (natif) ou, dans un navigateur, par l'API Notification
   $('#notifTest').onclick = async () => {

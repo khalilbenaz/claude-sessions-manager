@@ -10,6 +10,23 @@ const { exec } = require('child_process');
 const argv = process.argv.slice(2);
 const opt = n => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : undefined; };
 if (argv.includes('--version')) { console.log('0.0.0 (faux claude)'); process.exit(0); }
+// `claude plugin marketplace add <repo>` / `plugin install|uninstall <nom@marketplace>` : registres de Claude Code
+if (argv[0] === 'plugin') {
+  const dir = path.join(os.homedir(), '.claude', 'plugins');
+  fs.mkdirSync(dir, { recursive: true });
+  const rd = f => { try { return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { return {}; } };
+  const wr = (f, v) => fs.writeFileSync(path.join(dir, f), JSON.stringify(v));
+  if (argv[1] === 'marketplace' && argv[2] === 'add') {
+    if (/introuvable/.test(argv[3])) { console.error('Failed to add marketplace'); process.exit(1); }
+    const m = rd('known_marketplaces.json'); m[argv[3].split('/')[1]] = { source: { source: 'github', repo: argv[3] } }; wr('known_marketplaces.json', m);
+  } else if (argv[1] === 'install' || argv[1] === 'uninstall') {
+    const i = rd('installed_plugins.json'); i.version = 2; i.plugins = i.plugins || {};
+    if (argv[1] === 'install') i.plugins[argv[2]] = [{ scope: 'user', installPath: path.join(dir, 'cache', argv[2]), version: '1.0.0' }];
+    else delete i.plugins[argv[2]];
+    wr('installed_plugins.json', i);
+  }
+  console.log('ok'); process.exit(0);
+}
 // `claude auth login` : lien de connexion, attend le code collé, puis écrit une connexion valable 30 jours
 if (argv[0] === 'auth' && argv[1] === 'login') {
   process.stdout.write('Opening browser to sign in…\r\nIf the browser didn\'t open, visit: \x1b]8;id=1;https://claude.com/cai/oauth/authorize?code=true&state=test\x07https://claude.com/cai/oauth/authorize?code=true&state=test\x1b]8;;\x07\r\nPaste code here if prompted > ');
