@@ -261,6 +261,12 @@ const EN = {
   // palette : sections, pied, synchro
   'Actions': 'Actions', 'Modèles': 'Templates', 'ouvrir': 'open', 'dans un panneau': 'in a pane', 'commandes': 'commands', 'prompts': 'prompts',
   'Synchroniser maintenant': 'Sync now', 'Synchronisé': 'Synced', 'Accès depuis l’app Claude (téléphone)': 'Access from the Claude app (phone)',
+  'ce PC': 'this PC', 'ce Mac': 'this Mac', 'machine': 'machine', 'machines': 'machines', 'éléments reçus': 'items received', 'Ajouter une machine': 'Add a machine', "Saisir ce code sur l'autre machine": 'Enter this code on the other machine',
+  'Nom, dossier, modèle, groupe de chaque session, épinglage, couleur': 'Name, folder, model, group of each session, pinning, color', 'Historique et contexte, chiffrés': 'History and context, encrypted',
+  'Groupes': 'Groups', "Groupes vides compris, dans l'ordre": 'Empty groups included, in order', 'Chiffrés': 'Encrypted', 'Plugins Claude Code': 'Claude Code plugins',
+  'Les mêmes sur toutes les machines ; validation demandée si « Me demander… » est coché': 'The same on every machine; approval asked if “Ask me…” is checked',
+  'Extensions importées': 'Imported extensions', 'Installées sur les autres machines, chiffrées': 'Installed on the other machines, encrypted', 'Mémoire des sessions': 'Session memory',
+  'Celle choisie dans Réglages › Général, et ce choix lui-même, chiffrés': 'The one chosen in Settings › General, and that choice itself, encrypted',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
