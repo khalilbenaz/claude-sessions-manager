@@ -29,8 +29,8 @@ dialog.dbDlg form { display: flex; flex-direction: column; gap: 14px; min-height
 .dbLegend .now::before { background: var(--accent); }
 .dbLegend .fc::before { background: repeating-linear-gradient(135deg, var(--accent) 0 3px, transparent 3px 6px); outline: 1px solid var(--accent); outline-offset: -1px; }
 .dbLegend .th::before { height: 0; border-top: 2px dashed var(--work); border-radius: 0; }
-.dbSeg { display: inline-flex; border: 1px solid var(--line2); border-radius: 10px; overflow: hidden; }
-.dbSeg button { height: 32px; border: 0; border-radius: 0; background: none; color: var(--dim); padding: 0 14px; }
+.dbSeg { display: inline-flex; flex: none; border: 1px solid var(--line2); border-radius: 10px; overflow: hidden; }
+.dbSeg button { height: 32px; white-space: nowrap; flex: none; border: 0; border-radius: 0; background: none; color: var(--dim); padding: 0 14px; }
 .dbSeg button + button { border-left: 1px solid var(--line2); }
 .dbSeg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
 .dbDlg .atTop select { height: 32px; }
@@ -47,3 +47,7 @@ dialog.dbDlg form { display: flex; flex-direction: column; gap: 14px; min-height
 .dbDlg .atTop h2 { flex: none; }
 .dbTable th.num { font-family: inherit; }
 .dbDlg form { flex: 0 1 auto; }
+
+/* fenêtre étroite : la ligne du titre passe à la ligne au lieu de couper les boutons */
+dialog.dbDlg .atTop { flex-wrap: wrap; row-gap: 8px; }
+.tplChip { white-space: nowrap; }

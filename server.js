@@ -657,6 +657,11 @@ const server = http.createServer(async (req, res) => {
       else if (event === 'end') emit('end', s);
       else if (event === 'quota') { emit('quota', s, data || {}); return json(res, 200, {}); } // barre d'état : quotas (lib/queue.js)
       else if (event === 'working') setStatus(s, 'working', data && data.tool_name ? data.tool_name : '');
+      // « Claude is waiting for your input » : simple rappel de Claude Code après ~1 min d'inactivité (idle_prompt),
+      // pas une question. La session reste prête ; seules les vraies demandes (autorisation…) la font attendre.
+      else if (event === 'attention' && (data?.notification_type === 'idle_prompt' || /waiting for your input/i.test(data?.message || ''))) {
+        if (s.status === 'attention' || s.status === 'working') setStatus(s, 'idle', 'terminé');
+      }
       else if (event === 'attention') setStatus(s, 'attention', (data && data.message) || 'attend une réponse');
       else if (event === 'idle') {
         setStatus(s, 'idle', 'terminé');

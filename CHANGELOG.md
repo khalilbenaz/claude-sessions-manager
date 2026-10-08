@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.35.2] — 2026-10-08
+### Corrigé
+- « Claude is waiting for your input » (rappel de Claude Code après une minute d'inactivité) ne fait plus passer la session en « attend une réponse » ni n'apparaît dans le centre d'attention : la session reste prête.
+- Usage de Claude : boutons de période (« 7 jours », « 30 jours ») tronqués ; la ligne du titre passe à la ligne en fenêtre étroite.
+
 ## [3.35.1] — 2026-10-08
 ### Corrigé
 - **Heure affichée une heure trop tard sous Windows** (Maroc passé à GMT, données de fuseaux d'Electron plus anciennes) : l'app suit maintenant le décalage de Windows, comme déjà sur macOS.
