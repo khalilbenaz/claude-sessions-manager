@@ -164,6 +164,8 @@ La fusion est refusée s'il reste des modifications non commitées, si le dépô
 
 ## 8. Panneau Modifications, Chronologie, Consommation
 
+**Usage de Claude** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>U</kbd>, palette, ou clic sur les quotas en bas de la barre latérale) : sessions actives, demandes à traiter, **temps de travail de Claude** aujourd'hui (dont le temps « sans toi », pendant que la file d'attente envoyait les demandes), coût estimé du jour et des 7 jours ; **quota 5 h** avec son historique et une **prévision** (« au rythme actuel, limite atteinte vers 15:40 ») ; prochaines **tâches planifiées** ; détail **par session** (temps du jour, tokens et coût sur 7 jours).
+
 Bouton **± Modifications** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd>) ou ⋯ : panneau latéral à trois onglets pour la session active.
 
 - **Modifications** : fichiers modifiés dans le dossier de la session (git) avec leur état (M modifié, N nouveau, S supprimé). Clic = **diff coloré** ; ↺ = annuler un fichier ; **commit** avec « Proposer un message » et « Committer tout ». Rafraîchi quand Claude a fini un tour.

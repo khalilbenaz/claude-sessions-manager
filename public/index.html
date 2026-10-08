@@ -119,6 +119,26 @@
     <div id="atList" class="atList"></div>
   </form>
 </dialog>
+<dialog id="dlgUsage" class="wide dbDlg" aria-labelledby="dbTitle">
+  <form method="dialog">
+    <div class="atTop">
+      <h2 id="dbTitle">Usage de Claude</h2>
+      <span class="hint">Aujourd'hui, sur cette machine</span>
+      <span class="spacer"></span>
+      <button value="close">Fermer</button>
+    </div>
+    <div id="dbKpis" class="dbKpis"></div>
+    <div class="dbRow">
+      <section class="dbCard dbWide" aria-labelledby="dbQT"><h3 id="dbQT">Quota 5 h : prévision</h3><div id="dbQuota"></div></section>
+      <section class="dbCard" aria-labelledby="dbJT"><div class="dbCardHead"><h3 id="dbJT">Tâches planifiées</h3><button type="button" id="dbSchedules">Gérer</button></div><div id="dbJobs" class="dbJobs"></div></section>
+    </div>
+    <section class="dbCard" aria-labelledby="dbST">
+      <h3 id="dbST">Par session (7 jours)</h3>
+      <div class="dbScroll"><table class="dbTable"><thead><tr><th>Session</th><th class="num">Travail aujourd'hui</th><th class="num">Tokens</th><th class="num">Coût estimé</th></tr></thead><tbody id="dbRows"></tbody></table></div>
+      <p id="dbNote" class="hint"></p>
+    </section>
+  </form>
+</dialog>
 <dialog id="dlgNew">
   <form method="dialog" id="formNew">
     <h2>Nouvelle session</h2>
@@ -564,5 +584,6 @@
 <script src="sidestatus.js"></script>
 <script src="atelier.js"></script>
 <script src="attention.js"></script>
+<script src="dashboard.js"></script>
 </body>
 </html>
