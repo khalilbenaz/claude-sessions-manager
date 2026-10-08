@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.31.0] — 2026-10-08
+### Modifié
+- **Nouvelle session** (refonte, étape 2) : modèles présentés en cartes (« Partir d'un modèle », ceux des extensions marqués de leur nom), modèle Claude en boutons (Opus, Sonnet, Haiku, Défaut).
+### Ajouté
+- **Vue partagée** : barre « Envoyer à N panneaux » sous la grille, pour envoyer un même message à toutes les sessions affichées (mis en file si une session travaille).
+
 ## [3.30.0] — 2026-10-08
 ### Modifié
 - **Nouvelle interface « Atelier »** (1re étape de la refonte) : graphite et argile en sombre, ivoire en clair, contraste vérifié ; polices IBM Plex Sans et JetBrains Mono intégrées (licence OFL, aucune connexion) ; barre latérale, en-tête de session (état en pastille), fenêtres, palette, réglages et terminal redessinés.

@@ -90,6 +90,14 @@
       <div id="tab-usage" class="ptab" hidden></div>
     </aside>
   </div>
+  <form id="splitBar" class="splitBar" hidden autocomplete="off">
+    <span class="sbLabel">Envoyer à</span>
+    <span id="sbCount" class="sbChip"></span>
+    <label class="srOnly" for="sbText">Message pour les sessions affichées</label>
+    <input id="sbText" placeholder="Message pour toutes les sessions affichées…" spellcheck="false">
+    <label class="sbQueue"><input type="checkbox" id="sbQueue" checked> <span>en file si occupée</span></label>
+    <button type="submit" class="primary">Envoyer</button>
+  </form>
   <div id="park" hidden></div>
   <div id="toast" class="toast" role="status"></div>
   <div id="empty">
@@ -102,9 +110,11 @@
 <dialog id="dlgNew">
   <form method="dialog" id="formNew">
     <h2>Nouvelle session</h2>
-    <label id="tplRow" hidden>Modèle de session
-      <select name="template"><option value="">— aucun —</option></select>
-    </label>
+    <div id="tplRow" hidden>
+      <div class="secTitle">Partir d'un modèle</div>
+      <div id="tplCards" class="tplCards" role="radiogroup" aria-label="Modèle de session"></div>
+      <select name="template" class="srOnly" tabindex="-1" aria-hidden="true"><option value="">— aucun —</option></select>
+    </div>
     <label>Dossier de travail
       <span class="pick">
         <input name="cwd" list="dirs" required autocomplete="off" spellcheck="false" placeholder="C:\chemin\du\projet">
@@ -118,14 +128,18 @@
       <datalist id="groups"></datalist>
     </div>
     <div class="row">
-      <label>Modèle
+      <div class="fieldCol"><span class="flabel">Modèle</span>
+        <div id="modelSeg" class="seg" role="radiogroup" aria-label="Modèle Claude">
+          <button type="button" role="radio" data-v="opus">Opus</button><button type="button" role="radio" data-v="sonnet">Sonnet</button><button type="button" role="radio" data-v="haiku">Haiku</button><button type="button" role="radio" data-v="" title="Modèle par défaut de Claude Code">Défaut</button>
+        </div>
+      <label class="srOnly">Modèle
         <select name="model">
           <option value="opus">opus</option>
           <option value="sonnet">sonnet</option>
           <option value="haiku">haiku</option>
           <option value="">défaut Claude Code</option>
         </select>
-      </label>
+      </label></div>
       <label>Mode
         <select name="mode">
           <option value="">par défaut</option>
@@ -536,5 +550,6 @@
 <script src="auth.js"></script>
 <script src="extensions.js"></script>
 <script src="sidestatus.js"></script>
+<script src="atelier.js"></script>
 </body>
 </html>
