@@ -17,7 +17,7 @@ const HOME = path.join(TMP, 'home'), DATA = path.join(TMP, 'data'), WORK = path.
 for (const d of [HOME, DATA, WORK, path.join(TMP, 'mem')]) fs.mkdirSync(d, { recursive: true });
 const ENV = {
   ...process.env, CSM_PORT: String(PORT), CSM_DATA: DATA, HOME, USERPROFILE: HOME,
-  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300', CSM_MEM_DB: path.join(TMP, 'mem', 'claude-mem.db'), CSM_NO_PLUGIN_INSTALL: '1', CSM_DEFAULT_SYNC_SERVER: 'http://127.0.0.1:9', CSM_QUOTA_MARGIN: '300', CSM_SCHEDULE_EVERY: '300', CSM_SYS_LANG: 'fr',
+  CSM_SYNC_INTERVAL: '700', CSM_SYNC_DELAY: '300', CSM_MEM_DB: path.join(TMP, 'mem', 'claude-mem.db'), CSM_NO_PLUGIN_INSTALL: '1', CSM_DEFAULT_SYNC_SERVER: 'http://127.0.0.1:9', CSM_QUOTA_MARGIN: '300', CSM_SCHEDULE_EVERY: '300', CSM_SYS_LANG: 'fr', CSM_GITHUB_API: `http://127.0.0.1:${PORT + 3}`, CSM_NO_GH_TOKEN: '1',
   CSM_CLAUDE: process.execPath, CSM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-claude.js')}"`,
   GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com',
 };
@@ -1421,4 +1421,57 @@ test('usage : temps de travail du jour et historique du quota pour la prévision
   assert.equal(q.forecast, null, 'pas de prévision sur quelques secondes de mesures');
   await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 0, resetAt: 0 } });
   await api('DELETE', `/api/sessions/${S.id}`);
+});
+
+test('extensions : import par lien (fichier GitHub, dépôt, adresse https), mise à jour', async () => {
+  const mk = (id, name) => JSON.stringify({ csm: 1, id, name, version: '1.0', prompts: [{ name: 'p', text: 'x' }] });
+  const files = { 'csm/lien-a.csm.json': mk('lien-a', 'Lien A'), 'outils/lien-b.csm.json': mk('lien-b', 'Lien B') };
+  const gh = http.createServer((q, r) => {
+    const u = new URL(q.url, 'http://x'), m = u.pathname.match(/^\/repos\/moi\/depot\/contents\/?(.*)$/);
+    if (q.url === '/plain/lien-c.csm.json') { r.end(mk('lien-c', 'Lien C')); return; }
+    if (!m) { r.writeHead(404); r.end('{}'); return; }
+    const p = decodeURIComponent(m[1]);
+    if (files[p]) { r.end(files[p]); return; }
+    const kids = Object.keys(files).filter(f => path.dirname(f) === p).map(f => ({ type: 'file', name: path.basename(f), path: f }));
+    if (p === '') kids.push({ type: 'dir', name: 'csm', path: 'csm' });
+    if (!kids.length) { r.writeHead(404); r.end('{}'); return; }
+    r.setHeader('content-type', 'application/json'); r.end(JSON.stringify(kids));
+  }).listen(PORT + 3, '127.0.0.1');
+  try {
+    // dépôt : racine sans extension → dossier csm/
+    let r = await api('POST', '/api/extensions', { url: 'https://github.com/moi/depot' });
+    assert.deepEqual(r.imported.map(x => x.id), ['lien-a']);
+    // fichier (blob)
+    r = await api('POST', '/api/extensions', { url: 'https://github.com/moi/depot/blob/main/outils/lien-b.csm.json' });
+    assert.equal(r.imported[0].name, 'Lien B');
+    // adresse quelconque (http seulement en local)
+    r = await api('POST', '/api/extensions', { url: `http://127.0.0.1:${PORT + 3}/plain/lien-c.csm.json` });
+    assert.equal(r.imported[0].id, 'lien-c');
+    const list = await api('GET', '/api/extensions');
+    assert.match(list.find(x => x.id === 'lien-b').url, /lien-b\.csm\.json$/);
+    // mise à jour : même lien, nouvelle version
+    files['outils/lien-b.csm.json'] = mk('lien-b', 'Lien B v2');
+    r = await api('POST', '/api/extensions', { url: list.find(x => x.id === 'lien-b').url });
+    assert.equal(r.imported[0].replaced, true);
+    assert.equal((await api('GET', '/api/extensions')).find(x => x.id === 'lien-b').name, 'Lien B v2');
+    // refus : http distant, introuvable, lien invalide
+    assert.equal((await req('POST', '/api/extensions', { url: 'http://example.com/x.csm.json' })).status, 400);
+    assert.match((await req('POST', '/api/extensions', { url: 'https://github.com/moi/absent' })).text, /introuvable/);
+    assert.equal((await req('POST', '/api/extensions', { url: 'pas un lien' })).status, 400);
+    for (const id of ['lien-a', 'lien-b', 'lien-c']) await api('DELETE', `/api/extensions/${id}`);
+  } finally { gh.close(); }
+});
+
+test('barre d’état : relais vers celle de l’utilisateur, quotas toujours relevés', async () => {
+  const home = fs.mkdtempSync(path.join(TMP, 'sl-'));
+  fs.mkdirSync(path.join(home, '.claude'));
+  const script = path.join(home, 'ma-barre.js');
+  fs.writeFileSync(script, "let i='';process.stdin.on('data',c=>i+=c).on('end',()=>console.log('MA BARRE '+JSON.parse(i).model.display_name))");
+  fs.writeFileSync(path.join(home, '.claude', 'settings.json'), JSON.stringify({ statusLine: { type: 'command', command: `"${process.execPath}" "${script}"` } }));
+  const out = execFileSync(process.execPath, [path.join(ROOT, 'statusline.js'), '--relay'], {
+    input: JSON.stringify({ model: { display_name: 'Opus' }, rate_limits: { five_hour: { used_percentage: 12 } } }),
+    env: { ...process.env, HOME: home, USERPROFILE: home }, encoding: 'utf8',
+  });
+  assert.match(out, /MA BARRE Opus/);
+  assert.doesNotMatch(out, /5h/);
 });

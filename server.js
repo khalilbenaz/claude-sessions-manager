@@ -92,6 +92,9 @@ const HOOKS = {
 const HOOK_SETTINGS = path.join(DATA, 'hooks-settings.json');
 fs.writeFileSync(HOOK_SETTINGS, JSON.stringify({ hooks: HOOKS }, null, 2)); // version minimale (diagnostic, lib/tools.js)
 const STATUS_LINE = { type: 'command', command: nodeRunner('statusline.js'), padding: 0 };
+// l'utilisateur a sa barre d'état : la nôtre relève seulement les quotas (barre latérale, file d'attente) et
+// affiche la sienne, inchangée (statusline.js --relay)
+const STATUS_RELAY = { type: 'command', command: `${nodeRunner('statusline.js')} --relay`, padding: 0 };
 // « model » : Claude Code borne la valeur à la fenêtre du modèle (min), donc 1M = fenêtre complète, et cette
 // valeur prime sur un CLAUDE_CODE_AUTO_COMPACT_WINDOW trop bas dans ~/.claude/settings.json (compactage en boucle).
 const COMPACT_WINDOW = { model: '1000000', '200000': '200000', '400000': '400000' };
@@ -123,7 +126,7 @@ function sessionSettings(withStatusLine) {
   const st = ctx.getSettings?.() || {};
   const engine = st.memoryEngine || 'native';
   const o = { hooks: HOOKS };
-  if (withStatusLine) o.statusLine = STATUS_LINE;
+  if (withStatusLine) o.statusLine = withStatusLine === 'relay' ? STATUS_RELAY : STATUS_LINE;
   o.enabledPlugins = { 'claude-mem@thedotmack': engine === 'claude-mem' };
   // Langue des réponses de Claude (réglage « language » de Claude Code) : par défaut celle de l'app
   const lang = replyLanguage(st);
@@ -141,7 +144,7 @@ function userHasStatusLine(cwd) {
   if (cwd) files.push(path.join(cwd, '.claude', 'settings.json'), path.join(cwd, '.claude', 'settings.local.json'));
   return files.some(f => { try { return !!JSON.parse(fs.readFileSync(f, 'utf8')).statusLine; } catch { return false; } });
 }
-const settingsFor = s => sessionSettings(ctx.getSettings?.().statusLine !== false && !userHasStatusLine(s.cwd));
+const settingsFor = s => sessionSettings(userHasStatusLine(s.cwd) ? 'relay' : ctx.getSettings?.().statusLine !== false);
 
 // ---------------------------------------------------------------- sessions gérées
 const STORE = path.join(DATA, 'sessions.json');

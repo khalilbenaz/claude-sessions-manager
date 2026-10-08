@@ -2,7 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
-## [Non publié]
+## [3.34.0] — 2026-10-08
+### Ajouté
+- **Extensions par lien** : Réglages › Extensions accepte un lien GitHub (fichier, dossier, dépôt entier : `.csm.json` à la racine, dans `csm/` ou `extensions/`), un gist ou une adresse https. Dépôt privé via la CLI GitHub connectée (jeton envoyé seulement à l'API GitHub, sans redirection). **Mettre à jour** réimporte depuis le même lien.
+- **Modèles nombreux** (Nouvelle session) : filtres par provenance (Tous, Mes modèles, chaque extension) et recherche, cartes compactes ; plus de liste à faire défiler.
+### Corrigé
+- Réglages › Extensions n'affichait aucune extension installée (identifiant en double avec la liste des sessions ouvertes dans un terminal).
+- **Noms des sessions entre machines** : la liste des sessions (noms, groupes, épinglage…) est relevée toutes les 30 s au lieu d'attendre la synchro complète ; un nom reçu est aussi écrit dans la conversation (`claude --resume`). Une session fantôme créée par une ancienne version à partir d'un document de synchro est retirée.
+- **Quotas absents de la barre latérale** avec une barre d'état personnelle : l'app relève désormais les quotas puis affiche la barre d'état de l'utilisateur telle quelle (`statusline.js --relay`).
 ### Modifié
 - **Site refait** dans le style Atelier (clair / sombre, polices intégrées, icônes dessinées) avec de vraies captures : nouveautés 3.33, vue partagée, centre d'attention, usage de Claude, extensions, modèles, synchro (conversations, groupes, modèles, extensions, plugins). Captures régénérables par `node test/site-shots.js` (instance isolée, contenu de démonstration).
 

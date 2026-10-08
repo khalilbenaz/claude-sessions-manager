@@ -52,7 +52,13 @@ const DEMO = {
 (async () => {
   const app = await electron.launch({ args: [ROOT], env, timeout: 60000 });
   const win = await app.firstWindow();
-  const shot = async name => { await new Promise(r => setTimeout(r, 900)); await win.screenshot({ path: path.join(OUT, `${name}.png`) }); console.log('•', name); };
+  const shot1 = async name => { await new Promise(r => setTimeout(r, 900)); await win.screenshot({ path: path.join(OUT, `${name}.png`) }); console.log('•', name); };
+  // chaque écran en sombre puis en clair (le site suit le thème choisi)
+  const shot = async name => {
+    await shot1(name);
+    await win.evaluate(() => saveSettings({ theme: 'light' })); await shot1(`${name}-light`);
+    await win.evaluate(() => saveSettings({ theme: 'dark' }));
+  };
   try {
     await win.waitForFunction(() => document.documentElement.dataset.ready === '1', null, { timeout: 60000 });
     await win.setViewportSize({ width: 1440, height: 900 });
@@ -81,8 +87,8 @@ const DEMO = {
     }, DEMO);
     await win.evaluate(id => select(id), ids['api-paiements']);
     await win.evaluate(() => fitAll(true));
-    await win.evaluate(() => saveSettings({ theme: 'light' })); await shot('app-light');
-    await win.evaluate(() => saveSettings({ theme: 'dark' })); await shot('app-dark');
+    await win.evaluate(() => saveSettings({ theme: 'light' })); await shot1('app-light');
+    await win.evaluate(() => saveSettings({ theme: 'dark' })); await shot1('app-dark');
     // vue partagée 2×2 avec la barre d'envoi groupé
     await win.evaluate(() => { setLayout('4'); document.querySelector('#sbText').value = 'Lance les tests et résume les échecs'; });
     await win.evaluate(() => fitAll(true)); await shot('split');

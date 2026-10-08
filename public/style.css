@@ -521,8 +521,8 @@ dialog label.check input { margin-top: 0; }
 .srOnly { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
 #dlgNew { width: min(760px, 94vw); }
 .secTitle { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin: 0 0 8px; }
-.tplCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-bottom: 14px; max-height: 210px; overflow-y: auto; padding: 2px; }
-.tplCard { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; min-height: 62px; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line2); position: relative; }
+.tplCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; margin-bottom: 14px; padding: 2px; }
+.tplCard { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; min-height: 48px; padding: 8px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line2); position: relative; }
 .tplCard .tn { font-weight: 600; font-size: 14px; color: var(--fg); }
 .tplCard .td { font-size: 12px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .tplCard .tb { font-size: 10px; font-weight: 600; letter-spacing: .04em; color: var(--accent); margin-top: 2px; }
@@ -603,3 +603,17 @@ svg.ic { flex: none; vertical-align: -3px; }
 #side footer button, #bar button, .palHint { display: inline-flex; align-items: center; gap: 6px; }
 #side footer button.icon, #bar button.icon { justify-content: center; }
 .layouts button { display: inline-flex; align-items: center; justify-content: center; }
+
+/* import d'une extension par lien */
+.extUrlRow { display: flex; gap: 8px; margin-top: 8px; }
+.extUrlRow input { flex: 1; min-width: 0; }
+.extList .extItem > button { flex: none; }
+
+/* modèles nombreux : filtres par provenance et recherche (au lieu du défilement) */
+.tplFilters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; }
+.tplFilters[hidden] { display: none; }
+.tplChip { height: 30px; padding: 0 12px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line2); font-size: 13px; color: var(--dim); display: inline-flex; align-items: center; gap: 6px; }
+.tplChip .n { font-family: var(--mono); font-size: 11px; opacity: .8; }
+.tplChip.on { color: var(--fg); border-color: var(--accent); background: var(--sel); }
+#tplSearch { margin-left: auto; height: 30px; width: 200px; max-width: 100%; }
+.tplCard .tn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
