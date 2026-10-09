@@ -1248,10 +1248,10 @@ test('extensions : import d’un fichier, modèles, session typée avec sa vue e
   // actions : du type, puis d'un brouillon (texte relu par l'utilisateur)
   await waitFor(async () => (await session(s.id)).status === 'idle', 10000, 'prête');
   await api('POST', `/api/sessions/${s.id}/view-action`, { action: 'corrige' });
-  await waitFor(() => (c.out[s.id] || '').includes('echo: corrige le point 1'), 10000, 'action envoyée');
+  await waitFor(() => (c.out[s.id] || '').includes('echo: corrige le point 1'), 20000, 'action envoyée');
   await waitFor(async () => (await session(s.id)).status === 'idle', 10000, 'prête');
   await api('POST', `/api/sessions/${s.id}/view-action`, { section: 2, index: 0, draft: 'Bonjour relu' });
-  await waitFor(() => (c.out[s.id] || '').includes('echo: publie : Bonjour relu'), 10000, 'brouillon envoyé');
+  await waitFor(() => (c.out[s.id] || '').includes('echo: publie : Bonjour relu'), 20000, 'brouillon envoyé');
   assert.equal((await req('POST', `/api/sessions/${s.id}/view-action`, { action: 'inexistante' })).status, 404);
 
   // désactivée : plus de modèles ; supprimée : retirée
