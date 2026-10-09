@@ -283,6 +283,7 @@ const EN = {
   'Voir les modifications': 'View changes',
   'Déplier la barre latérale': 'Expand the sidebar', 'Réduire la barre latérale': 'Collapse the sidebar',
   'Détails': 'Details', 'Voir plus': 'Show more', 'Voir moins': 'Show less',
+  'Relire': 'Review', 'Replier': 'Collapse', 'Avancement': 'Progress', 'Conclusion': 'Conclusion', 'Prochaine étape': 'Next step', 'Faire': 'Do it', 'avec risque': 'at risk', 'Éléments': 'Items', 'risque': 'risk', 'Élément suivant': 'Next item',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',

@@ -134,21 +134,27 @@
   const modeOf = id => LS2.get(`csm.view.${id}`) || 'view';
   const views = new Map(); // id -> { type, view }
 
-  const openFolds = new Set();
-  function section(s, i, id) {
-    // section repliée (fold) : titre seul, ouverte d'un clic ; l'état ouvert survit aux mises à jour de la vue
-    const foldKey = `|${s.kind}|${s.title}`;
+  // états d'affichage qui survivent aux mises à jour de la vue : sections ouvertes, brouillons dépliés, élément choisi
+  const openFolds = new Set(), openDrafts = new Set(), lotSel = new Map(), draftVals = new Map();
+  const ICON = {
+    ok: '<path d="m5 12 5 5 9-10"/>',
+    warn: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  };
+  const icon = k => { const sv = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); sv.setAttribute('viewBox', '0 0 24 24'); sv.setAttribute('class', 'ic'); sv.setAttribute('aria-hidden', 'true'); sv.innerHTML = ICON[k] || ICON.info; return sv; }; // icônes fixes de l'app, jamais de contenu externe
+  function section(s, i, id, item) {
+    // section repliée (fold) : titre seul, ouverte d'un clic
+    const key = `${id}|${item ?? ''}|${s.kind}|${s.title}`;
     const box = el(s.fold ? 'details' : 'section', { class: `tvSec tv-${s.kind}${s.level === 'warn' ? ' warn' : ''}${s.fold ? ' tvFold' : ''}` });
     const count = s.items?.length || s.rows?.length || 0;
     const head = el(s.fold ? 'summary' : 'h3', {}, s.title || (s.fold ? t('Détails') : ''), s.badge ? el('span', { class: 'tvBadge', text: s.badge }) : null,
       s.fold && count ? el('span', { class: 'tvCount', text: String(count) }) : null);
     if (s.title || s.badge || s.fold) box.append(head);
-    if (s.fold) { box.open = openFolds.has(foldKey); box.addEventListener('toggle', () => { if (box.open) openFolds.add(foldKey); else openFolds.delete(foldKey); }); }
+    if (s.fold) { box.open = openFolds.has(key); box.addEventListener('toggle', () => { if (box.open) openFolds.add(key); else openFolds.delete(key); }); }
     if (s.kind === 'text' || s.kind === 'alert') {
       const p = el('p', { text: s.text });
       box.append(p);
-      // texte long hors section repliée : quelques lignes, puis « Voir plus »
-      if (!s.fold && s.text.length > 420) {
+      if (!s.fold && s.text.length > 420) { // texte long : quelques lignes, puis « Voir plus »
         p.classList.add('tvClamp');
         const more = el('button', { type: 'button', class: 'tvMore', text: t('Voir plus'), onclick: () => { const on = p.classList.toggle('tvClamp'); more.textContent = on ? t('Voir plus') : t('Voir moins'); } });
         box.append(more);
@@ -163,15 +169,54 @@
     if (s.kind === 'checklist') box.append(el('ul', { class: 'tvCheck' }, s.items.map(x => el('li', { class: x.done ? 'done' : '' },
       el('span', { class: 'tvBox', 'aria-hidden': 'true', text: x.done ? '✓' : '' }), el('span', {}, el('span', { text: x.label }), x.hint ? el('small', { text: x.hint }) : null)))));
     if (s.kind === 'draft') {
-      // hauteur à la mesure du texte (3 à 14 lignes)
+      // replié sur une ligne d'aperçu ; « Relire » l'ouvre (et il reste ouvert pendant les mises à jour)
+      if (!openDrafts.has(key)) {
+        const first = (s.text.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 2).join(' ')).slice(0, 220);
+        box.classList.add('tvDraftClosed');
+        box.append(el('div', { class: 'tvPreview' }, el('p', { text: first }),
+          el('button', { type: 'button', text: t('Relire'), onclick: () => { openDrafts.add(key); renderView(id); } })));
+        return box;
+      }
       const ta = el('textarea', { rows: String(Math.min(14, Math.max(3, s.text.split('\n').length + Math.ceil(s.text.length / 140)))), 'aria-label': s.title || t('Brouillon') });
-      ta.value = s.text;
+      // texte en cours de relecture gardé tel quel quand Claude met l'affichage à jour (sauf s'il propose un nouveau texte)
+      const kept = draftVals.get(key);
+      ta.value = kept && kept.base === s.text ? kept.value : s.text;
+      ta.addEventListener('input', () => draftVals.set(key, { base: s.text, value: ta.value }));
       box.append(ta, el('div', { class: 'tvActs' }, s.actions.map((a, j) => el('button', {
         type: 'button', class: j === 0 ? 'primary' : '', text: a.label,
-        onclick: () => act(id, { section: i, index: j, draft: ta.value }),
-      })), el('button', { type: 'button', text: t('Copier'), onclick: () => navigator.clipboard.writeText(ta.value).then(() => toast(t('Copié'))) })));
+        onclick: () => act(id, { item, section: i, index: j, draft: ta.value }),
+      })), el('button', { type: 'button', text: t('Copier'), onclick: () => navigator.clipboard.writeText(ta.value).then(() => toast(t('Copié'))) }),
+      el('button', { type: 'button', class: 'tvLink', text: t('Replier'), onclick: () => { openDrafts.delete(key); renderView(id); } })));
     }
     return box;
+  }
+  // sections ouvertes en grille, puis les sections repliées regroupées en bas
+  function sectionsBlock(list, id, item) {
+    const main = [], folds = [];
+    list.forEach((x, i) => (x.fold ? folds : main).push(section(x, i, id, item)));
+    return [main.length ? el('div', { class: 'tvBody' }, main) : null, folds.length ? el('div', { class: 'tvDetails' }, folds) : null];
+  }
+  function stepsEl(st) {
+    if (!st) return null;
+    return el('ol', { class: 'tvSteps', 'aria-label': t('Avancement') }, st.items.map((label, k) => {
+      const state = k < st.current ? 'done' : k === st.current ? 'cur' : 'todo';
+      return el('li', { class: state }, el('span', { class: 'dot', text: state === 'done' ? '✓' : String(k + 1) }), el('span', { text: label }));
+    }));
+  }
+  function heroRow(v, id, item) {
+    const parts = [];
+    if (v.verdict || v.steps) {
+      parts.push(el('section', { class: `tvVerdict lv-${v.verdict?.level || 'info'}`, 'aria-label': t('Conclusion') },
+        v.verdict ? el('div', { class: 'tvVMain' }, el('span', { class: 'tvVIcon' }, icon(v.verdict.level)),
+          el('div', {}, el('p', { text: v.verdict.text }), v.verdict.sub ? el('span', { class: 'hint', text: v.verdict.sub }) : null)) : null,
+        stepsEl(v.steps)));
+    }
+    if (v.next) {
+      parts.push(el('section', { class: 'tvNext', 'aria-label': t('Prochaine étape') },
+        el('span', { class: 'tvNextK', text: t('Prochaine étape') }), el('p', { text: v.next.label }),
+        v.next.send ? el('button', { type: 'button', class: 'primary', text: v.next.button || t('Faire'), onclick: () => act(id, { next: true, item }) }) : null));
+    }
+    return parts.length ? el('div', { class: 'tvHero' }, parts) : null;
   }
   async function act(id, body, confirmText) {
     if (confirmText && !confirm(confirmText)) return;
@@ -189,18 +234,39 @@
     b.hidden = !(s?.typeInfo && modeOf(id) === 'view') || !!s.locked;
     if (b.hidden) return;
     const ti = s.typeInfo, v = d?.view;
+    const items = v?.items || [];
+    // lot : compteurs par état (et éléments à risque)
+    const counts = {};
+    for (const x of items) if (x.state) counts[x.state] = (counts[x.state] || 0) + 1;
+    const risks = items.filter(x => x.risk).length;
     const head = el('header', { class: 'tvHead' },
       el('span', { class: 'tvType', text: ti.badge || ti.name, style: ti.color ? `--tc:${ti.color}` : null }),
       el('div', { class: 'tvTitle' }, el('h2', { text: v?.title || s.name }), v?.subtitle ? el('div', { class: 'hint', text: v.subtitle }) : null,
-        v?.meta?.length ? el('div', { class: 'tvMeta' }, v.meta.map(m => el('span', {}, el('span', { class: 'hint', text: `${m.label} ` }), m.value))) : null),
+        v?.meta?.length ? el('div', { class: 'tvMeta' }, v.meta.map(m => el('span', { class: 'tvChip', title: m.label }, m.value || m.label))) : null),
+      items.length ? el('div', { class: 'tvCounters' }, Object.entries(counts).map(([k, n]) => el('span', { class: 'tvCounter' }, el('b', { text: String(n) }), ' ' + k)),
+        risks ? el('span', { class: 'tvCounter warn' }, el('b', { text: String(risks) }), ' ' + t('avec risque')) : null) : null,
       el('div', { class: 'tvActs' }, ti.actions.map(a => el('button', {
         type: 'button', class: a.primary ? 'primary' : '', text: a.label,
         onclick: () => act(id, { action: a.id }, a.confirm ? `${a.label} ?` : ''),
       }))));
-    const body = v?.sections?.length
-      ? el('div', { class: 'tvBody' }, v.sections.map((x, i) => section(x, i, id)))
-      : el('p', { class: 'tvEmpty', text: t('L’affichage se remplira quand Claude aura avancé. La conversation reste dans « Terminal ».') });
-    b.replaceChildren(head, body);
+    const empty = !v || (!v.sections?.length && !items.length && !v.verdict && !v.next);
+    if (empty) { b.replaceChildren(head, el('p', { class: 'tvEmpty', text: t('L’affichage se remplira quand Claude aura avancé. La conversation reste dans « Terminal ».') })); return; }
+    if (items.length) {
+      const sel = Math.min(lotSel.get(id) || 0, items.length - 1), it = items[sel];
+      const nav = el('nav', { class: 'tvLotNav', 'aria-label': t('Éléments') }, items.map((x, k) => el('button', {
+        type: 'button', class: k === sel ? 'on' : '', 'aria-current': k === sel ? 'true' : null,
+        onclick: () => { lotSel.set(id, k); renderView(id); },
+      }, el('span', { class: 'tvLotTop' }, x.id ? el('span', { class: 'tvLotId', text: x.id }) : null, x.state ? el('span', { class: 'tvChip', text: x.state }) : null,
+        x.risk ? el('span', { class: 'tvRisk', text: t('risque') }) : null),
+        el('b', { text: x.title || x.id }), x.verdict ? el('span', { class: 'hint', text: x.verdict.text }) : null)));
+      const next = sel < items.length - 1 ? el('button', { type: 'button', class: 'tvLink', text: t('Élément suivant') + ' ›', onclick: () => { lotSel.set(id, sel + 1); renderView(id); } }) : null;
+      const detail = el('div', { class: 'tvLotDetail' },
+        el('div', { class: 'tvLotHead' }, el('h3', { text: [it.id, it.title].filter(Boolean).join(' · ') }), next),
+        heroRow(it, id, sel), ...sectionsBlock(it.sections, id, sel));
+      b.replaceChildren(...[head, heroRow(v, id), el('div', { class: 'tvLot' }, nav, detail), ...sectionsBlock(v.sections || [], id)].filter(Boolean));
+      return;
+    }
+    b.replaceChildren(...[head, heroRow(v, id), ...sectionsBlock(v.sections || [], id)].filter(Boolean));
   }
   async function loadView(id) {
     try { views.set(id, await api('GET', `/api/sessions/${id}/view`)); } catch { }

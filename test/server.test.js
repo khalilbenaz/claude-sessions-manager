@@ -1598,3 +1598,20 @@ test('Windows : jamais le script « claude » sans extension (erreur 193) ; .exe
     else assert.equal(r, cmd); // pas de node.exe hors Windows
   } finally { if (saved === undefined) delete process.env.CSM_CLAUDE_ARGS; else process.env.CSM_CLAUDE_ARGS = saved; }
 });
+
+test('vue : verdict, avancement, prochaine étape et lot (format validé)', () => {
+  const { cleanView } = require('../lib/extensions');
+  const v = cleanView({
+    title: 'T', verdict: { text: 'V', level: 'bizarre' }, steps: { items: ['a', 'b', 'c'], current: 9 },
+    next: { label: 'Publier', button: 'Go', send: 'publie' },
+    items: [{ id: '1', title: 'Un', state: 'à publier', risk: 'oui', verdict: 'phrase', sections: [{ kind: 'kv', items: [{ label: 'a', value: 'b' }] }, { kind: 'inconnu' }] }, { foo: 1 }],
+  });
+  assert.deepEqual(v.verdict, { text: 'V', sub: '', level: 'info' });
+  assert.equal(v.steps.current, 3, 'borné au nombre d’étapes');
+  assert.equal(v.next.send, 'publie');
+  assert.equal(v.items.length, 1, 'élément sans id ni titre écarté');
+  assert.equal(v.items[0].risk, false, 'risk : booléen strict');
+  assert.equal(v.items[0].verdict.text, 'phrase', 'verdict texte accepté');
+  assert.equal(v.items[0].sections.length, 1, 'section inconnue écartée');
+  assert.equal(cleanView({ title: 'x' }).verdict, null);
+});
