@@ -671,3 +671,22 @@ dialog.secrets .row.end { display: flex; justify-content: flex-end; }
 .typeView .tvLotDetail .tvBody { grid-template-columns: 1fr; }
 .typeView { container-type: inline-size; }
 .typeView .tvBody { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+
+/* panneau « Mes prompts » */
+.promptsHead { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.promptsHead input { flex: 1; }
+ul.prompts { list-style: none; margin: 0; padding: 0; }
+ul.prompts li { border-bottom: 1px solid var(--line); padding: 6px 0; }
+ul.prompts .pmeta { display: flex; justify-content: space-between; align-items: center; color: var(--dim); font-size: 11px; gap: 6px; }
+ul.prompts .pmeta .acts { display: flex; gap: 4px; opacity: .6; }
+ul.prompts li:hover .acts { opacity: 1; }
+ul.prompts .pmeta button { padding: 1px 6px; font-size: 11px; }
+ul.prompts .ptext { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; margin-top: 3px; cursor: pointer;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+ul.prompts li.open .ptext { display: block; -webkit-line-clamp: unset; }
+/* 4 onglets + fermer : tiennent dans le panneau (textes resserrés, défilement en dernier recours) */
+.ptabs { gap: 2px; padding: 8px 8px; overflow-x: auto; scrollbar-width: none; }
+.ptabs::-webkit-scrollbar { display: none; }
+.ptabs button[data-tab] { padding: 0 7px; font-size: 12.5px; flex: none; white-space: nowrap; }
+.ptabs #panelClose { flex: none; }
+.ptabs .spacer { flex: 1 1 0; min-width: 0; }

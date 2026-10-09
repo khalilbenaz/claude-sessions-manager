@@ -75,6 +75,7 @@
     <input type="file" id="fileInput" multiple hidden>
     <button id="btnRestart" title="Relancer / reprendre la conversation"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span class="lbl">Reprendre</span></button>
     <button id="btnMore" class="icon" title="Plus d'actions" aria-label="Plus d'actions"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button>
+    <button id="btnPause" title="Mettre en pause : la session s'arrête mais reste dans la liste, ici et sur tes autres machines ; « Reprendre » continue la conversation"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg><span class="lbl">Pause</span></button>
     <button id="btnKill" hidden>Arrêter</button>
     <button id="btnClose" class="danger" title="Fermer et retirer de la liste"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg><span class="lbl">Fermer</span></button>
   </div>
@@ -94,12 +95,14 @@
         <button data-tab="changes" class="on">Modifications</button>
         <button data-tab="timeline">Chronologie</button>
         <button data-tab="usage">Consommation</button>
+        <button data-tab="prompts" title="Mes prompts : toutes les demandes de la session">Prompts</button>
         <span class="spacer"></span>
         <button id="panelClose" class="icon" title="Fermer le panneau">✕</button>
       </div>
       <div id="tab-changes" class="ptab"></div>
       <div id="tab-timeline" class="ptab" hidden></div>
       <div id="tab-usage" class="ptab" hidden></div>
+      <div id="tab-prompts" class="ptab" hidden></div>
     </aside>
   </div>
   <form id="splitBar" class="splitBar" hidden autocomplete="off">

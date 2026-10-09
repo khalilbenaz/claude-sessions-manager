@@ -152,7 +152,7 @@ const STORE = path.join(DATA, 'sessions.json');
 const sessions = new Map();
 
 // Champs ajoutés par les modules (lib/*) : mémorisés et envoyés à l'interface tels quels.
-const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'quotaWait', 'alerts', 'remote', 'syncId', 'origin', 'syncCwd', 'type'];
+const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'quotaWait', 'alerts', 'remote', 'syncId', 'origin', 'syncCwd', 'type', 'paused'];
 const extra = s => Object.fromEntries(EXTRA_FIELDS.filter(k => s[k] !== undefined).map(k => [k, s[k]]));
 
 // Appelés après chaque écriture de sessions.json (lib/sync : repère les changements à envoyer).
@@ -291,6 +291,7 @@ function spawnSession(s, { resume, fork } = {}) {
     setStatus(s, 'exited', 'échec du lancement');
     return;
   }
+  if (s.paused) { delete s.paused; persist(); } // reprise : plus en pause
   s.pty = p;
   if (s.wantRun !== true) { s.wantRun = true; persist(); }
   setStatus(s, 'starting');
@@ -304,7 +305,7 @@ function spawnSession(s, { resume, fork } = {}) {
       if (!shuttingDown && !s.pty && sessions.has(s.id)) { s.wantRun = false; persist(); }
     }, 8000);
     appendOut(s, `\r\n\x1b[90m[csm] session terminée (code ${exitCode})\x1b[0m\r\n`);
-    setStatus(s, 'exited', `code ${exitCode}`);
+    setStatus(s, 'exited', s.paused ? 'en pause' : `code ${exitCode}`);
     emit('exit', s);
   });
 }
@@ -349,7 +350,7 @@ let shuttingDown = false;
 const toRestore = [];
 try {
   for (const x of JSON.parse(fs.readFileSync(STORE, 'utf8'))) {
-    const s = { ...x, status: 'exited', message: 'arrêtée', statusSince: Date.now(), lastActivity: x.createdAt, buf: '', pty: null };
+    const s = { ...x, status: 'exited', message: x.paused ? 'en pause' : 'arrêtée', statusSince: Date.now(), lastActivity: x.createdAt, buf: '', pty: null };
     sessions.set(x.id, s);
     if (x.wantRun !== false) toRestore.push(s);
     else s.buf = `\x1b[90m[csm] Session arrêtée. Cliquer « Reprendre » pour la relancer.\x1b[0m\r\n`;
@@ -732,6 +733,20 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, publicView(s));
     }
     if (s && m[2] === 'kill' && req.method === 'POST') { s.wantRun = false; persist(); killSession(s); return json(res, 200, {}); }
+    // Pause : la session s'arrête mais reste dans la liste, ici et sur les autres machines (synchro) ;
+    // « Reprendre » continue la même conversation, ici ou ailleurs.
+    // Avant de répondre : la session est arrêtée, sa mémoire à jour et tout est synchronisé (conversation comprise),
+    // pour la reprendre aussitôt sur une autre machine.
+    if (s && m[2] === 'pause' && req.method === 'POST') {
+      s.wantRun = false; s.paused = true; persist();
+      if (s.pty) {
+        killSession(s);
+        for (let i = 0; i < 50 && s.pty; i++) await new Promise(r => setTimeout(r, 100)); // fin du processus (≤ 5 s)
+      } else { setStatus(s, 'exited', 'en pause'); broadcast({ t: 'session', s: publicView(s) }); }
+      const memory = s.claudeSessionId && ctx.memory?.on() ? ctx.memory.captureNow(s.claudeSessionId) : null;
+      const synced = ctx.syncNow ? await ctx.syncNow() : null;
+      return json(res, 200, { ...publicView(s), memory, synced });
+    }
     if (s && m[2] === 'restart' && req.method === 'POST') {
       await restartSession(s);
       return json(res, 200, publicView(s));
