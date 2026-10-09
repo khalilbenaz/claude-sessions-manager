@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.36.7] — 2026-10-09
+### Ajouté
+- Affichage des types de session : sections **repliables** (`"fold": true` : titre et nombre d'éléments, ouverture d'un clic, état gardé pendant les mises à jour), textes longs réduits à quelques lignes avec « Voir plus », brouillon à la hauteur de son texte. Les consignes données à Claude l'invitent à garder l'essentiel en tête et le détail replié.
+### Corrigé
+- Sections clé / valeur (`kv`) affichées « [object HTMLElement] ».
+
 ## [3.36.6] — 2026-10-09
 ### Corrigé
 - Windows : « Échec du lancement : Cannot create process, error code: 193 » avec Claude Code installé par npm. L'app ne prend plus le script `claude` sans extension ; elle choisit `claude.exe`, sinon lance le script de Claude Code avec node (sans passer par `cmd.exe`), sinon `claude.cmd`.

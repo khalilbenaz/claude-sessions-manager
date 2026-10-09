@@ -85,6 +85,9 @@ Une session d'un type a deux vues, **Affichage** et **Terminal** (bouton en haut
 
 - Tout est affiché **en texte brut** : ni HTML ni Markdown interprétés.
 - `draft` : un texte modifiable par l'utilisateur ; ses boutons envoient `send` à la session, `{draft}` étant remplacé par le texte relu.
+- `"fold": true` (toute section) : affichée **repliée**, titre seul et nombre d'éléments, ouverte d'un clic. Idéal pour les preuves, la chronologie, les longues listes : l'écran se lit en quelques secondes, le détail reste à un clic.
+- Un texte long (`text`, `alert`) non replié s'affiche sur quelques lignes avec « Voir plus ».
+- Conseil : l'essentiel d'abord (`kv` de 3-4 lignes, `checklist` de 3-5 actions), le reste replié ; donnez ces consignes dans `instructions`.
 - Une section d'un `kind` inconnu est ignorée.
 
 ## Exemple

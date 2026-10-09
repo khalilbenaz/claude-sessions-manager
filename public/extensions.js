@@ -12,7 +12,7 @@
       else if (k.startsWith('on')) e[k] = v;
       else if (v !== undefined && v !== null && v !== false) e.setAttribute(k, v === true ? '' : v);
     }
-    for (const c of kids.flat()) if (c) e.append(c);
+    for (const c of kids.flat(Infinity)) if (c) e.append(c);
     return e;
   };
 
@@ -134,10 +134,26 @@
   const modeOf = id => LS2.get(`csm.view.${id}`) || 'view';
   const views = new Map(); // id -> { type, view }
 
+  const openFolds = new Set();
   function section(s, i, id) {
-    const box = el('section', { class: `tvSec tv-${s.kind}${s.level === 'warn' ? ' warn' : ''}` });
-    if (s.title || s.badge) box.append(el('h3', {}, s.title || '', s.badge ? el('span', { class: 'tvBadge', text: s.badge }) : null));
-    if (s.kind === 'text' || s.kind === 'alert') box.append(el('p', { text: s.text }));
+    // section repliée (fold) : titre seul, ouverte d'un clic ; l'état ouvert survit aux mises à jour de la vue
+    const foldKey = `|${s.kind}|${s.title}`;
+    const box = el(s.fold ? 'details' : 'section', { class: `tvSec tv-${s.kind}${s.level === 'warn' ? ' warn' : ''}${s.fold ? ' tvFold' : ''}` });
+    const count = s.items?.length || s.rows?.length || 0;
+    const head = el(s.fold ? 'summary' : 'h3', {}, s.title || (s.fold ? t('Détails') : ''), s.badge ? el('span', { class: 'tvBadge', text: s.badge }) : null,
+      s.fold && count ? el('span', { class: 'tvCount', text: String(count) }) : null);
+    if (s.title || s.badge || s.fold) box.append(head);
+    if (s.fold) { box.open = openFolds.has(foldKey); box.addEventListener('toggle', () => { if (box.open) openFolds.add(foldKey); else openFolds.delete(foldKey); }); }
+    if (s.kind === 'text' || s.kind === 'alert') {
+      const p = el('p', { text: s.text });
+      box.append(p);
+      // texte long hors section repliée : quelques lignes, puis « Voir plus »
+      if (!s.fold && s.text.length > 420) {
+        p.classList.add('tvClamp');
+        const more = el('button', { type: 'button', class: 'tvMore', text: t('Voir plus'), onclick: () => { const on = p.classList.toggle('tvClamp'); more.textContent = on ? t('Voir plus') : t('Voir moins'); } });
+        box.append(more);
+      }
+    }
     if (s.kind === 'list') box.append(el('ul', {}, s.items.map(x => el('li', { text: x }))));
     if (s.kind === 'kv') box.append(el('dl', {}, s.items.map(x => [el('dt', { text: x.label }), el('dd', { text: x.value })])));
     if (s.kind === 'timeline') box.append(el('ol', { class: 'tvTime' }, s.items.map(x => el('li', {}, el('span', { class: 'tvAt', text: x.at }), el('span', { text: x.text })))));
@@ -147,7 +163,8 @@
     if (s.kind === 'checklist') box.append(el('ul', { class: 'tvCheck' }, s.items.map(x => el('li', { class: x.done ? 'done' : '' },
       el('span', { class: 'tvBox', 'aria-hidden': 'true', text: x.done ? '✓' : '' }), el('span', {}, el('span', { text: x.label }), x.hint ? el('small', { text: x.hint }) : null)))));
     if (s.kind === 'draft') {
-      const ta = el('textarea', { rows: '8', 'aria-label': s.title || t('Brouillon') });
+      // hauteur à la mesure du texte (3 à 14 lignes)
+      const ta = el('textarea', { rows: String(Math.min(14, Math.max(3, s.text.split('\n').length + Math.ceil(s.text.length / 140)))), 'aria-label': s.title || t('Brouillon') });
       ta.value = s.text;
       box.append(ta, el('div', { class: 'tvActs' }, s.actions.map((a, j) => el('button', {
         type: 'button', class: j === 0 ? 'primary' : '', text: a.label,
