@@ -93,7 +93,12 @@
     const missing = list.filter(x => !x.present && (force || !x.dismissed));
     const dlg = $('#dlgSecrets');
     if (!missing.length) { if (dlg.open) dlg.close(); return; }
-    const box = $('#secretList'); box.replaceChildren();
+    const box = $('#secretList');
+    // déjà affichée pour les mêmes jetons : on garde ce que l'utilisateur est en train de saisir
+    const keys = missing.map(x => `${x.ext}/${x.id}`).join(',');
+    if (dlg.open && box.dataset.keys === keys) return;
+    box.dataset.keys = keys;
+    box.replaceChildren();
     for (const x of missing) {
       const input = el('input', { type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: t('Colle le jeton ici') });
       const msg = el('small', { class: 'hint secretMsg' });
@@ -119,6 +124,7 @@
     if (!dlg.open) dlg.showModal();
   }
   $('#secretsLater').onclick = () => $('#dlgSecrets').close();
+  $('#dlgSecrets').addEventListener('close', () => { $('#secretList').dataset.keys = ''; });
   F.askSecrets = askSecrets;
   setTimeout(() => askSecrets(false), 2500);
   window.addEventListener('csm:extensions', () => setTimeout(() => askSecrets(false), 500));
