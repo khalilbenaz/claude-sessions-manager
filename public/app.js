@@ -925,6 +925,7 @@ function moreItems(id) {
     [s.alerts?.mute ? t('Réactiver les alertes') : t('Couper les alertes de cette session'), () => api('POST', `/api/sessions/${id}/meta`, { alerts: { mute: !s.alerts?.mute } })],
     '-',
     [t('Mettre en pause'), () => pauseSession(id), { disabled: !s.alive }],
+    ...(s.syncId && SETTINGS.syncCode ? [[t('Supprimer de toutes les machines…'), () => removeEverywhere(id)]] : []),
     [t('Arrêter'), () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
   ];
 }
@@ -960,12 +961,20 @@ async function closeSession(id) {
     } catch (e) { alert(e.message); }
     return;
   }
-  // synchronisée : la fermer la retire aussi des autres machines ; Pause la garde partout
+  // synchronisée : fermée ici seulement, après mémoire et synchro ; elle reste sur les autres machines
   const synced = !!(s.syncId && SETTINGS.syncCode);
-  const msg = [s.alive ? t("Le processus Claude sera arrêté (la conversation reste reprenable depuis l'historique).") : '',
-    synced ? t('Elle sera aussi retirée de tes autres machines. Pour l’interrompre en la gardant partout, utilise plutôt « Pause ».') : ''].filter(Boolean).join(' ');
-  if (msg && !confirm(`${t('Fermer')} « ${s.name} » ? ${msg}`)) return;
-  api('DELETE', `/api/sessions/${id}`);
+  if (!synced && s.alive && !confirm(`${t('Fermer')} « ${s.name} » ? ${t("Le processus Claude sera arrêté (la conversation reste reprenable depuis l'historique).")}`)) return;
+  if (synced) toast(t('Fermeture… (mémoire et synchro)'));
+  try {
+    const r = await api('DELETE', `/api/sessions/${id}`);
+    if (synced) toast(r.kept ? t('Fermée ici — gardée sur tes autres machines') : t('Fermée ici — synchro en échec : elle n’est peut-être pas à jour ailleurs'), !r.kept);
+  } catch (e) { toast(e.message, true); }
+}
+// Supprimer partout : retirée de toutes les machines synchronisées (la conversation reste dans l'Historique)
+async function removeEverywhere(id) {
+  const s = sessions.get(id); if (!s) return;
+  if (!confirm(`${t('Supprimer')} « ${s.name} » ${t('de toutes tes machines ? Elle disparaît de la liste partout ; la conversation reste dans l’Historique.')}`)) return;
+  try { await api('DELETE', `/api/sessions/${id}?everywhere=1`); } catch (e) { toast(e.message, true); }
 }
 
 async function loadHistory() {
