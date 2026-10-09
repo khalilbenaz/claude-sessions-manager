@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.36.8] — 2026-10-09
+### Corrigé
+- Usage de Claude : la liste « Cette machine / Toutes les machines » prenait toute la largeur et renvoyait « Fermer » à la ligne ; elle reste dans la ligne du titre.
+
 ## [3.36.7] — 2026-10-09
 ### Ajouté
 - Affichage des types de session : sections **repliables** (`"fold": true` : titre et nombre d'éléments, ouverture d'un clic, état gardé pendant les mises à jour), textes longs réduits à quelques lignes avec « Voir plus », brouillon à la hauteur de son texte. Les consignes données à Claude l'invitent à garder l'essentiel en tête et le détail replié.
