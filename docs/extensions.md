@@ -85,6 +85,12 @@ Une session d'un type a deux vues, **Affichage** et **Terminal** (bouton en haut
 
 - Tout est affiché **en texte brut** : ni HTML ni Markdown interprétés.
 - `draft` : un texte modifiable par l'utilisateur ; ses boutons envoient `send` à la session, `{draft}` étant remplacé par le texte relu.
+- **En tête de l'affichage** (facultatifs) :
+  - `verdict` : `{ "text": "la conclusion en une phrase", "sub": "confiance, date…", "level": "ok" | "warn" | "info" }`, mise en avant avec une icône ;
+  - `steps` : `{ "items": ["Analysé", "Commentaire prêt", "Publié"], "current": 1 }`, fil d'avancement ;
+  - `next` : `{ "label": "la prochaine étape", "button": "Publier", "send": "message envoyé à la session au clic" }`.
+- **Lot** (plusieurs tickets, fichiers…) : `items` = `[{ "id", "title", "state", "risk", "verdict", "next", "sections": [ … ] }]`. Une ligne par élément à gauche, le détail de l'élément choisi à droite, des compteurs par état dans l'en-tête.
+- Un `draft` s'affiche replié sur une ligne d'aperçu : « Relire » l'ouvre ; le texte en cours de relecture est gardé quand la vue se met à jour.
 - `"fold": true` (toute section) : affichée **repliée**, titre seul et nombre d'éléments, ouverte d'un clic. Idéal pour les preuves, la chronologie, les longues listes : l'écran se lit en quelques secondes, le détail reste à un clic.
 - Un texte long (`text`, `alert`) non replié s'affiche sur quelques lignes avec « Voir plus ».
 - Conseil : l'essentiel d'abord (`kv` de 3-4 lignes, `checklist` de 3-5 actions), le reste replié ; donnez ces consignes dans `instructions`.

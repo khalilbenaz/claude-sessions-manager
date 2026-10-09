@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.37.0] — 2026-10-09
+### Ajouté
+- **Affichage des types de session refait** (lecture en 10 secondes) : **verdict** mis en avant (conclusion en une phrase, icône selon le niveau), **fil d'avancement**, carte **Prochaine étape** avec son bouton, diagnostic et actions côte à côte, **commentaire replié** sur une ligne d'aperçu (« Relire »), sections de détail regroupées et repliées en bas. Meta en pastilles.
+- **Lots** (`items`) : une ligne par élément (numéro, état, risque, verdict) et le détail de l'élément choisi, compteurs par état, « Élément suivant ».
+- Le texte d'un brouillon en cours de relecture n'est plus perdu quand Claude met l'affichage à jour.
+
 ## [3.36.9] — 2026-10-09
 ### Corrigé
 - **Bas du terminal coupé** : la marge du haut du terminal n'était pas comptée dans le calcul du nombre de lignes, et les dernières lignes (saisie, barre d'état) passaient sous le bord, davantage avec le zoom. La marge est maintenant comptée ; un contrôle régulier réajuste un terminal qui déborderait encore.
