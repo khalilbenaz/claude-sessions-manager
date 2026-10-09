@@ -27,7 +27,8 @@ Une extension **n'exécute aucun code** dans l'application : elle décrit, Claud
   "author": "…",
   "templates": [ … ],
   "prompts": [ … ],
-  "sessionTypes": [ … ]
+  "sessionTypes": [ … ],
+  "secrets": [ … ]
 }
 ```
 
@@ -89,3 +90,27 @@ Une session d'un type a deux vues, **Affichage** et **Terminal** (bouton en haut
 ## Exemple
 
 [`extensions/revue-de-code.csm.json`](../extensions/revue-de-code.csm.json) : un modèle « Revue de code », un prompt et un type de session avec un tableau des problèmes et deux actions.
+
+## Secrets (jetons d'accès)
+
+Une extension dont les outils ont besoin d'un jeton (API, dépôt privé…) le déclare ; au démarrage, l'app le demande s'il manque, avec le lien pour l'obtenir, et le range **là où les outils le lisent**. La valeur n'est jamais renvoyée à l'interface, ni écrite dans l'extension ou les données synchronisées.
+
+```json
+"secrets": [
+  {
+    "id": "jeton-api",
+    "name": "Jeton de l'API",
+    "description": "Lecture seule suffit. Échéance conseillée : 90 jours.",
+    "url": "https://exemple.com/parametres/jetons",
+    "env": "EXEMPLE_TOKEN",
+    "keychain": "exemple-token",
+    "alsoEnv": ["EXEMPLE_TOKEN_RO"],
+    "alsoKeychain": ["exemple-token-ro"]
+  }
+]
+```
+
+- **Où il est rangé** : macOS, le trousseau (service `keychain`) ; Windows, la variable d'environnement `env` de ton compte (donnée aussi aux sessions lancées ensuite) ; Linux, ou sans `keychain`, un fichier `secrets.env` (droits 0600) des données de l'app, chargé dans l'environnement des sessions.
+- **Déjà configuré** si `env` (ou un `alsoEnv`) est défini, ou si le trousseau contient `keychain` (ou un `alsoKeychain`).
+- **Ne plus demander** masque la demande ; l'extension désactivée, plus rien n'est demandé.
+- `url` : https seulement. Au plus 10 secrets par extension.

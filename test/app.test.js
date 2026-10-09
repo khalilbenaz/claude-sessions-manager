@@ -434,6 +434,19 @@ test('vue partagée : bandeau d’aide masquable et mémorisé', async () => {
   await win.click('[data-layout="1"]');
 });
 
+test('jeton demandé par une extension : fenêtre au démarrage avec le lien pour l’obtenir', async () => {
+  await win.evaluate(() => api('POST', '/api/extensions', { content: JSON.stringify({ csm: 1, id: 'outil-ui', name: 'Outil', secrets: [{ id: 'jeton', name: 'Jeton de l’outil', url: 'https://example.com/tokens', env: 'CSM_UI_TOKEN' }] }) }));
+  try {
+    await win.evaluate(() => window.csmFeatures.askSecrets(true));
+    await win.waitForSelector('#dlgSecrets[open] .secretCard');
+    assert.equal(await win.getAttribute('#dlgSecrets .secretCard a', 'href'), 'https://example.com/tokens');
+    if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT.replace(/(\.png)?$/, '-jeton.png') });
+    await win.fill('#dlgSecrets .secretCard input', 'jeton-ui-123456');
+    await win.click('#dlgSecrets .secretCard button.primary');
+    await win.waitForFunction(() => !document.querySelector('#dlgSecrets').open);
+  } finally { await win.evaluate(() => api('DELETE', '/api/extensions/outil-ui')); }
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));

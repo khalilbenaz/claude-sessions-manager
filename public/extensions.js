@@ -80,6 +80,44 @@
   F.renderExtensions = renderList;
   window.addEventListener('csm:extensions', () => { if (!zone.hidden) renderList(); });
 
+  // ---------------------------------------------------------------- secrets demandés par les extensions
+  // Au démarrage (et quand les extensions changent) : ceux qui manquent, avec le lien pour les obtenir.
+  // La valeur part au serveur local qui la range ; elle n'est jamais relue ni réaffichée.
+  async function askSecrets(force) {
+    let list; try { list = await api('GET', '/api/secrets'); } catch { return; }
+    const missing = list.filter(x => !x.present && (force || !x.dismissed));
+    const dlg = $('#dlgSecrets');
+    if (!missing.length) { if (dlg.open) dlg.close(); return; }
+    const box = $('#secretList'); box.replaceChildren();
+    for (const x of missing) {
+      const input = el('input', { type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: t('Colle le jeton ici') });
+      const msg = el('small', { class: 'hint' });
+      const save = el('button', { type: 'button', class: 'primary', text: t('Enregistrer'), onclick: async () => {
+        save.disabled = true;
+        try {
+          const r = await api('POST', `/api/secrets/${x.ext}/${x.id}`, { value: input.value });
+          input.value = '';
+          if (r.present) { card.remove(); if (!box.children.length) dlg.close(); toast(t('Jeton enregistré')); }
+          else msg.textContent = t('Enregistré, mais toujours introuvable : vérifie le trousseau ou la variable.');
+        } catch (e) { msg.textContent = e.message; } finally { save.disabled = false; }
+      } });
+      const card = el('div', { class: 'secretCard' },
+        el('b', { text: `${x.name} · ${x.extName}` }),
+        x.description ? el('p', { text: x.description }) : null,
+        x.url ? el('p', {}, el('a', { href: x.url, target: '_blank', rel: 'noopener', text: t('Obtenir le jeton') + ' ↗' }), el('small', { class: 'hint', text: ' ' + x.url })) : null,
+        el('div', { class: 'row' }, input, save),
+        el('small', { class: 'hint', text: t('Rangé dans') + ' ' + x.where }),
+        msg,
+        el('button', { type: 'button', class: 'link', text: t('Ne plus demander'), onclick: async () => { await api('POST', `/api/secrets/${x.ext}/${x.id}/dismiss`); card.remove(); if (!box.children.length) dlg.close(); } }));
+      box.append(card);
+    }
+    if (!dlg.open) dlg.showModal();
+  }
+  $('#secretsLater').onclick = () => $('#dlgSecrets').close();
+  F.askSecrets = askSecrets;
+  setTimeout(() => askSecrets(false), 2500);
+  window.addEventListener('csm:extensions', () => setTimeout(() => askSecrets(false), 500));
+
   // ---------------------------------------------------------------- vue d'une session typée
   const LS2 = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { } } };
   const modeOf = id => LS2.get(`csm.view.${id}`) || 'view';

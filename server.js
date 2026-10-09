@@ -823,7 +823,7 @@ const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
   renameSession, history, transcriptPath, setStatus, lockedResume, splitArgs, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
 };
-for (const mod of ['lock', 'git', 'settings', 'auth', 'extensions', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync', 'schedule']) {
+for (const mod of ['lock', 'git', 'settings', 'auth', 'extensions', 'secrets', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync', 'schedule']) {
   try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }
 }
 

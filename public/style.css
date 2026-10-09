@@ -593,3 +593,13 @@ svg.ic { flex: none; vertical-align: -3px; }
 .tplCard .tb { font-weight: 500; letter-spacing: 0; }
 
 #list li.gempty { display: block; } /* texte sur une ligne (pas la grille des lignes de session) */
+
+/* secrets demandés par une extension */
+dialog.secrets { max-width: 560px; }
+dialog.secrets .secretCard { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+dialog.secrets .secretCard p { margin: 0; }
+dialog.secrets .secretCard .row { display: flex; gap: 6px; }
+dialog.secrets .secretCard input { flex: 1; }
+dialog.secrets .secretCard a { color: var(--link); }
+dialog.secrets button.link { align-self: flex-start; background: none; border: 0; padding: 0; color: var(--dim); text-decoration: underline; cursor: pointer; }
+dialog.secrets .row.end { display: flex; justify-content: flex-end; }

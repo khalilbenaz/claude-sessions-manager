@@ -1263,6 +1263,31 @@ test('extensions : import d’un fichier, modèles, session typée avec sa vue e
   await api('DELETE', `/api/sessions/${s.id}`);
 });
 
+test('extensions : secret demandé (jeton), enregistré sans jamais être renvoyé, donné aux sessions', async () => {
+  const ext = { csm: 1, id: 'outil-test', name: 'Outil de test', secrets: [
+    { id: 'jeton', name: 'Jeton de l’outil', description: 'Accès en lecture.', url: 'https://example.com/tokens', env: 'CSM_TEST_TOKEN' },
+    { id: 'mauvais', env: 'pas valide' }, // ignoré : variable invalide
+  ] };
+  await api('POST', '/api/extensions', { content: JSON.stringify(ext) });
+  try {
+    let list = (await api('GET', '/api/secrets')).filter(x => x.ext === 'outil-test');
+    assert.equal(list.length, 1);
+    assert.deepEqual([list[0].name, list[0].url, list[0].present], ['Jeton de l’outil', 'https://example.com/tokens', false]);
+    assert.equal((await req('POST', '/api/secrets/outil-test/jeton', { value: 'court' })).status, 400, 'trop court');
+    assert.equal((await req('POST', '/api/secrets/outil-test/inconnu', { value: 'x'.repeat(20) })).status, 404);
+    const r = await api('POST', '/api/secrets/outil-test/jeton', { value: 'jeton-secret-1234' });
+    assert.equal(r.present, true);
+    list = await api('GET', '/api/secrets');
+    assert.ok(!JSON.stringify(list).includes('jeton-secret-1234'), 'valeur jamais renvoyée');
+    assert.equal(list.find(x => x.id === 'jeton').present, true);
+    // donné aux sessions lancées ensuite
+    const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'avec-jeton' });
+    await idle(s.id);
+    await api('DELETE', `/api/sessions/${s.id}`);
+    await api('POST', '/api/secrets/outil-test/jeton/dismiss');
+  } finally { await api('DELETE', '/api/extensions/outil-test'); }
+});
+
 test('extensions : fournies par un plugin Claude Code (dossier csm/), non supprimables', async () => {
   const plug = path.join(HOME, 'plugin-prive');
   fs.mkdirSync(path.join(plug, 'csm'), { recursive: true });
