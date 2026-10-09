@@ -443,7 +443,10 @@ test('jeton demandé par une extension : fenêtre au démarrage avec le lien pou
     if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT.replace(/(\.png)?$/, '-jeton.png') });
     await win.fill('#dlgSecrets .secretCard input', 'jeton-ui-123456');
     await win.click('#dlgSecrets .secretCard button.primary');
-    await win.waitForFunction(() => !document.querySelector('#dlgSecrets').open);
+    // fermée, ou un message d'erreur affiché : dans ce cas, l'échec dit pourquoi
+    await win.waitForFunction(() => !document.querySelector('#dlgSecrets').open || document.querySelector('#dlgSecrets .secretCard small.hint:last-of-type')?.textContent, null, { timeout: 20000 }).catch(() => { });
+    const st = await win.evaluate(async () => ({ open: document.querySelector('#dlgSecrets').open, msgs: [...document.querySelectorAll('#dlgSecrets .secretCard small')].map(x => x.textContent).join(' | '), list: await api('GET', '/api/secrets') }));
+    assert.equal(st.open, false, `fenêtre toujours ouverte : ${st.msgs} · ${JSON.stringify(st.list)}`);
   } finally { await win.evaluate(() => api('DELETE', '/api/extensions/outil-ui')); }
 });
 
