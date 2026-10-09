@@ -3,8 +3,11 @@
 .syncCard p { margin: 0 0 8px; }
 .syncCard .row { margin-bottom: 8px; }
 .syncHead > label { color: var(--dim); font-size: 12px; margin-bottom: 4px; }
-.syncHead .syncCode { font-size: 22px; letter-spacing: 1.5px; padding: 10px 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.syncCode.masked { -webkit-text-security: disc; user-select: none; }
+/* jamais de « … » : un code coupé ne se recopie pas. Affiché, il défile si la case est étroite ; masqué, des
+   points plus petits et serrés tiennent dans la case */
+.syncHead .syncCode { font-size: 18px; letter-spacing: .5px; padding: 10px 12px; min-width: 0; overflow-x: auto; overflow-y: hidden; white-space: nowrap; scrollbar-width: none; }
+.syncHead .syncCode::-webkit-scrollbar { display: none; }
+.syncCode.masked { -webkit-text-security: disc; user-select: none; font-size: 13px; letter-spacing: 2px; line-height: 27px; overflow: hidden; }
 .syncMeta { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--dim); font-size: 12px; margin: 0; }
 .syncMeta span:empty { display: none; }
 .syncMeta span + span::before { content: "·"; margin-right: 14px; }

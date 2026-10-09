@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.36.0] — 2026-10-09
+### Ajouté
+- **Jetons d'accès des extensions** : une extension déclare les secrets dont ses outils ont besoin (`secrets` : nom, explication, lien, variable d'environnement, entrée du trousseau). Au démarrage, s'il manque, une fenêtre **Accès à configurer** le demande avec le lien **Obtenir le jeton** ; il est rangé dans le trousseau macOS, une variable de l'utilisateur sous Windows, ou un fichier 0600 sous Linux, jamais renvoyé à l'interface. Voir docs/extensions.md.
+### Corrigé
+- Réglages › Synchronisation : le code masqué n'affiche plus « … » (les points tiennent dans la case) ; affiché, il n'est plus coupé.
+
 ## [3.35.2] — 2026-10-08
 ### Corrigé
 - « Claude is waiting for your input » (rappel de Claude Code après une minute d'inactivité) ne fait plus passer la session en « attend une réponse » ni n'apparaît dans le centre d'attention : la session reste prête.

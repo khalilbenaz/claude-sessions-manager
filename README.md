@@ -228,6 +228,7 @@ Une **extension** est un seul fichier `.csm.json` qui ajoute des **modèles de s
 - **Gérer** : activer, désactiver ou supprimer chaque extension dans Réglages › Extensions.
 - **Synchro** : une extension importée sur une machine est installée sur toutes les machines de l'espace de synchro (chiffrée, comme les modèles) ; sa désactivation et sa suppression suivent. Elle y apparaît « reçue de *machine* ». Les extensions **fournies par un plugin** ne voyagent qu'**avec leur plugin** (elles utilisent ses skills et agents) : la synchro des plugins propose de l'installer sur les autres machines, et l'extension arrive avec lui ; jamais de copie seule. Option *Extensions importées* dans Réglages › Synchronisation.
 - Le **type** d'une session (son affichage dédié) suit aussi la session d'une machine à l'autre ; sans l'extension sur l'autre machine, la session y reste une session ordinaire.
+- **Jetons d'accès** : une extension dont les outils ont besoin d'un jeton (API, dépôt privé…) le déclare (`secrets`). Au démarrage, s'il manque, l'app ouvre une fenêtre **Accès à configurer** avec le lien **Obtenir le jeton** ; collé, il est rangé là où ces outils le lisent (trousseau macOS, variable de ton compte sous Windows), jamais gardé ni réaffiché par l'app. *Plus tard* ou *Ne plus demander*.
 - **Créer** : format complet dans [docs/extensions.md](docs/extensions.md), exemple prêt à importer : [extensions/revue-de-code.csm.json](extensions/revue-de-code.csm.json).
 
 ## 13. Verrouiller une session par mot de passe
