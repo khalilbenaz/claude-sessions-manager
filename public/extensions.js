@@ -83,8 +83,13 @@
   // ---------------------------------------------------------------- secrets demandés par les extensions
   // Au démarrage (et quand les extensions changent) : ceux qui manquent, avec le lien pour les obtenir.
   // La valeur part au serveur local qui la range ; elle n'est jamais relue ni réaffichée.
+  // une vérification plus récente (ou un enregistrement) annule celle en cours : jamais de fenêtre rouverte
+  // avec une liste lue avant l'enregistrement
+  let askSeq = 0;
   async function askSecrets(force) {
+    const seq = ++askSeq;
     let list; try { list = await api('GET', '/api/secrets'); } catch { return; }
+    if (seq !== askSeq) return;
     const missing = list.filter(x => !x.present && (force || !x.dismissed));
     const dlg = $('#dlgSecrets');
     if (!missing.length) { if (dlg.open) dlg.close(); return; }
@@ -93,7 +98,7 @@
       const input = el('input', { type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: t('Colle le jeton ici') });
       const msg = el('small', { class: 'hint' });
       const save = el('button', { type: 'button', class: 'primary', text: t('Enregistrer'), onclick: async () => {
-        save.disabled = true;
+        save.disabled = true; askSeq++;
         try {
           const r = await api('POST', `/api/secrets/${x.ext}/${x.id}`, { value: input.value });
           input.value = '';
