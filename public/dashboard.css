@@ -33,7 +33,7 @@ dialog.dbDlg form { display: flex; flex-direction: column; gap: 14px; min-height
 .dbSeg button { height: 32px; white-space: nowrap; flex: none; border: 0; border-radius: 0; background: none; color: var(--dim); padding: 0 14px; }
 .dbSeg button + button { border-left: 1px solid var(--line2); }
 .dbSeg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
-.dbDlg .atTop select { height: 32px; }
+.dbDlg .atTop select { height: 32px; width: auto; flex: none; padding-right: 28px; } /* pas la pleine largeur des listes des fenêtres */
 .dbCardHead #dbSchAdd { margin-left: auto; } .dbCardHead #dbSchedules { margin-left: 0; }
 .dbJobs { display: flex; flex-direction: column; gap: 8px; }
 .dbJob { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--panel); }
