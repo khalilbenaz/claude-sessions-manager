@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.36.1] — 2026-10-09
+### Corrigé
+- Tests : les jetons d'accès ne touchent plus au trousseau ni aux variables du compte (build Windows).
+
 ## [3.36.0] — 2026-10-09
 ### Ajouté
 - **Jetons d'accès des extensions** : une extension déclare les secrets dont ses outils ont besoin (`secrets` : nom, explication, lien, variable d'environnement, entrée du trousseau). Au démarrage, s'il manque, une fenêtre **Accès à configurer** le demande avec le lien **Obtenir le jeton** ; il est rangé dans le trousseau macOS, une variable de l'utilisateur sous Windows, ou un fichier 0600 sous Linux, jamais renvoyé à l'interface. Voir docs/extensions.md.
