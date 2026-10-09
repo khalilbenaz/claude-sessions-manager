@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.36.3] — 2026-10-09
+### Corrigé
+- Fenêtre « Accès à configurer » : plus reconstruite pendant la saisie (le jeton tapé n'est plus perdu).
+
 ## [3.36.2] — 2026-10-09
 ### Corrigé
 - Fenêtre « Accès à configurer » : une vérification lancée avant l'enregistrement d'un jeton ne la rouvre plus juste après.
