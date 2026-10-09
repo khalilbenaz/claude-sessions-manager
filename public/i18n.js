@@ -282,6 +282,7 @@ const EN = {
   'Dépôt git détecté': 'Git repository detected', 'branche': 'branch', 'Pas un dépôt git': 'Not a git repository',
   'Voir les modifications': 'View changes',
   'Déplier la barre latérale': 'Expand the sidebar', 'Réduire la barre latérale': 'Collapse the sidebar',
+  'Détails': 'Details', 'Voir plus': 'Show more', 'Voir moins': 'Show less',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
@@ -410,3 +411,4 @@ function translateDom(root = document.body) {
   for (const o of root.querySelectorAll('option')) if (EN[o.textContent.trim()]) o.textContent = EN[o.textContent.trim()];
 }
 document.addEventListener('DOMContentLoaded', () => translateDom());
+
