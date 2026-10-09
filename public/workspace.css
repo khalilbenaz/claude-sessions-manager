@@ -62,7 +62,6 @@ body.compact #btnCompact svg path:last-child { transform: scaleX(-1); }
   #btnChanges.has::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: 4px; }
 }
 @container (max-width: 880px) {
-  #bar .typeBadge { display: none; }
   #bar .idRow .msg { max-width: 150px; }
   #btnAttention { font-size: 0; gap: 0; } #btnAttention b { font-size: 12px; }
 }
@@ -75,8 +74,7 @@ body.compact #btnCompact svg path:last-child { transform: scaleX(-1); }
 @container (max-width: 900px) {
   #btnRestart .lbl, #btnClose .lbl, #btnView .lbl { display: none; }
   #btnRestart, #btnClose, #btnView { gap: 0; padding: 0 10px; }
-  #bar .typeBadge { display: none; }
 }
 @container (max-width: 680px) { #bar > .spacer { display: none; } }
 /* dernier recours (fenêtre très étroite) : les boutons passent sur une seconde ligne au lieu d'être coupés */
-@media (max-width: 960px) { #bar { flex-wrap: wrap; row-gap: 8px; overflow-x: visible; } }
+@media (max-width: 1040px) { #bar { flex-wrap: wrap; row-gap: 8px; overflow-x: visible; } }
