@@ -450,6 +450,30 @@ test('jeton demandé par une extension : fenêtre au démarrage avec le lien pou
   } finally { await win.evaluate(() => api('DELETE', '/api/extensions/outil-ui')); }
 });
 
+test('mes prompts (Ctrl+Alt+P depuis le terminal, une seule fois) et bouton Pause', async () => {
+  await win.evaluate(() => select([...sessions.values()].find(s => s.name === 'e2e').id));
+  await win.click('.term.show');
+  await win.keyboard.press('Control+Alt+KeyP');
+  await win.waitForSelector('#tab-prompts:not([hidden]) #promptList li[data-i]');
+  assert.equal(await win.isHidden('#panel'), false, 'ouvert (pas ouvert puis refermé)');
+  assert.match(await win.textContent('#promptList'), /bonjour e2e/);
+  await win.fill('#promptQ', 'zzz');
+  await win.waitForSelector('#promptList li.hint');
+  await win.fill('#promptQ', '');
+  if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT.replace(/(\.png)?$/, '-prompts.png') });
+  await win.keyboard.press('Control+Alt+KeyP');
+  await win.waitForFunction(() => document.querySelector('#panel').hidden);
+  // pause : la session s'arrête, reste dans la liste, « Reprendre » apparaît
+  assert.equal(await win.isVisible('#btnPause'), true);
+  await win.click('#btnPause');
+  await win.waitForFunction(() => { const s = [...sessions.values()].find(x => x.name === 'e2e'); return s && !s.alive && s.paused; }, null, { timeout: 20000 });
+  assert.equal(await win.isHidden('#btnPause'), true);
+  assert.match(await win.textContent('#btnRestart'), /Reprendre/);
+  if (process.env.CSM_SHOT) await win.screenshot({ path: process.env.CSM_SHOT.replace(/(\.png)?$/, '-pause.png') });
+  await win.click('#btnRestart');
+  await win.waitForFunction(() => { const s = [...sessions.values()].find(x => x.name === 'e2e'); return s?.alive && s.status === 'idle'; }, null, { timeout: 30000 });
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));

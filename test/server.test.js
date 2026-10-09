@@ -292,6 +292,54 @@ test('demandes programmées : échéances, envoi à une session, rattrapage, une
   c.ws.close();
 });
 
+test('mes prompts : demandes de la session, sans le bruit (outils, commandes, interruptions)', async () => {
+  const c = await wsClient();
+  const Q = await api('POST', '/api/sessions', { cwd: WORK, name: 'mes-prompts' });
+  await idle(Q.id);
+  c.input(Q.id, 'quelle est la cause du bug ?\r');
+  await waitFor(() => (c.out[Q.id] || '').includes('echo: quelle est la cause du bug ?'), 10000, 'réponse');
+  const list = await waitFor(async () => { const l = await api('GET', `/api/sessions/${Q.id}/prompts`); return l.some(p => p.text === 'quelle est la cause du bug ?') && l; }, 10000, 'prompt listé');
+  assert.ok(list.every(p => p.t > 0 && !/^\[Request interrupted|<command-|<system-reminder/.test(p.text)));
+  assert.equal((await req('GET', '/api/sessions/inconnue/prompts')).status, 404);
+  c.ws.close();
+  await api('DELETE', `/api/sessions/${Q.id}`);
+});
+
+test('pause : session arrêtée mais gardée, mémoire enregistrée, synchronisée « en pause » puis reprise', async () => {
+  const { encodeCode } = require('../lib/sync');
+  const KEY = 'p'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  const c = await wsClient();
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-pause' });
+    const P = await api('POST', '/api/sessions', { cwd: WORK, name: 'a-mettre-en-pause' });
+    const ready = await idle(P.id);
+    c.input(P.id, 'travail en cours\r');
+    await waitFor(() => (c.out[P.id] || '').includes('echo: travail en cours'), 10000, 'réponse');
+    await idle(P.id);
+    const r = await api('POST', `/api/sessions/${P.id}/pause`);
+    assert.equal(r.alive, false, 'arrêtée');
+    assert.equal(r.paused, true);
+    assert.equal(r.memory, true, 'mémoire enregistrée');
+    assert.equal(r.synced, true, 'synchronisée avant la réponse');
+    assert.ok((await api('GET', '/api/sessions')).some(x => x.id === P.id), 'toujours dans la liste');
+    const sid = (await session(P.id)).syncId;
+    assert.equal(fake.plain(KEY, sid).paused, true, 'en pause pour les autres machines');
+    assert.ok(fake.tx(KEY).meta.get(sid), 'conversation envoyée');
+    assert.ok((await api('GET', '/api/memory/cards')).items.some(e => e.id === ready.claudeSessionId), 'fiche mémoire');
+    // reprise : plus en pause, ici et ailleurs
+    await api('POST', `/api/sessions/${P.id}/restart`);
+    await idle(P.id);
+    assert.equal((await session(P.id)).paused, undefined);
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.plain(KEY, sid).paused === undefined; }, 10000, 'reprise synchronisée');
+    await api('DELETE', `/api/sessions/${P.id}`);
+  } finally {
+    c.ws.close();
+    await api('PUT', '/api/settings', { syncCode: '' });
+    fake.srv.close();
+  }
+});
+
 test('consommation, chronologie, export', async () => {
   const u = await api('GET', `/api/sessions/${S.id}/usage`);
   assert.ok(u.total.out > 0 && u.total.cost > 0);

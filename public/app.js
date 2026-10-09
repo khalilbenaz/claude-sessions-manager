@@ -111,7 +111,7 @@ function ensureTerm(id) {
   }, true); // phase de capture : avant le gestionnaire de xterm, qui ne garderait que le texte
   term.attachCustomKeyEventHandler(e => {
     if (e.type !== 'keydown') return true;
-    if (e.ctrlKey && e.altKey && globalShortcut(e)) return false;
+    if (e.ctrlKey && e.altKey && globalShortcut(e)) { e.csmDone = true; return false; } // traité ici : pas une 2e fois par le document
     // Windows : Ctrl+C avec sélection = copier ; Ctrl+V = coller (texte) via le presse-papiers du navigateur.
     // macOS : Cmd+C / Cmd+V sont natifs ; Ctrl+C et Ctrl+V restent à Claude (interrompre, coller une image).
     if (!IS_MAC && e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'c' && term.hasSelection()) {
@@ -536,13 +536,13 @@ function render() {
     if (s.color) li.style.setProperty('--sc', s.color);
     li.draggable = true;
     li.dataset.id = s.id;
-    li.title = `${s.name}\n${s.cwd}${s.worktree ? `\n⎇ ${s.worktree.branch}` : ''}\n${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + t(s.message) : ''}`;
+    li.title = `${s.name}\n${s.cwd}${s.worktree ? `\n⎇ ${s.worktree.branch}` : ''}\n${stateText(s, ' — ')}`;
     li.innerHTML = `<span class="dot ${s.status}"></span><span class="n"></span><span class="acts"><button class="ren" title="Renommer" aria-label="Renommer"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><span class="k">${i < 9 ? i + 1 : ''}${unread.has(s.id) && s.id !== active ? ' •' : ''}</span></span><span class="sub"></span>`;
     li.querySelector('.n').textContent = (s.locked ? (window.csmFeatures.isLockedHere?.(s.id) ? '🔒 ' : '🔓 ') : '') + s.name;
     li.querySelector('.dot').textContent = '';
     li.querySelector('.dot').dataset.initial = (s.name || '?').trim().charAt(0).toUpperCase();
     const subEl = li.querySelector('.sub');
-    subEl.textContent = (s.origin && window.csmFeatures?.syncMachine && s.origin !== window.csmFeatures.syncMachine ? `⇄ ${s.origin} · ` : '') + (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.quotaWait ? `⏸ ${t('quota')} ${hm(s.quotaWait)} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? ' · ' + t(s.message) : ''} · ${ago(s.statusSince)}`;
+    subEl.textContent = (s.origin && window.csmFeatures?.syncMachine && s.origin !== window.csmFeatures.syncMachine ? `⇄ ${s.origin} · ` : '') + (s.worktree ? `⎇ ${s.worktree.branch} · ` : '') + (s.quotaWait ? `⏸ ${t('quota')} ${hm(s.quotaWait)} · ` : '') + (s.queue?.length ? `⏳${s.queue.length} · ` : '') + `${stateText(s, ' · ')} · ${ago(s.statusSince)}`;
     if (isRemote(s)) { const ph = svgIcon('M7 3h10a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z|M11 18h2', 12); ph.classList.add('remoteIc'); ph.setAttribute('aria-label', t('Accessible depuis l’app Claude')); subEl.prepend(ph); }
     li.onclick = () => select(s.id);
     li.ondblclick = () => renameSession(s.id);
@@ -582,6 +582,11 @@ function render() {
 }
 setInterval(render, 15000);
 
+// état affiché : « en pause » (sur cette machine ou une autre) plutôt que « arrêtée — en pause »
+function stateText(s, sep) {
+  if (!s.alive && s.paused) return /^en pause sur /.test(s.message || '') ? t('en pause sur') + ' ' + s.message.slice(13) : t('en pause');
+  return `${STATUS_LABEL[s.status] || s.status}${s.message && s.status !== 'working' ? sep + t(s.message) : ''}`;
+}
 function renderBar() {
   const s = sessions.get(active);
   if (!s) return;
@@ -589,9 +594,10 @@ function renderBar() {
   $('#curName').textContent = s.name;
   $('#curCwd bdi').textContent = s.cwd; // <bdi> : le chemin garde son sens de lecture, l'ellipse reste au début
   $('#curCwd').title = s.cwd + (s.claudeSessionId ? `\nsession ${s.claudeSessionId}` : '');
-  $('#curMsg').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + t(s.message) : ''}`;
+  $('#curMsg').textContent = `${stateText(s, ' — ')}`;
   $('#curMsg').className = `msg ${s.status}`;
   $('#btnKill').disabled = !s.alive;
+  $('#btnPause').hidden = !s.alive; // en pause / arrêtée : « Reprendre » à la place
   $('#btnRestart .lbl').textContent = s.alive ? t('Relancer') : (s.claudeSessionId ? t('Reprendre') : t('Relancer'));
   window.csmFeatures?.renderTypeBar?.(s); // type de session d'une extension (public/extensions.js)
   $('#curBranch').hidden = !s.worktree;
@@ -908,6 +914,7 @@ function moreItems(id) {
     [t('Modifications'), () => window.csmFeatures.showPanel('changes'), { kbd: `${MOD}+Alt+G` }],
     [t('Chronologie'), () => window.csmFeatures.showPanel('timeline')],
     [t('Consommation'), () => window.csmFeatures.showPanel('usage')],
+    [t('Mes prompts'), () => window.csmFeatures.showPanel('prompts'), { kbd: `${MOD}+Alt+P` }],
     [isRemote(s) ? t('Désactiver l’accès depuis l’app Claude') : t('Accès depuis l’app Claude (téléphone)'), () => setRemote(id, !isRemote(s))],
     [t('Exporter la conversation…'), () => window.csmFeatures.exportConversation(s), { disabled: !s.claudeSessionId }],
     [t('Enregistrer comme modèle…'), () => saveSessionAsTemplate(id)],
@@ -917,10 +924,21 @@ function moreItems(id) {
     ...(window.csmFeatures.lockItems?.(id) || []),
     [s.alerts?.mute ? t('Réactiver les alertes') : t('Couper les alertes de cette session'), () => api('POST', `/api/sessions/${id}/meta`, { alerts: { mute: !s.alerts?.mute } })],
     '-',
+    [t('Mettre en pause'), () => pauseSession(id), { disabled: !s.alive }],
     [t('Arrêter'), () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
   ];
 }
 $('#btnKill').onclick = () => active && api('POST', `/api/sessions/${active}/kill`);
+// Pause : arrêt, puis mémoire et synchro enregistrées avant de rendre la main (le serveur attend les deux)
+async function pauseSession(id) {
+  toast(t('Mise en pause… (mémoire et synchro)'));
+  try {
+    const r = await api('POST', `/api/sessions/${id}/pause`);
+    const parts = [r.memory === true ? t('mémoire à jour') : r.memory === false ? t('mémoire non enregistrée') : '', r.synced === true ? t('synchronisée') : r.synced === false ? t('synchro en échec (voir Réglages › Synchronisation)') : ''].filter(Boolean);
+    toast(t('En pause') + (parts.length ? ' — ' + parts.join(', ') : ''), r.synced === false || r.memory === false);
+  } catch (e) { toast(e.message, true); }
+}
+$('#btnPause').onclick = () => active && pauseSession(active);
 $('#btnClose').onclick = () => closeSession(active);
 async function closeSession(id) {
   const s = sessions.get(id); if (!s) return;
@@ -942,7 +960,11 @@ async function closeSession(id) {
     } catch (e) { alert(e.message); }
     return;
   }
-  if (s.alive && !confirm(`${t('Fermer')} « ${s.name} » ? ${t("Le processus Claude sera arrêté (la conversation reste reprenable depuis l'historique).")}`)) return;
+  // synchronisée : la fermer la retire aussi des autres machines ; Pause la garde partout
+  const synced = !!(s.syncId && SETTINGS.syncCode);
+  const msg = [s.alive ? t("Le processus Claude sera arrêté (la conversation reste reprenable depuis l'historique).") : '',
+    synced ? t('Elle sera aussi retirée de tes autres machines. Pour l’interrompre en la gardant partout, utilise plutôt « Pause ».') : ''].filter(Boolean).join(' ');
+  if (msg && !confirm(`${t('Fermer')} « ${s.name} » ? ${msg}`)) return;
   api('DELETE', `/api/sessions/${id}`);
 }
 
@@ -1228,6 +1250,7 @@ function globalShortcut(e) {
   if (e.key === 'ArrowUp' && list.length) { select(list[(idx - 1 + list.length) % list.length].id); return true; }
   if (k === 'a') { const a = list.find(s => s.status === 'attention' && s.id !== active); if (a) select(a.id); return true; }
   if (k === 'g') { window.csmFeatures.togglePanel('changes'); return true; }
+  if (k === 'p') { window.csmFeatures.togglePanel('prompts'); return true; }
   if (k === 'e' && active) { openIn(active, 'editor'); return true; }
   if (k === 'q' && active) { window.csmFeatures.openQueue(active); return true; }
   if (k === 'b') { window.csmFeatures.openBroadcast(); return true; }
@@ -1241,7 +1264,7 @@ function globalShortcut(e) {
   }
   return false;
 }
-document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && globalShortcut(e)) e.preventDefault(); });
+document.addEventListener('keydown', e => { if (e.csmDone) { e.preventDefault(); return; } if (e.ctrlKey && e.altKey && globalShortcut(e)) e.preventDefault(); });
 // Ctrl+K / Cmd+K : palette ; Ctrl+, : réglages ; Ctrl+Maj+F : recherche dans les sessions.
 document.addEventListener('keydown', e => {
   const mod = IS_MAC ? e.metaKey : e.ctrlKey;

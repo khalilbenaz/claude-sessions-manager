@@ -102,8 +102,9 @@ L'état vient directement de Claude Code (des hooks sont ajoutés à chaque sess
 | **Nouvelle** | + Nouvelle, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>, palette | dossier, nom, groupe, modèle, mode, worktree, premier prompt, arguments |
 | **Renommer** | ✎, double-clic sur le nom, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd> | le nom est aussi écrit dans la conversation Claude (historique, `claude --resume`) |
 | **Relancer / Reprendre** | bouton ou ⋯ | relance Claude dans la **même conversation** (`--resume`) |
+| **Pause** | ⏸ Pause (barre du haut), ⋯ › Mettre en pause | arrête la session **en gardant tout** : elle reste dans la liste, ici et sur tes autres machines (« en pause »). Avant de rendre la main, sa **mémoire** est enregistrée et **tout est synchronisé** (conversation comprise) : « Reprendre », ici ou sur une autre machine, continue la conversation |
 | **Arrêter** | ⋯ › Arrêter | arrête le processus ; la session reste dans la liste |
-| **Fermer** | Fermer, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>W</kbd> | arrête et retire la session ; la conversation reste dans l'Historique |
+| **Fermer** | Fermer, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>W</kbd> | arrête et **retire la session de la liste, ici et sur toutes tes machines synchronisées** ; la conversation reste dans l'Historique de cette machine. Pour l'interrompre et la retrouver partout : **Pause** |
 | **Changer de session** | clic, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd>, <kbd>↑</kbd>/<kbd>↓</kbd> | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>A</kbd> : prochaine session qui t'attend |
 | **Réordonner** | glisser-déposer dans la liste | ordre mémorisé |
 | **Ouvrir dans…** | ↗ Ouvrir, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd> | le dossier dans ton éditeur (VS Code, Cursor, Windsurf, Zed, IntelliJ, Sublime ou commande personnalisée), l'Explorateur / le Finder, un terminal |
@@ -129,6 +130,7 @@ Le bouton **⋯** en haut à droite de la session ouverte (ou clic droit sur une
 | **Épingler en haut** |  | Garde la session **en tête de la liste**, quel que soit l'ordre. Même entrée pour désépingler. | [§ 5](#5-ranger--groupes-épinglage-couleurs) |
 | **Verrouiller par mot de passe…** |  | **Masque** le contenu et bloque la saisie jusqu'au mot de passe ; la session continue de tourner. Reverrouillage automatique réglable. | [§ 13](#13-verrouiller-une-session-par-mot-de-passe) |
 | **Couper les alertes de cette session** |  | Plus de **notification ni de son** pour cette session (les autres continuent). Même entrée pour les réactiver. | [§ 14](#14-notifications-zone-de-notification-arrière-plan) |
+| **Mettre en pause** |  | Arrête la session en la gardant dans la liste, ici et sur tes autres machines ; mémoire enregistrée et synchro faite avant de rendre la main. *Reprendre* continue la conversation, sur n'importe quelle machine. | [§ 4](#4-les-sessions) |
 | **Arrêter** |  | Arrête le processus Claude ; la session **reste dans la liste**, reprenable d'un clic dans la même conversation. *Fermer* (barre du haut) la retire de la liste. | [§ 4](#4-les-sessions) |
 
 ## 5. Ranger : groupes, épinglage, couleurs
@@ -171,6 +173,7 @@ La fusion est refusée s'il reste des modifications non commitées, si le dépô
 Bouton **± Modifications** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd>) ou ⋯ : panneau latéral à trois onglets pour la session active.
 
 - **Modifications** : fichiers modifiés dans le dossier de la session (git) avec leur état (M modifié, N nouveau, S supprimé). Clic = **diff coloré** ; ↺ = annuler un fichier ; **commit** avec « Proposer un message » et « Committer tout ». Rafraîchi quand Claude a fini un tour.
+- **Prompts** (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd>, ⋯ › Mes prompts) : **toutes tes demandes** dans cette session, de la plus récente à la plus ancienne, numérotées et datées, pour te rappeler de quoi elle parle. Recherche, clic pour déplier un long prompt, **Copier**, **Réutiliser** (le colle dans ta saisie). Relues dans la conversation (sans messages système, sorties de commandes ni interruptions).
 - **Chronologie** : les actions de Claude (📖 lus, ✏️ modifiés, ▶ commandes, 🔎 recherches…) avec l'heure.
 - **Consommation** : tokens d'entrée / sortie et **coût estimé** de la session, puis de toutes les sessions sur 5 h, aujourd'hui et 7 jours ; graphique par jour ; sessions les plus coûteuses. Estimation aux tarifs API publics, indicative (inclus dans un abonnement Claude).
 - **Barre d'état des quotas** : sous l'invite de chaque session, CSM affiche tes quotas d'abonnement et l'heure de leur réinitialisation, le contexte utilisé et le modèle : `5h 20% ↻ 13:21 (2h09) · 7j 90% ↻ jeu 18:44 (2j7h) · ctx 42% · Opus 5.5`. Seulement si tu n'as pas déjà ta propre barre d'état Claude Code (`statusLine` dans `~/.claude/settings.json`) ; désactivable dans Réglages › Général.

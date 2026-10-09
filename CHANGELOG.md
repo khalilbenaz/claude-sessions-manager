@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.38.0] — 2026-10-09
+### Ajouté
+- **Pause** (barre du haut, ⋯ › Mettre en pause) : la session s'arrête mais reste dans la liste, ici et sur les autres machines, marquée « en pause » ; avant de rendre la main, sa mémoire est enregistrée et tout est synchronisé, conversation comprise. « Reprendre » continue la conversation, sur n'importe quelle machine.
+- **Mes prompts** (panneau latéral, onglet Prompts, Ctrl/⌘+Alt+P, ⋯ › Mes prompts) : toutes les demandes de la session, numérotées et datées, avec recherche, Copier et Réutiliser.
+### Corrigé
+- Raccourcis Ctrl+Alt (panneau Modifications, Prompts…) tapés dans le terminal : traités une seule fois (le panneau ne s'ouvrait plus puis se refermait aussitôt).
+- « Fermer » rappelle qu'il retire la session de toutes les machines synchronisées (README) ; pour l'interrompre en la gardant partout, utiliser Pause.
+
 ## [3.37.1] — 2026-10-09
 ### Corrigé
 - Cadre noir autour du terminal (depuis la 3.36.9) : la marge du terminal prend la couleur de fond du thème.

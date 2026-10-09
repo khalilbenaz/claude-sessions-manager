@@ -15,7 +15,7 @@
     LS.set('csm.panelOpen', open); LS.set('csm.panelTab', tab);
     $('#panel').hidden = !open;
     document.querySelectorAll('.ptabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-    for (const n of ['changes', 'timeline', 'usage']) $(`#tab-${n}`).hidden = n !== tab;
+    for (const n of ['changes', 'timeline', 'usage', 'prompts']) $(`#tab-${n}`).hidden = n !== tab;
     $('#btnChanges').classList.toggle('on', open && tab === 'changes');
     requestAnimationFrame(() => fitAll(true));
     if (open) refresh();
@@ -29,13 +29,14 @@
   function refresh() {
     if (F.isLockedHere?.(active)) {
       $('#changesCount').textContent = t('Modifications'); $('#btnChanges').classList.remove('has');
-      for (const n of ['changes', 'timeline', 'usage']) $(`#tab-${n}`).innerHTML = `<p class="hint">🔒 ${t('Session verrouillée')}</p>`;
+      for (const n of ['changes', 'timeline', 'usage', 'prompts']) $(`#tab-${n}`).innerHTML = `<p class="hint">🔒 ${t('Session verrouillée')}</p>`;
       return;
     }
     if (tab === 'changes' || !open) loadChanges(); // compteur de la barre toujours à jour
     if (!open) return;
     if (tab === 'timeline') loadTimeline();
     if (tab === 'usage') loadUsage();
+    if (tab === 'prompts') loadPrompts();
   }
 
   // ---------------------------------------------------------------- Modifications
@@ -152,7 +153,36 @@
         <span class="tw">${x.ts ? new Date(x.ts).toLocaleTimeString(LANG === 'en' ? 'en-GB' : 'fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}</span></li>`).join('')}</ul>`;
   }
 
-  // ---------------------------------------------------------------- Consommation
+  // ---------------------------------------------------------------- Mes prompts
+  // Toutes les demandes tapées dans la session, pour se rappeler de quoi elle parle : recherche, copier, réutiliser.
+  let promptQ = '';
+  async function loadPrompts() {
+    const el = $('#tab-prompts'), id = active;
+    let list = [];
+    try { list = await api('GET', `/api/sessions/${id}/prompts`); } catch (e) { el.innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
+    if (id !== active) return;
+    const fmt = ts => ts ? new Date(ts).toLocaleString(LANG === 'en' ? 'en-GB' : 'fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    const render = () => {
+      const words = promptQ.toLowerCase().split(/\s+/).filter(Boolean);
+      const shown = list.map((p, i) => ({ ...p, i })).filter(p => words.every(w => p.text.toLowerCase().includes(w))).reverse();
+      $('#promptList').innerHTML = shown.length ? shown.map(p => `<li data-i="${p.i}"><div class="pmeta"><span>#${p.i + 1} · ${esc(fmt(p.t))}</span>
+          <span class="acts"><button data-a="copy" title="${t('Copier')}">${t('Copier')}</button><button data-a="use" title="${t('Insérer dans la saisie')}">${t('Réutiliser')}</button></span></div>
+          <div class="ptext">${esc(p.text)}</div></li>`).join('')
+        : `<li class="hint">${list.length ? t('Aucun prompt ne correspond.') : t('Aucun prompt dans cette session pour l’instant.')}</li>`;
+      $('#promptList').querySelectorAll('li[data-i]').forEach(li => {
+        const p = list[+li.dataset.i];
+        li.querySelector('.ptext').onclick = () => li.classList.toggle('open');
+        li.querySelector('[data-a=copy]').onclick = () => clip.copy(p.text).then(() => toast(t('Copié')));
+        li.querySelector('[data-a=use]').onclick = () => { const tt = terms.get(active); if (tt) { tt.term.paste(p.text); tt.term.focus(); } };
+      });
+    };
+    el.innerHTML = `<div class="promptsHead"><input id="promptQ" type="search" placeholder="${t('Chercher dans mes prompts…')}" spellcheck="false" value="${esc(promptQ)}"><small class="hint">${list.length} ${t('prompt(s)')}</small></div><ul id="promptList" class="prompts"></ul>`;
+    $('#promptQ').oninput = e => { promptQ = e.target.value; render(); };
+    render();
+  }
+  F.showPrompts = () => setOpen(true, 'prompts');
+
+
   async function loadUsage() {
     const el = $('#tab-usage');
     el.innerHTML = `<p class="hint">${t('Calcul…')}</p>`;

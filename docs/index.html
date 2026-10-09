@@ -391,6 +391,7 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
           <tr><td><b>Insérer un prompt…</b></td><td>Votre <b>bibliothèque de prompts</b> : <i>Insérer</i> place le texte dans la saisie, <i>Envoyer</i> le soumet. Variables <code>{dossier}</code>, <code>{branche}</code>, <code>{nom}</code>, <code>{selection}</code>.</td></tr>
           <tr><td><b>Envoyer à plusieurs sessions…</b><br><small>Ctrl/⌘+Alt+B</small></td><td>Le <b>même prompt à plusieurs sessions</b> : tout de suite si elles sont prêtes, sinon dans leur file d'attente.</td></tr>
           <tr><td><b>Modifications</b><br><small>Ctrl/⌘+Alt+G</small></td><td><b>Fichiers modifiés</b> (git) : diff coloré, annuler un fichier, commit avec message proposé, fusion d'un worktree.</td></tr>
+          <tr><td><b>Mes prompts</b><br><small>Ctrl/⌘+Alt+P</small></td><td><b>Toutes tes demandes</b> dans la session, numérotées et datées, pour te rappeler de quoi elle parle : recherche, copier, réutiliser.</td></tr>
           <tr><td><b>Chronologie</b></td><td>Ce que Claude a fait, dans l'ordre : <b>fichiers lus et modifiés</b>, commandes lancées, outils appelés.</td></tr>
           <tr><td><b>Consommation</b></td><td><b>Tokens et coût estimé</b> de la session, puis de toutes les sessions sur 5 h, aujourd'hui et 7 jours.</td></tr>
           <tr><td><b>Accès depuis l'app Claude</b></td><td>Rend la session <b>pilotable depuis le téléphone et claude.ai/code</b> (Remote Control de Claude Code).</td></tr>
@@ -400,6 +401,7 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
           <tr><td><b>Épingler en haut</b></td><td>Garde la session <b>en tête de la liste</b>.</td></tr>
           <tr><td><b>Verrouiller par mot de passe…</b></td><td><b>Masque</b> le contenu et bloque la saisie ; la session continue de tourner.</td></tr>
           <tr><td><b>Couper les alertes de cette session</b></td><td>Plus de <b>notification ni de son</b> pour cette session.</td></tr>
+          <tr><td><b>Mettre en pause</b></td><td>Arrête la session en la gardant dans la liste, ici et sur tes autres machines ; mémoire enregistrée et synchro faite avant de rendre la main. <i>Reprendre</i> continue la conversation, sur n'importe quelle machine.</td></tr>
           <tr><td><b>Arrêter</b></td><td>Arrête Claude ; la session <b>reste dans la liste</b>, reprenable d'un clic. <i>Fermer</i> la retire.</td></tr>
         </tbody>
       </table>
