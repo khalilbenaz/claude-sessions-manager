@@ -197,7 +197,7 @@
     if (!ti) return;
     badge.textContent = ti.badge || ti.name;
     badge.style.setProperty('--tc', ti.color || 'var(--accent)');
-    btn.textContent = modeOf(s.id) === 'view' ? t('Terminal') : t('Affichage');
+    btn.querySelector('.lbl').textContent = modeOf(s.id) === 'view' ? t('Terminal') : t('Affichage');
     if (!views.has(s.id)) loadView(s.id); else renderView(s.id);
   };
   $('#btnView').onclick = () => {
