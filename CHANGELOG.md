@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.36.6] — 2026-10-09
+### Corrigé
+- Windows : « Échec du lancement : Cannot create process, error code: 193 » avec Claude Code installé par npm. L'app ne prend plus le script `claude` sans extension ; elle choisit `claude.exe`, sinon lance le script de Claude Code avec node (sans passer par `cmd.exe`), sinon `claude.cmd`.
+
 ## [3.36.5] — 2026-10-09
 ### Corrigé
 - Le badge du type de session reste visible en fenêtre étroite (la 3.36.4 le masquait ; version non publiée, tests de compilation en échec).
