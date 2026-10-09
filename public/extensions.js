@@ -96,7 +96,7 @@
     const box = $('#secretList'); box.replaceChildren();
     for (const x of missing) {
       const input = el('input', { type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: t('Colle le jeton ici') });
-      const msg = el('small', { class: 'hint' });
+      const msg = el('small', { class: 'hint secretMsg' });
       const save = el('button', { type: 'button', class: 'primary', text: t('Enregistrer'), onclick: async () => {
         save.disabled = true; askSeq++;
         try {
