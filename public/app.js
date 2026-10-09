@@ -152,6 +152,15 @@ function fitOne(id, redraw) {
   const t = id && terms.get(id);
   if (!t || !t.el.classList.contains('show')) return;
   try { t.fit.fit(); } catch { }
+  // garde-fou : la dernière ligne doit rester visible (police chargée après la mesure, zoom, bandeau qui
+  // apparaît…) ; si l'écran du terminal dépasse sa zone, on retire les lignes en trop
+  try {
+    const over = t.el.querySelector('.xterm-screen').getBoundingClientRect().bottom - t.el.getBoundingClientRect().bottom;
+    if (over > 1 && t.term.rows > 5) {
+      const cell = t.el.querySelector('.xterm-screen').getBoundingClientRect().height / t.term.rows;
+      t.term.resize(t.term.cols, Math.max(5, t.term.rows - Math.ceil(over / cell)));
+    }
+  } catch { }
   const { cols, rows } = t.term;
   if (!redraw && t.sent === `${cols}x${rows}`) return;
   t.sent = `${cols}x${rows}`;
@@ -162,6 +171,15 @@ function fitOne(id, redraw) {
 function fitAll(redraw) { for (const id of visibleIds()) fitOne(id, redraw); }
 const fitActive = redraw => fitOne(active, redraw);
 new ResizeObserver(() => requestAnimationFrame(() => fitAll(false))).observe($('#terms'));
+// contrôle régulier (fenêtre visible) : un terminal qui déborde de sa zone est réajusté
+setInterval(() => {
+  if (document.hidden) return;
+  for (const id of visibleIds()) {
+    const t = terms.get(id); if (!t || !t.el.classList.contains('show')) continue;
+    const s = t.el.querySelector('.xterm-screen');
+    if (s && s.getBoundingClientRect().bottom - t.el.getBoundingClientRect().bottom > 1) fitOne(id, false);
+  }
+}, 3000);
 const redrawTimers = {};
 function scheduleRedraw(id = active) { clearTimeout(redrawTimers[id]); redrawTimers[id] = setTimeout(() => fitOne(id, true), 150); }
 
