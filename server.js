@@ -722,10 +722,18 @@ const server = http.createServer(async (req, res) => {
     const m = p.match(/^\/api\/sessions\/(\w+)(?:\/(\w+))?$/);
     const s = m && sessions.get(m[1]);
     if (m && !s) return json(res, 404, { error: 'session inconnue' });
+    // Fermer : retirée de cette machine seulement. Synchronisée, elle est d'abord mise en pause (mémoire et synchro
+    // enregistrées) et reste sur les autres machines. ?everywhere=1 : supprimée de toutes les machines.
     if (s && req.method === 'DELETE' && !m[2]) {
+      const everywhere = url.searchParams.get('everywhere') === '1';
+      let saved = {};
+      if (!everywhere && s.syncId && ctx.syncDetach && ctx.syncEnabled?.()) {
+        saved = await pauseAndSave(s);
+        ctx.syncDetach(s.syncId);
+      }
       killSession(s); sessions.delete(s.id); persist();
       broadcast({ t: 'removed', id: s.id });
-      return json(res, 200, {});
+      return json(res, 200, { kept: !!saved.synced, ...saved });
     }
     if (s && m[2] === 'rename' && req.method === 'POST') {
       const { name } = await readBody(req);
@@ -738,14 +746,8 @@ const server = http.createServer(async (req, res) => {
     // Avant de répondre : la session est arrêtée, sa mémoire à jour et tout est synchronisé (conversation comprise),
     // pour la reprendre aussitôt sur une autre machine.
     if (s && m[2] === 'pause' && req.method === 'POST') {
-      s.wantRun = false; s.paused = true; persist();
-      if (s.pty) {
-        killSession(s);
-        for (let i = 0; i < 50 && s.pty; i++) await new Promise(r => setTimeout(r, 100)); // fin du processus (≤ 5 s)
-      } else { setStatus(s, 'exited', 'en pause'); broadcast({ t: 'session', s: publicView(s) }); }
-      const memory = s.claudeSessionId && ctx.memory?.on() ? ctx.memory.captureNow(s.claudeSessionId) : null;
-      const synced = ctx.syncNow ? await ctx.syncNow() : null;
-      return json(res, 200, { ...publicView(s), memory, synced });
+      const saved = await pauseAndSave(s);
+      return json(res, 200, { ...publicView(s), ...saved });
     }
     if (s && m[2] === 'restart' && req.method === 'POST') {
       await restartSession(s);
@@ -808,6 +810,17 @@ server.on('upgrade', (req, sock, head) => {
 const listeners = {};
 function on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); }
 function emit(ev, ...a) { for (const fn of listeners[ev] || []) { try { fn(...a); } catch (e) { console.error('module', ev, e); } } }
+// Pause (et Fermer d'une session synchronisée) : arrêt, puis mémoire et synchro complète avant de rendre la main
+async function pauseAndSave(s) {
+  s.wantRun = false; s.paused = true; persist();
+  if (s.pty) {
+    killSession(s);
+    for (let i = 0; i < 50 && s.pty; i++) await new Promise(r => setTimeout(r, 100)); // fin du processus (≤ 5 s)
+  } else { setStatus(s, 'exited', 'en pause'); broadcast({ t: 'session', s: publicView(s) }); }
+  const memory = s.claudeSessionId && ctx.memory?.on() ? ctx.memory.captureNow(s.claudeSessionId) : null;
+  const synced = ctx.syncNow ? await ctx.syncNow() : null;
+  return { memory, synced };
+}
 async function restartSession(s) {
   if (!s.pty) await ctx.prepareResume?.(s); // conversation modifiée sur une autre machine (lib/sync)
   delete s.applyOnIdle;

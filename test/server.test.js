@@ -684,9 +684,19 @@ test('synchro : envoi, session distante arrêtée, renommage, suppressions', asy
     fake.put(KEY, { uid: 'pc-session-1', updatedAt: Date.now() + 5000, deleted: 1, data: {} });
     await waitFor(async () => { await api('POST', '/api/sync/now'); return !(await session(remote.id)); }, 10000, 'suppression distante appliquée');
 
-    // supprimée ici : pierre tombale envoyée
-    await api('DELETE', `/api/sessions/${local.id}`);
-    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get(mine.uid).deleted === 1; }, 10000, 'suppression locale envoyée');
+    // fermée ici : gardée pour les autres machines (mise en pause, synchronisée), aucune suppression envoyée
+    const kept = await api('DELETE', `/api/sessions/${local.id}`);
+    assert.equal(kept.kept, true);
+    assert.equal(fake.rows(KEY).get(mine.uid).deleted, 0, 'toujours là pour les autres');
+    assert.equal(fake.plain(KEY, mine.uid).paused, true, 'en pause pour les autres');
+    await api('POST', '/api/sync/now'); await api('POST', '/api/sync/now');
+    assert.equal(fake.rows(KEY).get(mine.uid).deleted, 0, 'pas de suppression aux synchros suivantes');
+    assert.ok(!(await api('GET', '/api/sessions')).some(x => x.syncId === mine.uid), 'pas remise dans la liste d’ici');
+    // modifiée ailleurs ensuite : ne revient pas ici
+    const tk = Date.now() + 3000;
+    fake.put(KEY, { uid: mine.uid, updatedAt: tk, origin: 'mac', data: sealed(KEY, mine.uid, tk, { ...fake.plain(KEY, mine.uid), name: 'renommée-ailleurs' }) });
+    await api('POST', '/api/sync/now');
+    assert.ok(!(await api('GET', '/api/sessions')).some(x => x.syncId === mine.uid), 'fermée ici, elle y reste fermée');
   } finally {
     await api('PUT', '/api/settings', { syncCode: '' });
     fake.srv.close();
@@ -746,8 +756,8 @@ test('synchro : la conversation suit la session d’une machine à l’autre, ch
     const m = fake.tx(KEY).meta.get('pc-conv-1');
     assert.match(unseal(KEY, fake.tx(KEY).chunks.get(`pc-conv-1/${m.ver}/0`), aad('pc-conv-1', m)).toString('utf8'), /suite sur le PC[\s\S]*reponse-du-windows/);
 
-    // session supprimée : sa conversation disparaît du serveur
-    await api('DELETE', `/api/sessions/${local.id}`);
+    // supprimée de toutes les machines : sa conversation disparaît du serveur
+    await api('DELETE', `/api/sessions/${local.id}?everywhere=1`);
     await waitFor(async () => { await api('POST', '/api/sync/now'); return !fake.tx(KEY).meta.has(uid); }, 10000, 'conversation effacée du serveur');
     await api('DELETE', `/api/sessions/${remote.id}`);
   } finally {

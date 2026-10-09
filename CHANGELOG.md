@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.39.0] — 2026-10-09
+### Modifié
+- **Fermer ne supprime plus une session synchronisée de tes autres machines** : elle est d'abord mise en pause, sa mémoire enregistrée et tout synchronisé (conversation comprise), puis retirée de cette machine seulement ; ailleurs, elle reste « en pause » et se reprend. Elle ne revient pas sur la machine où elle a été fermée.
+### Ajouté
+- ⋯ › **Supprimer de toutes les machines…** (session synchronisée, avec confirmation) : l'ancien comportement, quand on veut vraiment la retirer partout.
+
 ## [3.38.0] — 2026-10-09
 ### Ajouté
 - **Pause** (barre du haut, ⋯ › Mettre en pause) : la session s'arrête mais reste dans la liste, ici et sur les autres machines, marquée « en pause » ; avant de rendre la main, sa mémoire est enregistrée et tout est synchronisé, conversation comprise. « Reprendre » continue la conversation, sur n'importe quelle machine.
