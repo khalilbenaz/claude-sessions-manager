@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.36.4] — 2026-10-09
+### Corrigé
+- Barre du haut : plus de bouton coupé à droite (session d'un type d'extension, fenêtre étroite). Les libellés se réduisent d'abord (Modifications, Ouvrir), puis Reprendre, Fermer et Terminal/Affichage ne gardent que leur icône ; le nom reste lisible ; en fenêtre très étroite, les boutons passent sur une seconde ligne.
+
 ## [3.36.3] — 2026-10-09
 ### Corrigé
 - Fenêtre « Accès à configurer » : plus reconstruite pendant la saisie (le jeton tapé n'est plus perdu).
