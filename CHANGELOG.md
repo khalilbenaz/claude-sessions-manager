@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.36.9] — 2026-10-09
+### Corrigé
+- **Bas du terminal coupé** : la marge du haut du terminal n'était pas comptée dans le calcul du nombre de lignes, et les dernières lignes (saisie, barre d'état) passaient sous le bord, davantage avec le zoom. La marge est maintenant comptée ; un contrôle régulier réajuste un terminal qui déborderait encore.
+
 ## [3.36.8] — 2026-10-09
 ### Corrigé
 - Usage de Claude : la liste « Cette machine / Toutes les machines » prenait toute la largeur et renvoyait « Fermer » à la ligne ; elle reste dans la ligne du titre.
