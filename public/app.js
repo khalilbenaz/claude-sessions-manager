@@ -572,7 +572,7 @@ function renderBar() {
   $('#curMsg').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + t(s.message) : ''}`;
   $('#curMsg').className = `msg ${s.status}`;
   $('#btnKill').disabled = !s.alive;
-  $('#btnRestart').textContent = s.alive ? t('Relancer') : (s.claudeSessionId ? t('Reprendre') : t('Relancer'));
+  $('#btnRestart .lbl').textContent = s.alive ? t('Relancer') : (s.claudeSessionId ? t('Reprendre') : t('Relancer'));
   window.csmFeatures?.renderTypeBar?.(s); // type de session d'une extension (public/extensions.js)
   $('#curBranch').hidden = !s.worktree;
   $('#curBranch').textContent = s.worktree ? `⎇ ${s.worktree.branch}` : '';

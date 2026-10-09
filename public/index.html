@@ -60,7 +60,7 @@
     </div>
     <span id="curQueue" class="qbadge" hidden title="Prompts en attente"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span id="curQueueTxt"></span></span>
     <span id="curType" class="typeBadge" hidden></span>
-    <button id="btnView" type="button" hidden title="Basculer entre l'affichage du type de session et le terminal">Terminal</button>
+    <button id="btnView" type="button" hidden title="Basculer entre l'affichage du type de session et le terminal"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 13h8M8 16h5"/></svg><span class="lbl">Terminal</span></button>
     <span class="spacer"></span>
     <button id="btnAttention" class="atBtn" hidden title="Centre d'attention : demandes de toutes les sessions (Ctrl+Alt+I)">À traiter <b id="atCount"></b></button>
     <span class="layouts" role="group" aria-label="Disposition">
@@ -73,10 +73,10 @@
     <button id="btnOpen" title="Ouvrir le dossier dans…"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg> Ouvrir</button>
     <button id="btnAttach" class="icon" title="Joindre une image ou un fichier (ou glisser-déposer / coller dans le terminal)" aria-label="Joindre un fichier"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 12-8.6 8.6a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.3-2.3L16 8"/></svg></button>
     <input type="file" id="fileInput" multiple hidden>
-    <button id="btnRestart" title="Relancer / reprendre la conversation">Reprendre</button>
+    <button id="btnRestart" title="Relancer / reprendre la conversation"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span class="lbl">Reprendre</span></button>
     <button id="btnMore" class="icon" title="Plus d'actions" aria-label="Plus d'actions"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button>
     <button id="btnKill" hidden>Arrêter</button>
-    <button id="btnClose" class="danger" title="Fermer et retirer de la liste">Fermer</button>
+    <button id="btnClose" class="danger" title="Fermer et retirer de la liste"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg><span class="lbl">Fermer</span></button>
   </div>
   <div id="stale" class="stale" hidden>
     <span id="staleMsg"></span>
