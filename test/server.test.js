@@ -1581,3 +1581,20 @@ test('rappel « Claude is waiting for your input » : la session reste prête (p
   assert.equal((await session(S.id)).status, 'idle');
   await api('DELETE', `/api/sessions/${S.id}`);
 });
+
+test('Windows : jamais le script « claude » sans extension (erreur 193) ; .exe d’abord, sinon node + cli.js de npm', () => {
+  const { winClaude } = require('../lib/config');
+  const dir = fs.mkdtempSync(path.join(TMP, 'npmbin-'));
+  const bare = path.join(dir, 'claude'), cmd = path.join(dir, 'claude.cmd'), exe = path.join(TMP, 'claude.exe');
+  assert.equal(winClaude([bare, cmd, exe]), exe, '.exe préféré, même listé après');
+  assert.equal(winClaude([bare]), null, 'script sans extension ignoré');
+  assert.equal(winClaude([bare, cmd]), cmd, 'sans cli.js : le .cmd');
+  const cli = path.join(dir, 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js');
+  fs.mkdirSync(path.dirname(cli), { recursive: true }); fs.writeFileSync(cli, '');
+  const saved = process.env.CSM_CLAUDE_ARGS;
+  try {
+    const r = winClaude([bare, cmd]);
+    if (process.platform === 'win32') { assert.match(r, /node\.exe$/i); assert.ok(process.env.CSM_CLAUDE_ARGS.includes(cli)); }
+    else assert.equal(r, cmd); // pas de node.exe hors Windows
+  } finally { if (saved === undefined) delete process.env.CSM_CLAUDE_ARGS; else process.env.CSM_CLAUDE_ARGS = saved; }
+});
