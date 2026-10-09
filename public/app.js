@@ -40,6 +40,7 @@ function applySettings() {
   window.csmNative?.setPrefs?.({ minimizeToTray: SETTINGS.minimizeToTray !== false, closeToTray: SETTINGS.closeToTray !== false });
   for (const tt of terms.values()) {
     tt.term.options.theme = termTheme();
+    tt.el.style.setProperty('--term-bg', termTheme().background);
     tt.term.options.minimumContrastRatio = termContrast();
     if (SETTINGS.fontFamily) tt.term.options.fontFamily = SETTINGS.fontFamily;
   }
@@ -120,6 +121,7 @@ function ensureTerm(id) {
     if ((IS_MAC ? e.metaKey : e.ctrlKey) && (e.key === '=' || e.key === '+' || e.key === '-' || e.key === '0')) { zoom(e.key); e.preventDefault(); return false; }
     return true;
   });
+  el.style.setProperty('--term-bg', termTheme().background); // fond de la marge du terminal
   const t = { term, fit, el };
   terms.set(id, t);
   return t;

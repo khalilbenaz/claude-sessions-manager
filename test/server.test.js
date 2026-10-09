@@ -240,7 +240,7 @@ test('file d’attente : en pause près de la limite des 5 h, reprise à la réi
   const quota = (pct, resetAt) => api('POST', '/api/hook', { csm: Q.id, event: 'quota', data: { pct, resetAt } });
   try {
     // barre d'état : 96 % utilisés → la file attend la réinitialisation
-    await quota(96, Date.now() + 1500);
+    await quota(96, Date.now() + 4000); // marge : sur une machine chargée, 1,5 s pouvait s'écouler avant l'ajout à la file
     await api('PUT', `/api/sessions/${Q.id}/queue`, [{ text: 'apres-quota' }]);
     const w = await waitFor(async () => (await session(Q.id)).quotaWait, 5000, 'pause');
     assert.ok(w > Date.now() - 1000);
