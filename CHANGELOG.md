@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.37.1] — 2026-10-09
+### Corrigé
+- Cadre noir autour du terminal (depuis la 3.36.9) : la marge du terminal prend la couleur de fond du thème.
+
 ## [3.37.0] — 2026-10-09
 ### Ajouté
 - **Affichage des types de session refait** (lecture en 10 secondes) : **verdict** mis en avant (conclusion en une phrase, icône selon le niveau), **fil d'avancement**, carte **Prochaine étape** avec son bouton, diagnostic et actions côte à côte, **commentaire replié** sur une ligne d'aperçu (« Relire »), sections de détail regroupées et repliées en bas. Meta en pastilles.

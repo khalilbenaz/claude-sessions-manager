@@ -123,6 +123,9 @@ main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: r
 .term { position: absolute; inset: 0; display: none; }
 /* marge sur .xterm (comptée par le calcul de taille de xterm) et non sur .term : sinon les dernières lignes passent sous le bord */
 .term > .xterm { padding: 6px 0 0 8px; box-sizing: border-box; height: 100%; }
+/* la marge prend le fond du thème du terminal (xterm.css peint sa zone de défilement en noir) */
+.term > .xterm { background: var(--term-bg, transparent); }
+.term .xterm .xterm-viewport { background-color: transparent !important; }
 .term.show { display: block; }
 #park { display: none; }
 .layouts { display: inline-flex; gap: 2px; }
