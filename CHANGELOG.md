@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.40.0] — 2026-10-09
+### Modifié
+- **Fermer garde la session dans la liste**, ici comme sur les autres machines : c'est une mise en pause (arrêt, mémoire enregistrée, tout synchronisé), puis l'app passe à une autre session ; « Reprendre » la relance dans sa conversation.
+### Ajouté
+- **Supprimer…** (⋯, clic droit, palette) : retire la session de la liste, sur toutes les machines si elle est synchronisée, après confirmation ; la conversation reste dans l'Historique. Le choix du worktree (garder, fusionner, supprimer) passe par là.
+
 ## [3.39.0] — 2026-10-09
 ### Modifié
 - **Fermer ne supprime plus une session synchronisée de tes autres machines** : elle est d'abord mise en pause, sa mémoire enregistrée et tout synchronisé (conversation comprise), puis retirée de cette machine seulement ; ailleurs, elle reste « en pause » et se reprend. Elle ne revient pas sur la machine où elle a été fermée.

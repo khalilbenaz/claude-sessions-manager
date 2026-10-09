@@ -807,7 +807,8 @@ function sessionItems(id) {
     ...moreItems(id).slice(0, -1),
     ...(s.claudeSessionId ? [['Copier l’identifiant de session', () => clip.copy(s.claudeSessionId)]] : []),
     '-',
-    ['Fermer', () => closeSession(id), { danger: true, kbd: id === active ? `${MOD}+Alt+W` : '' }],
+    ['Fermer', () => closeSession(id), { kbd: id === active ? `${MOD}+Alt+W` : '' }],
+    [t('Supprimer…'), () => deleteSession(id), { danger: true }],
   ];
 }
 // Menu clic droit sur une session de la liste.
@@ -925,7 +926,7 @@ function moreItems(id) {
     [s.alerts?.mute ? t('Réactiver les alertes') : t('Couper les alertes de cette session'), () => api('POST', `/api/sessions/${id}/meta`, { alerts: { mute: !s.alerts?.mute } })],
     '-',
     [t('Mettre en pause'), () => pauseSession(id), { disabled: !s.alive }],
-    ...(s.syncId && SETTINGS.syncCode ? [[t('Supprimer de toutes les machines…'), () => removeEverywhere(id)]] : []),
+    [t('Supprimer…'), () => deleteSession(id), { danger: true }],
     [t('Arrêter'), () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
   ];
 }
@@ -941,10 +942,23 @@ async function pauseSession(id) {
 }
 $('#btnPause').onclick = () => active && pauseSession(active);
 $('#btnClose').onclick = () => closeSession(active);
+// Fermer : comme Pause (arrêt, mémoire et synchro enregistrées, la session reste dans la liste, ici et ailleurs),
+// puis on passe à une autre session. Pour la retirer de la liste : Supprimer.
 async function closeSession(id) {
   const s = sessions.get(id); if (!s) return;
+  if (s.alive) await pauseSession(id);
+  else toast(t('Session fermée — elle reste dans la liste ; ⋯ › Supprimer… pour la retirer'));
+  if (id === active) {
+    const next = [...sessions.values()].filter(x => x.id !== id).sort((a, b) => (b.alive - a.alive) || (a.order || 0) - (b.order || 0))[0];
+    if (next) select(next.id);
+  }
+}
+// Supprimer : retirée de la liste (sur toutes les machines si elle est synchronisée) ; la conversation reste dans
+// l'Historique. Session dans un worktree : garder, fusionner ou supprimer le worktree.
+async function deleteSession(id) {
+  const s = sessions.get(id); if (!s) return;
   if (s.worktree) {
-    $('#cwTitle').textContent = `${t('Fermer')} « ${s.name} »`;
+    $('#cwTitle').textContent = `${t('Supprimer')} « ${s.name} »`;
     $('#cwInfo').textContent = `${t('Cette session travaille dans le worktree')} ${s.worktree.path} (${t('branche')} ${s.worktree.branch}, ${t('base')} ${s.worktree.base}).`;
     const dlg = $('#dlgCloseWt'); dlg.returnValue = ''; dlg.showModal();
     const choice = await new Promise(r => dlg.addEventListener('close', () => r(dlg.returnValue), { once: true }));
@@ -961,20 +975,9 @@ async function closeSession(id) {
     } catch (e) { alert(e.message); }
     return;
   }
-  // synchronisée : fermée ici seulement, après mémoire et synchro ; elle reste sur les autres machines
   const synced = !!(s.syncId && SETTINGS.syncCode);
-  if (!synced && s.alive && !confirm(`${t('Fermer')} « ${s.name} » ? ${t("Le processus Claude sera arrêté (la conversation reste reprenable depuis l'historique).")}`)) return;
-  if (synced) toast(t('Fermeture… (mémoire et synchro)'));
-  try {
-    const r = await api('DELETE', `/api/sessions/${id}`);
-    if (synced) toast(r.kept ? t('Fermée ici — gardée sur tes autres machines') : t('Fermée ici — synchro en échec : elle n’est peut-être pas à jour ailleurs'), !r.kept);
-  } catch (e) { toast(e.message, true); }
-}
-// Supprimer partout : retirée de toutes les machines synchronisées (la conversation reste dans l'Historique)
-async function removeEverywhere(id) {
-  const s = sessions.get(id); if (!s) return;
-  if (!confirm(`${t('Supprimer')} « ${s.name} » ${t('de toutes tes machines ? Elle disparaît de la liste partout ; la conversation reste dans l’Historique.')}`)) return;
-  try { await api('DELETE', `/api/sessions/${id}?everywhere=1`); } catch (e) { toast(e.message, true); }
+  if (!confirm(`${t('Supprimer')} « ${s.name} » ? ${synced ? t('Elle disparaît de la liste sur toutes tes machines.') : t('Elle disparaît de la liste.')} ${t('La conversation reste dans l’Historique.')}`)) return;
+  try { await api('DELETE', `/api/sessions/${id}`); } catch (e) { toast(e.message, true); }
 }
 
 async function loadHistory() {

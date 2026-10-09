@@ -104,8 +104,8 @@ L'état vient directement de Claude Code (des hooks sont ajoutés à chaque sess
 | **Relancer / Reprendre** | bouton ou ⋯ | relance Claude dans la **même conversation** (`--resume`) |
 | **Pause** | ⏸ Pause (barre du haut), ⋯ › Mettre en pause | arrête la session **en gardant tout** : elle reste dans la liste, ici et sur tes autres machines (« en pause »). Avant de rendre la main, sa **mémoire** est enregistrée et **tout est synchronisé** (conversation comprise) : « Reprendre », ici ou sur une autre machine, continue la conversation |
 | **Arrêter** | ⋯ › Arrêter | arrête le processus ; la session reste dans la liste |
-| **Fermer** | Fermer, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>W</kbd> | arrête et retire la session **de cette machine** ; la conversation reste dans l'Historique. Synchronisée, elle est d'abord **mise en pause, sa mémoire enregistrée et tout synchronisé**, puis **gardée sur tes autres machines** (« en pause », reprenable là-bas). Elle ne revient pas ici |
-| **Supprimer de toutes les machines** | ⋯ › Supprimer de toutes les machines… (session synchronisée) | la retire de la liste **partout** (confirmation) ; la conversation reste dans l'Historique |
+| **Fermer** | Fermer, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>W</kbd> | comme **Pause** (arrêt, mémoire enregistrée, tout synchronisé) : la session **reste dans la liste**, ici et sur tes autres machines, « en pause » ; l'app passe à une autre session. **Reprendre** la relance dans sa conversation |
+| **Supprimer** | ⋯ ou clic droit › Supprimer…, palette | la retire de la liste (sur **toutes tes machines** si elle est synchronisée), après confirmation ; la conversation reste dans l'Historique. Session dans un worktree : garder, fusionner ou supprimer le worktree |
 | **Changer de session** | clic, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd>, <kbd>↑</kbd>/<kbd>↓</kbd> | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>A</kbd> : prochaine session qui t'attend |
 | **Réordonner** | glisser-déposer dans la liste | ordre mémorisé |
 | **Ouvrir dans…** | ↗ Ouvrir, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd> | le dossier dans ton éditeur (VS Code, Cursor, Windsurf, Zed, IntelliJ, Sublime ou commande personnalisée), l'Explorateur / le Finder, un terminal |
@@ -132,7 +132,7 @@ Le bouton **⋯** en haut à droite de la session ouverte (ou clic droit sur une
 | **Verrouiller par mot de passe…** |  | **Masque** le contenu et bloque la saisie jusqu'au mot de passe ; la session continue de tourner. Reverrouillage automatique réglable. | [§ 13](#13-verrouiller-une-session-par-mot-de-passe) |
 | **Couper les alertes de cette session** |  | Plus de **notification ni de son** pour cette session (les autres continuent). Même entrée pour les réactiver. | [§ 14](#14-notifications-zone-de-notification-arrière-plan) |
 | **Mettre en pause** |  | Arrête la session en la gardant dans la liste, ici et sur tes autres machines ; mémoire enregistrée et synchro faite avant de rendre la main. *Reprendre* continue la conversation, sur n'importe quelle machine. | [§ 4](#4-les-sessions) |
-| **Arrêter** |  | Arrête le processus Claude ; la session **reste dans la liste**, reprenable d'un clic dans la même conversation. *Fermer* (barre du haut) la retire de cette machine (gardée sur les autres si elle est synchronisée). | [§ 4](#4-les-sessions) |
+| **Arrêter** |  | Arrête le processus Claude ; la session **reste dans la liste**, reprenable d'un clic dans la même conversation. *Supprimer…* la retire de la liste (partout si elle est synchronisée). | [§ 4](#4-les-sessions) |
 
 ## 5. Ranger : groupes, épinglage, couleurs
 

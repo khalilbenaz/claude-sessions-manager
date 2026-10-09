@@ -722,18 +722,12 @@ const server = http.createServer(async (req, res) => {
     const m = p.match(/^\/api\/sessions\/(\w+)(?:\/(\w+))?$/);
     const s = m && sessions.get(m[1]);
     if (m && !s) return json(res, 404, { error: 'session inconnue' });
-    // Fermer : retirée de cette machine seulement. Synchronisée, elle est d'abord mise en pause (mémoire et synchro
-    // enregistrées) et reste sur les autres machines. ?everywhere=1 : supprimée de toutes les machines.
+    // Supprimer : retirée de la liste, et des autres machines par la synchro (la conversation reste dans
+    // l'Historique). « Fermer » ne supprime pas : c'est une mise en pause (route pause).
     if (s && req.method === 'DELETE' && !m[2]) {
-      const everywhere = url.searchParams.get('everywhere') === '1';
-      let saved = {};
-      if (!everywhere && s.syncId && ctx.syncDetach && ctx.syncEnabled?.()) {
-        saved = await pauseAndSave(s);
-        ctx.syncDetach(s.syncId);
-      }
       killSession(s); sessions.delete(s.id); persist();
       broadcast({ t: 'removed', id: s.id });
-      return json(res, 200, { kept: !!saved.synced, ...saved });
+      return json(res, 200, {});
     }
     if (s && m[2] === 'rename' && req.method === 'POST') {
       const { name } = await readBody(req);

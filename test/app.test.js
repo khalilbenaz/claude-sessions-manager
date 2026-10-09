@@ -474,6 +474,19 @@ test('mes prompts (Ctrl+Alt+P depuis le terminal, une seule fois) et bouton Paus
   await win.waitForFunction(() => { const s = [...sessions.values()].find(x => x.name === 'e2e'); return s?.alive && s.status === 'idle'; }, null, { timeout: 30000 });
 });
 
+test('Fermer garde la session dans la liste (en pause) ; Supprimer la retire', async () => {
+  const id = await win.evaluate(async () => { const s = await api('POST', '/api/sessions', { cwd: [...sessions.values()][0].cwd, name: 'a-fermer' }); return s.id; });
+  await win.waitForFunction(id => sessions.get(id)?.status === 'idle', id, { timeout: 30000 });
+  await win.evaluate(id => select(id), id);
+  await win.click('#btnClose');
+  await win.waitForFunction(id => { const s = sessions.get(id); return s && !s.alive && s.paused; }, id, { timeout: 20000 });
+  await win.waitForFunction(id => active !== id, id, { timeout: 10000 }); // passée à une autre session
+  assert.ok(await win.evaluate(id => sessions.has(id), id), 'toujours dans la liste');
+  await win.evaluate(() => { window.confirm = () => true; });
+  await win.evaluate(id => deleteSession(id), id);
+  await win.waitForFunction(id => !sessions.has(id), id, { timeout: 10000 });
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));
