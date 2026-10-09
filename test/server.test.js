@@ -1177,7 +1177,7 @@ test('réglage de lancement changé : sessions ouvertes signalées puis relancé
     await api('PUT', '/api/settings', { replyLanguage: 'fr' });
     const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'a-relancer' });
     const first = await idle(s.id);
-    assert.match(c.out[s.id] || '', /LANGUE:french/);
+    await waitFor(() => /LANGUE:french/.test(c.out[s.id] || ''), 10000, 'langue au démarrage'); // la sortie peut arriver après l'état
     c.input(s.id, 'premier message\r'); // une conversation à reprendre
     await waitFor(() => /echo: premier message/.test(c.out[s.id] || ''), 10000, 'réponse');
     await idle(s.id);
