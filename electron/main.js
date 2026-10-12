@@ -22,6 +22,7 @@ const URL_ = `${ORIGIN}/`;
 const SERVER = path.join(ROOT, 'server.js');
 const ICON = path.join(ROOT, 'public', IS_WIN ? 'icon.ico' : 'icon.png');
 const STATE = path.join(DATA, 'app-window.json');
+const READY_MS = Number(process.env.CSM_READY_WATCH_MS) || 25000; // délai avant de recréer une page restée inachevée
 // --hidden : démarrage de session ; hidden-once : relance après une mise à jour installée pendant que la fenêtre était cachée
 const HIDDEN_ONCE = path.join(DATA, 'start-hidden-once');
 const START_HIDDEN = process.argv.includes('--hidden') || (() => { try { fs.unlinkSync(HIDDEN_ONCE); return true; } catch { return false; } })();
@@ -198,7 +199,24 @@ function createWindow({ hidden = false } = {}) {
   win.webContents.on('render-process-gone', (e, d) => { if (d.reason !== 'clean-exit') recoverWindow(`affichage arrêté (${d.reason})`); });
   win.on('unresponsive', () => { clearTimeout(frozen); frozen = setTimeout(() => recoverWindow('affichage figé depuis 20 s'), 20000); });
   win.on('responsive', () => clearTimeout(frozen));
-  win.on('closed', () => clearTimeout(frozen));
+  win.on('closed', () => { clearTimeout(frozen); clearTimeout(unready); });
+
+  // Page restée inachevée (vu après un plantage du GPU : squelette affiché, script jamais lancé, aucune
+  // connexion au serveur, sans que l'affichage soit « figé » au sens d'Electron) : on recrée la fenêtre.
+  let unready = null;
+  const w = win;
+  const watchReady = () => {
+    clearTimeout(unready);
+    unready = setTimeout(async () => {
+      if (w.isDestroyed()) return;
+      const ok = await Promise.race([
+        w.webContents.executeJavaScript('document.documentElement.dataset.ready || ""', true).catch(() => ''),
+        new Promise(r => setTimeout(() => r(''), 5000)),
+      ]);
+      if (!w.isDestroyed() && w === win && ok !== '1') recoverWindow(`page pas prête après ${READY_MS / 1000} s`);
+    }, READY_MS);
+  };
+  win.webContents.on('did-start-loading', watchReady);
 
   win.webContents.on('did-fail-load', async (e, code, desc, url, isMain) => {
     if (!isMain) return;

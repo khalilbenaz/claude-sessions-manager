@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.41.1] — 2026-10-12
+### Corrigé
+- **Fenêtre restée vide (noire) après un plantage du GPU** : la fenêtre recréée pouvait rester bloquée en plein chargement (barre du haut affichée, liste des sessions et terminal vides, plus aucune connexion au serveur) sans être considérée comme « figée ». L'app vérifie désormais que la page est prête dans les 25 s qui suivent chaque chargement, et recrée la fenêtre sinon ; serveur et sessions intacts.
+
 ## [3.41.0] — 2026-10-12
 ### Modifié
 - **La configuration de Claude se synchronise toute seule** : règles, skills, agents, commandes et plugins reçus s'appliquent sans validation (désinstallations de plugins comprises). La case « Me demander avant d'appliquer… » (Réglages › Synchronisation) est décochée par défaut ; ce qui attendait encore s'applique à la synchro suivante. Chaque changement reste noté et se restaure d'un clic.

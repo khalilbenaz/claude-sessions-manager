@@ -262,6 +262,7 @@ Les sessions verrouillées n'y apparaissent pas.
 - **Zone de notification** (Windows, près de l'horloge) / **barre de menus** (macOS) : **réduire ou fermer la fenêtre l'y envoie**, les sessions continuent. Clic sur l'icône = afficher / masquer ; **clic droit** = la **liste des sessions et leur état** (🟠 travaille, 🔴 attend, 🟢 prête ; clic pour y aller), nouvelle session, historique, réglages, lancer au démarrage, redémarrer le serveur, quitter. Un **point rouge** sur l'icône signale une session qui t'attend. Windows 11 : si l'icône est cachée, elle est sous la flèche **^** (glisse-la dans la zone visible).
 - **Quitter** : « Quitter (les sessions continuent) » ferme l'app ; « Quitter et arrêter toutes les sessions » arrête aussi le serveur (elles reviendront au prochain lancement).
 - **Lancement au démarrage** de l'ordinateur : activé au premier lancement, réglable dans le menu de l'icône.
+- **Fenêtre noire ou vide** (affichage ou GPU planté, page restée inachevée plus de 25 s, fenêtre figée plus de 20 s) : la fenêtre se **recrée seule**, sans toucher au serveur ni aux sessions. <kbd>F5</kbd> (Windows) / <kbd>Cmd</kbd>+<kbd>R</kbd> (macOS) ou « Recharger la fenêtre » dans le menu de l'icône la recréent aussi à la main.
 
 ### 14 ter. Connexion à Claude qui expire (« Your login expires in 3 days »)
 
