@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.42.0] — 2026-10-12
+### Modifié
+- **Fermer retire la session de la liste** de cette machine (la conversation reste dans l'Historique). Synchronisée, elle est d'abord mise en pause, sa mémoire enregistrée et tout synchronisé, puis gardée « en pause » sur tes autres machines ; elle ne revient pas ici. « Supprimer… » la retire de toutes les machines ; « Pause » l'arrête en la gardant dans la liste.
+### Corrigé
+- Affichage d'une session typée (extension) : la vue défile de nouveau quand elle dépasse la hauteur de la fenêtre ; les sections repliables (preuves, détails…) étaient tassées et leur contenu coupé.
+
 ## [3.41.1] — 2026-10-12
 ### Corrigé
 - **Fenêtre restée vide (noire) après un plantage du GPU** : la fenêtre recréée pouvait rester bloquée en plein chargement (barre du haut affichée, liste des sessions et terminal vides, plus aucune connexion au serveur) sans être considérée comme « figée ». L'app vérifie désormais que la page est prête dans les 25 s qui suivent chaque chargement, et recrée la fenêtre sinon ; serveur et sessions intacts.

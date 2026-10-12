@@ -723,11 +723,17 @@ const server = http.createServer(async (req, res) => {
     const s = m && sessions.get(m[1]);
     if (m && !s) return json(res, 404, { error: 'session inconnue' });
     // Supprimer : retirée de la liste, et des autres machines par la synchro (la conversation reste dans
-    // l'Historique). « Fermer » ne supprime pas : c'est une mise en pause (route pause).
+    // l'Historique). ?here=1 (Fermer) : retirée de cette machine seulement ; synchronisée, elle est d'abord mise
+    // en pause (mémoire et synchro enregistrées) et reste « en pause » sur les autres machines.
     if (s && req.method === 'DELETE' && !m[2]) {
+      let saved = {};
+      if (url.searchParams.get('here') === '1' && s.syncId && ctx.syncDetach && ctx.syncEnabled?.()) {
+        saved = await pauseAndSave(s);
+        ctx.syncDetach(s.syncId);
+      }
       killSession(s); sessions.delete(s.id); persist();
       broadcast({ t: 'removed', id: s.id });
-      return json(res, 200, {});
+      return json(res, 200, { kept: !!saved.synced, ...saved });
     }
     if (s && m[2] === 'rename' && req.method === 'POST') {
       const { name } = await readBody(req);

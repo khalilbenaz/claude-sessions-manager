@@ -684,6 +684,19 @@ test('synchro : envoi, session distante arrêtée, renommage, suppressions', asy
     fake.put(KEY, { uid: 'pc-session-1', updatedAt: Date.now() + 5000, deleted: 1, data: {} });
     await waitFor(async () => { await api('POST', '/api/sync/now'); return !(await session(remote.id)); }, 10000, 'suppression distante appliquée');
 
+    // fermée ici (Fermer) : retirée d'ici, gardée en pause pour les autres machines, aucune suppression envoyée
+    const C = await api('POST', '/api/sessions', { cwd: WORK, name: 'a-fermer-ici' });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return !!(await session(C.id))?.syncId; }, 10000, 'session publiée');
+    const cuid = (await session(C.id)).syncId;
+    const kept = await api('DELETE', `/api/sessions/${C.id}?here=1`);
+    assert.equal(kept.kept, true);
+    assert.ok(!(await session(C.id)), 'retirée de la liste d’ici');
+    assert.equal(fake.rows(KEY).get(cuid).deleted, 0, 'toujours là pour les autres');
+    assert.equal(fake.plain(KEY, cuid).paused, true, 'en pause pour les autres');
+    await api('POST', '/api/sync/now'); await api('POST', '/api/sync/now');
+    assert.equal(fake.rows(KEY).get(cuid).deleted, 0, 'pas de suppression aux synchros suivantes');
+    assert.ok(!(await api('GET', '/api/sessions')).some(x => x.syncId === cuid), 'pas remise dans la liste d’ici');
+
     // supprimée ici (Supprimer) : pierre tombale envoyée, retirée des autres machines
     await api('DELETE', `/api/sessions/${local.id}`);
     await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.rows(KEY).get(mine.uid).deleted === 1; }, 10000, 'suppression locale envoyée');
