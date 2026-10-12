@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.41.0] — 2026-10-12
+### Modifié
+- **La configuration de Claude se synchronise toute seule** : règles, skills, agents, commandes et plugins reçus s'appliquent sans validation (désinstallations de plugins comprises). La case « Me demander avant d'appliquer… » (Réglages › Synchronisation) est décochée par défaut ; ce qui attendait encore s'applique à la synchro suivante. Chaque changement reste noté et se restaure d'un clic.
+- L'index des notes de Claude Code (`memory/MEMORY.md`) est **fusionné** au lieu d'être remplacé : une note ajoutée sur une machine ne disparaît plus de l'index quand une autre machine l'a modifié en même temps.
+### Corrigé
+- `skills/synced/` (skills du compte claude.ai, téléchargées par Claude Code lui-même sur chaque machine) n'est plus synchronisé : il ne revient plus « à valider » à chaque mise à jour de l'autre machine.
+
 ## [3.40.0] — 2026-10-09
 ### Modifié
 - **Fermer garde la session dans la liste**, ici comme sur les autres machines : c'est une mise en pause (arrêt, mémoire enregistrée, tout synchronisé), puis l'app passe à une autre session ; « Reprendre » la relance dans sa conversation.

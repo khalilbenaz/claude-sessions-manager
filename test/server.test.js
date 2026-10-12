@@ -830,7 +830,7 @@ test('synchro : règles, skills, agents et mémoire de Claude partagés entre ma
   };
   const b64 = s => Buffer.from(s).toString('base64');
   try {
-    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'mac-cf' });
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'mac-cf', claudeSyncReview: true });
     await waitFor(async () => { await api('POST', '/api/sync/now'); return get('skills/deploy/SKILL.md'); }, 15000, 'skill envoyée');
     const r = get('REGLES.md');
     assert.ok(!r.blob.includes('français'), 'chiffré sur le serveur');
@@ -900,13 +900,29 @@ test('synchro : règles, skills, agents et mémoire de Claude partagés entre ma
     assert.equal((await api('GET', '/api/claude-sync')).pending.length, 0, 'ni mise en attente');
     assert.match(Buffer.from(get('CLAUDE.md').e.d, 'base64').toString(), /modifié ici/);
 
+    // validation désactivée (par défaut) : tout s'applique seul ; skills/synced (géré par Claude Code) jamais
+    // envoyé ; index des notes fusionné (les notes de cette machine restent listées)
+    await api('PUT', '/api/settings', { claudeSyncReview: false });
+    w('skills/synced/compte/manifest.json', '{"skills":[]}');
+    const mdir = `projects/${enc(HOME)}-proj/memory/`;
+    w(mdir + 'ici.md', 'note locale'); w(memRel, '- [Ici](ici.md) — locale\n');
+    const soon = Date.now() + 20000;
+    put({ p: 'agents/auto.md', d: b64('appliqué seul'), x: 0 }, soon);
+    put({ p: 'projects/~-proj/memory/mac.md', d: b64('note du Mac'), x: 0 }, soon);
+    put({ p: 'projects/~-proj/memory/MEMORY.md', d: b64('- [Mac](mac.md) — du Mac\n'), x: 0 }, soon);
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fs.existsSync(path.join(C, 'agents', 'auto.md')); }, 15000, 'agent appliqué sans validation');
+    assert.equal((await api('GET', '/api/claude-sync')).pending.length, 0, 'rien en attente');
+    assert.equal(fs.readFileSync(path.join(C, memRel), 'utf8'), '- [Mac](mac.md) — du Mac\n- [Ici](ici.md) — locale\n', 'index fusionné');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return /ici\.md/.test(Buffer.from(get('projects/~-proj/memory/MEMORY.md').e.d, 'base64').toString()); }, 15000, 'index fusionné renvoyé');
+    assert.equal(get('skills/synced/compte/manifest.json'), null, 'skills du compte non synchronisées');
+
     // option décochée : plus rien n'est envoyé pour cette catégorie
     await api('PUT', '/api/settings', { syncClaudeAgents: false });
     w('agents/autre.md', 'local seulement');
     await api('POST', '/api/sync/now');
     assert.equal(get('agents/autre.md'), null);
   } finally {
-    await api('PUT', '/api/settings', { syncCode: '', syncClaudeAgents: true });
+    await api('PUT', '/api/settings', { syncCode: '', syncClaudeAgents: true, claudeSyncReview: false });
     fs.rmSync(C + '/agents', { recursive: true, force: true });
     for (const f of ['CLAUDE.md', 'REGLES.md']) fs.rmSync(path.join(C, f), { force: true });
     fs.rmSync(path.join(C, 'skills'), { recursive: true, force: true });
@@ -1047,6 +1063,9 @@ test('configuration de Claude : copies de plus de 30 jours effacées', () => {
   assert.equal(claudesync.toLocal('skills/a/.git/hooks/x', '/c', '/h'), null);
   assert.equal(claudesync.toLocal('../x.md', '/c', '/h'), null);
   assert.ok(claudesync.toLocal('skills/a/SKILL.md', '/c/', '/h'), 'dossier avec / final accepté');
+  assert.equal(claudesync.toLocal('skills/synced/x/manifest.json', '/c', '/h'), null, 'skills du compte : gérées par Claude Code');
+  // index des notes : lignes locales gardées si la note existe ici, sans doublon
+  assert.equal(claudesync.mergeIndex('- [A](a.md)\n', '- [A](a.md)\n- [B](b.md) — b\n- [D](d.md)\n', k => k !== 'd.md'), '- [A](a.md)\n- [B](b.md) — b\n');
 });
 
 test('sécurité : jeton des hooks limité, conversation verrouillée non reprenable, essais limités', async () => {

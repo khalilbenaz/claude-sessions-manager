@@ -229,7 +229,7 @@ test('réglages : mémoire au choix, demandes programmées, fichiers reçus', as
     await win.click('#schList [data-a=del]');
     await win.waitForFunction(() => /Aucune demande/.test(document.querySelector('#schList').textContent));
     await win.click('.setNav [data-st=sync]');
-    assert.equal(await win.isChecked('[data-set=claudeSyncReview]'), true, 'validation demandée par défaut');
+    assert.equal(await win.isChecked('[data-set=claudeSyncReview]'), false, 'tout s’applique seul par défaut');
     // mémoire : fiches de la session e2e, recherche, détail
     await win.click('.setNav [data-st=memory]');
     await win.waitForFunction(() => document.querySelectorAll('#memList li').length > 0);

@@ -341,13 +341,13 @@ try { const t = localStorage.getItem('csm-site-theme'); if (t) document.document
         <div class="row"><svg class="i"><use href="#i-terminal"/></svg><div><b>Sessions et conversations</b><span>La liste des sessions (noms, groupes, épinglage, en moins d'une minute) et leur historique, reprenables là où elles en étaient.</span></div></div>
         <div class="row"><svg class="i"><use href="#i-folder"/></svg><div><b>Groupes et modèles</b><span>Vos groupes, quelle session dans quel groupe, et vos modèles de session.</span></div></div>
         <div class="row"><svg class="i"><use href="#i-puzzle"/></svg><div><b>Extensions importées</b><span>Installées sur les autres machines, chiffrées pendant le transfert.</span></div></div>
-        <div class="row"><svg class="i"><use href="#i-plug"/></svg><div><b>Plugins Claude Code</b><span>Les mêmes plugins partout, installés après votre accord.</span></div></div>
+        <div class="row"><svg class="i"><use href="#i-plug"/></svg><div><b>Plugins Claude Code</b><span>Les mêmes plugins partout, installés tout seuls (ou après votre accord, au choix).</span></div></div>
         <div class="row"><svg class="i"><use href="#i-brain"/></svg><div><b>Mémoire et configuration de Claude</b><span>Mémoire des sessions, <code>CLAUDE.md</code>, règles, skills, agents et commandes.</span></div></div>
       </div>
       <div class="rules">
         <div class="rule"><b><svg class="i"><use href="#i-machine"/></svg>Machines synchronisées</b><p>Mêmes sessions partagées, mêmes plugins et extensions. Une machine qui n'a pas un plugin synchronise ce qu'elle a, sans rien perdre.</p></div>
         <div class="rule"><b><svg class="i"><use href="#i-plug"/></svg>Extensions fournies par un plugin</b><p>Elles voyagent avec leur plugin : sans lui, ses skills manqueraient. Installez le plugin, l'extension suit.</p></div>
-        <div class="rule"><b><svg class="i"><use href="#i-check"/></svg>Vous validez</b><p>Ce qui peut guider ou faire agir Claude (règles, skills, agents, plugins) attend votre accord. Chaque changement reçu est noté et se restaure d'un clic.</p></div>
+        <div class="rule"><b><svg class="i"><use href="#i-check"/></svg>Automatique, et réversible</b><p>Tout s'applique seul ; l'index des notes de Claude est fusionné, pas écrasé. Chaque changement reçu est noté et se restaure d'un clic. Pour valider vous-même règles, skills, agents et plugins, une case suffit.</p></div>
         <div class="rule"><b><svg class="i"><use href="#i-shield"/></svg>Chiffré de bout en bout</b><p>AES-256-GCM, clés dérivées de votre code. Un ordinateur perdu ? Changez de code : l'ancien espace est effacé du serveur.</p></div>
       </div>
     </div>
