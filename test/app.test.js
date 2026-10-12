@@ -379,6 +379,16 @@ test('extensions : modèle dans Nouvelle session, affichage dédié rempli par C
   await win.evaluate(id => send({ t: 'input', id, d: 'ecris-vue\r' }), id);
   await win.waitForFunction(id => /Analyse <b>test<\/b>/.test(terms.get(id).el.querySelector('.typeView')?.textContent || ''), id, { timeout: 20000 });
   assert.equal(await win.evaluate(id => terms.get(id).el.querySelector('.typeView script, .typeView b'), id), null, 'aucun HTML interprété');
+  // vue plus haute que la fenêtre : elle défile, les sections gardent leur hauteur (contenu jamais coupé)
+  assert.ok(await win.evaluate(id => {
+    const b = terms.get(id).el.querySelector('.typeView');
+    const w = document.createElement('div'); w.className = 'tvDetails'; // sections repliables (bloc en overflow: hidden)
+    for (let k = 0; k < 12; k++) { const d = document.createElement('details'); d.className = 'tvSec tvFold'; d.open = true; d.innerHTML = '<summary>s</summary><p>' + 'ligne\n'.repeat(15) + '</p>'; w.append(d); }
+    b.append(w);
+    const ok = b.scrollHeight > b.clientHeight && [...b.children].every(c => c.offsetHeight >= c.scrollHeight - 1);
+    w.remove();
+    return ok;
+  }, id), 'la vue défile');
   // action du type : envoyée à la session
   await win.click('.term.show .typeView .tvHead button:has-text("Corriger")');
   await win.waitForFunction(id => { const b = terms.get(id).term.buffer.active; for (let y = 0; y < b.length; y++) if (b.getLine(y).translateToString().includes('echo: corrige-e2e')) return true; return false; }, id, { timeout: 20000 });
@@ -484,17 +494,13 @@ test('mes prompts (Ctrl+Alt+P depuis le terminal, une seule fois) et bouton Paus
   await win.waitForFunction(() => { const s = [...sessions.values()].find(x => x.name === 'e2e'); return s?.alive && s.status === 'idle'; }, null, { timeout: 30000 });
 });
 
-test('Fermer garde la session dans la liste (en pause) ; Supprimer la retire', async () => {
+test('Fermer retire la session de la liste', async () => {
   const id = await win.evaluate(async () => { const s = await api('POST', '/api/sessions', { cwd: [...sessions.values()][0].cwd, name: 'a-fermer' }); return s.id; });
   await win.waitForFunction(id => sessions.get(id)?.status === 'idle', id, { timeout: 30000 });
   await win.evaluate(id => select(id), id);
   await win.click('#btnClose');
-  await win.waitForFunction(id => { const s = sessions.get(id); return s && !s.alive && s.paused; }, id, { timeout: 20000 });
+  await win.waitForFunction(id => !sessions.has(id), id, { timeout: 20000 });
   await win.waitForFunction(id => active !== id, id, { timeout: 10000 }); // passée à une autre session
-  assert.ok(await win.evaluate(id => sessions.has(id), id), 'toujours dans la liste');
-  await win.evaluate(() => { window.confirm = () => true; });
-  await win.evaluate(id => deleteSession(id), id);
-  await win.waitForFunction(id => !sessions.has(id), id, { timeout: 10000 });
 });
 
 test('fermer la fenêtre ne coupe pas les sessions', async () => {

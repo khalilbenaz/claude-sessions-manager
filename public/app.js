@@ -942,16 +942,17 @@ async function pauseSession(id) {
 }
 $('#btnPause').onclick = () => active && pauseSession(active);
 $('#btnClose').onclick = () => closeSession(active);
-// Fermer : comme Pause (arrêt, mémoire et synchro enregistrées, la session reste dans la liste, ici et ailleurs),
-// puis on passe à une autre session. Pour la retirer de la liste : Supprimer.
+// Fermer : retirée de la liste de cette machine (la conversation reste dans l'Historique). Synchronisée, elle est
+// d'abord mise en pause (mémoire et synchro enregistrées) et reste « en pause » sur les autres machines.
+// Pour la retirer partout : Supprimer.
 async function closeSession(id) {
   const s = sessions.get(id); if (!s) return;
-  if (s.alive) await pauseSession(id);
-  else toast(t('Session fermée — elle reste dans la liste ; ⋯ › Supprimer… pour la retirer'));
-  if (id === active) {
-    const next = [...sessions.values()].filter(x => x.id !== id).sort((a, b) => (b.alive - a.alive) || (a.order || 0) - (b.order || 0))[0];
-    if (next) select(next.id);
-  }
+  const synced = !!(s.syncId && SETTINGS.syncCode);
+  if (synced) toast(t('Fermeture… (mémoire et synchro)'));
+  try {
+    const r = await api('DELETE', `/api/sessions/${id}?here=1`);
+    if (synced) toast(r.kept ? t('Fermée ici — gardée en pause sur tes autres machines') : t('Fermée ici — synchro en échec : elle n’est peut-être pas à jour ailleurs'), !r.kept);
+  } catch (e) { toast(e.message, true); }
 }
 // Supprimer : retirée de la liste (sur toutes les machines si elle est synchronisée) ; la conversation reste dans
 // l'Historique. Session dans un worktree : garder, fusionner ou supprimer le worktree.
