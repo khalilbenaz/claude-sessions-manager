@@ -18,7 +18,7 @@ fs.writeFileSync(path.join(DATA, 'settings.json'), JSON.stringify({ onboarded: t
 
 const env = {
   ...process.env, CSM_PORT: String(PORT), CSM_DATA: DATA, CSM_SECRETS_FILE_ONLY: '1', HOME, USERPROFILE: HOME,
-  CSM_HIDE_WINDOW: '1', CSM_CLAUDE: process.execPath, CSM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-claude.js')}"`,
+  CSM_HIDE_WINDOW: '1', CSM_READY_WATCH_MS: '15000', CSM_CLAUDE: process.execPath, CSM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-claude.js')}"`,
 };
 for (const k of Object.keys(env)) if (/^(CLAUDECODE|CLAUDE_CODE_|ELECTRON_RUN_AS_NODE)/.test(k)) delete env[k];
 
@@ -304,6 +304,16 @@ test('thème clair : le code coloré pour un fond sombre reste lisible (contrast
 test('affichage tué (mémoire saturée) : la fenêtre est recréée, les sessions continuent', async () => {
   const next = app.waitForEvent('window', { timeout: 30000 });
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.forcefullyCrashRenderer());
+  win = await next;
+  await win.waitForFunction(() => document.documentElement.dataset.ready === '1', null, { timeout: 60000 });
+  await win.waitForFunction(() => [...sessions.values()].some(s => s.name === 'e2e'), null, { timeout: 30000 });
+  assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length), 1, 'une seule fenêtre, l’ancienne est détruite');
+});
+
+test('page restée inachevée (script jamais chargé, vu après un plantage du GPU) : la fenêtre est recréée', async () => {
+  await win.route('**/app.js*', () => { }); // requête jamais servie : squelette affiché, page jamais prête
+  const next = app.waitForEvent('window', { timeout: 40000 });
+  await win.evaluate(() => location.reload());
   win = await next;
   await win.waitForFunction(() => document.documentElement.dataset.ready === '1', null, { timeout: 60000 });
   await win.waitForFunction(() => [...sessions.values()].some(s => s.name === 'e2e'), null, { timeout: 30000 });
