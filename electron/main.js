@@ -22,7 +22,8 @@ const URL_ = `${ORIGIN}/`;
 const SERVER = path.join(ROOT, 'server.js');
 const ICON = path.join(ROOT, 'public', IS_WIN ? 'icon.ico' : 'icon.png');
 const STATE = path.join(DATA, 'app-window.json');
-const READY_MS = Number(process.env.CSM_READY_WATCH_MS) || 25000; // délai avant de recréer une page restée inachevée
+const READY_MS = Number(process.env.CSM_READY_WATCH_MS) || 25000; // délai avant de vérifier qu'une page a démarré
+const READY_MAX = Number(process.env.CSM_READY_MAX_MS) || 180e3;   // page qui tourne mais attend encore : recréée au-delà
 // --hidden : démarrage de session ; hidden-once : relance après une mise à jour installée pendant que la fenêtre était cachée
 const HIDDEN_ONCE = path.join(DATA, 'start-hidden-once');
 const START_HIDDEN = process.argv.includes('--hidden') || (() => { try { fs.unlinkSync(HIDDEN_ONCE); return true; } catch { return false; } })();
@@ -203,18 +204,31 @@ function createWindow({ hidden = false } = {}) {
 
   // Page restée inachevée (vu après un plantage du GPU : squelette affiché, script jamais lancé, aucune
   // connexion au serveur, sans que l'affichage soit « figé » au sens d'Electron) : on recrée la fenêtre.
+  // Page encore en chargement, ou dont le script tourne et attend le serveur (premier lancement après l'allumage :
+  // ouverture de session et sessions Claude relancées en même temps) : on la laisse finir, recréer ne ferait que
+  // tout recommencer ; au-delà de READY_MAX seulement, elle est recréée.
   let unready = null;
   const w = win;
   const watchReady = () => {
     clearTimeout(unready);
-    unready = setTimeout(async () => {
+    const since = Date.now();
+    let noted = false;
+    const check = async () => {
       if (w.isDestroyed()) return;
-      const ok = await Promise.race([
-        w.webContents.executeJavaScript('document.documentElement.dataset.ready || ""', true).catch(() => ''),
+      const st = await Promise.race([
+        w.webContents.executeJavaScript('[document.documentElement.dataset.boot || "", document.documentElement.dataset.ready || ""].join("|")', true).catch(() => ''),
         new Promise(r => setTimeout(() => r(''), 5000)),
       ]);
-      if (!w.isDestroyed() && w === win && ok !== '1') recoverWindow(`page pas prête après ${READY_MS / 1000} s`);
-    }, READY_MS);
+      if (w.isDestroyed() || w !== win || st.endsWith('|1')) return;
+      const waiting = w.webContents.isLoading() || st.startsWith('1|');
+      if (waiting && Date.now() - since < READY_MAX) {
+        if (!noted) { noted = true; updLog(`[fenêtre] page lente à démarrer (${w.webContents.isLoading() ? 'chargement' : 'attente du serveur'}) : on la laisse finir`); }
+        unready = setTimeout(check, 5000);
+        return;
+      }
+      recoverWindow(`page pas prête après ${Math.round((Date.now() - since) / 1000)} s (${!st ? 'page sans réponse' : st.startsWith('1|') ? 'attente du serveur' : 'script jamais lancé'})`);
+    };
+    unready = setTimeout(check, READY_MS);
   };
   win.webContents.on('did-start-loading', watchReady);
 

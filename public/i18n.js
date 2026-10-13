@@ -283,6 +283,7 @@ const EN = {
   'Voir les modifications': 'View changes',
   'Déplier la barre latérale': 'Expand the sidebar', 'Réduire la barre latérale': 'Collapse the sidebar',
   'Détails': 'Details', 'Voir plus': 'Show more', 'Voir moins': 'Show less',
+  'Claude Code n’est pas installé sur cette machine.': 'Claude Code is not installed on this machine.', 'Pour l’installer, colle cette commande dans': 'To install it, paste this command into', 'Claude Code n’est pas connecté à ton compte Claude.': 'Claude Code is not signed in to your Claude account.', 'Se connecter à Claude': 'Sign in to Claude', 'Connecté à Claude': 'Signed in to Claude', 'Vérifier de nouveau': 'Check again', 'Commande copiée': 'Command copied',
   'Relire': 'Review', 'Replier': 'Collapse', 'Avancement': 'Progress', 'Conclusion': 'Conclusion', 'Prochaine étape': 'Next step', 'Élément précédent': 'Previous item', 'Faire': 'Do it', 'avec risque': 'at risk', 'Éléments': 'Items', 'risque': 'risk', 'Élément suivant': 'Next item',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages

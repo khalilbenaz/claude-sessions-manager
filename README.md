@@ -52,7 +52,7 @@ Ensuite, les nouvelles versions s'installent toutes seules sous Windows (§ 17).
 
 ## 2. Premiers pas
 
-1. Lance **Claude Sessions**. Au premier lancement, un assistant vérifie que `claude` et `git` sont installés et propose de créer ta première session.
+1. Lance **Claude Sessions**. Au premier lancement, un assistant vérifie que Claude Code est **installé** et **connecté à ton compte**, et que `git` est là. Claude Code absent : il donne la commande d'installation à copier, puis **Vérifier de nouveau** le trouve sans redémarrer l'app. Pas connecté : **Se connecter à Claude** ouvre la connexion depuis l'app. Il propose ensuite de créer ta première session.
 2. **+ Nouvelle** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>) : choisis un **dossier de travail** (*Parcourir…*), éventuellement un nom et un groupe, le modèle (opus par défaut), puis **Lancer**.
 3. La session démarre : c'est un vrai Claude Code, avec tes réglages, tes hooks, tes serveurs MCP et tes commandes `/…`. Tu tapes comme dans un terminal.
 4. Crée d'autres sessions de la même façon : elles apparaissent dans la barre latérale et tournent **toutes en même temps**.
@@ -225,7 +225,7 @@ Un **modèle** mémorise une session type : dossier, nom, groupe, modèle Claude
 
 ### 12 bis. Extensions
 
-Une **extension** est un seul fichier `.csm.json` qui ajoute des **modèles de session**, des **prompts** et des **types de session** : un affichage dédié, rempli par Claude (résumé, tableaux, chronologie, liste d'actions, brouillon à relire…), et des boutons qui envoient une demande à la session. Elle n'exécute aucun code dans l'app : elle se partage donc en privé sans risque, et une nouvelle fonctionnalité métier devient une nouvelle extension, sans modifier l'application.
+Une **extension** est un seul fichier `.csm.json` qui ajoute des **modèles de session**, des **prompts** et des **types de session** : un affichage dédié, rempli par Claude (résumé, tableaux, chronologie, liste d'actions, brouillon à relire…), et des boutons qui envoient une demande à la session. Après une action qui change l'état (publication, réassignation…), Claude réécrit l'affichage ; s'il finit son tour sans l'avoir fait, l'app le lui demande une fois. Elle n'exécute aucun code dans l'app : elle se partage donc en privé sans risque, et une nouvelle fonctionnalité métier devient une nouvelle extension, sans modifier l'application.
 
 - **Installer** : Réglages › **Extensions** › *Importer un fichier…* (ou glisser le fichier sur la page), ou **coller un lien** puis *Importer le lien* : fichier GitHub (`…/blob/main/x.csm.json`), dossier, dépôt entier (ses `.csm.json` à la racine, dans `csm/` ou `extensions/`), gist ou toute adresse https. Dépôt privé : la CLI GitHub connectée (`gh auth login`) suffit, son jeton n'est envoyé qu'à l'API GitHub. Une extension importée par lien garde son lien : **Mettre à jour** la récupère à nouveau. Un plugin Claude Code peut aussi en fournir (dossier `csm/` du plugin) : elles suivent ses mises à jour.
 - **Utiliser** : les modèles apparaissent dans « Nouvelle session » (groupés par extension), les prompts dans la palette. Une session d'un type affiche son **badge** en haut et un bouton pour passer de l'**Affichage** au **Terminal**.
@@ -262,7 +262,7 @@ Les sessions verrouillées n'y apparaissent pas.
 - **Zone de notification** (Windows, près de l'horloge) / **barre de menus** (macOS)  : **fermer la fenêtre l'y envoie** (réglable), les sessions continuent. **Réduire** laisse l'app dans la barre des tâches / le Dock ; pour la ranger près de l'horloge sans la fermer : **⋯ › Réduire dans la zone de notification** (aussi dans la palette, le clic droit sur l'icône et, sur Mac, le menu Fenêtre). Clic sur l'icône = afficher / masquer ; **clic droit** = la **liste des sessions et leur état** (🟠 travaille, 🔴 attend, 🟢 prête ; clic pour y aller), nouvelle session, historique, réglages, lancer au démarrage, redémarrer le serveur, quitter. Un **point rouge** sur l'icône signale une session qui t'attend. Windows 11 : si l'icône est cachée, elle est sous la flèche **^** (glisse-la dans la zone visible).
 - **Quitter** : « Quitter (les sessions continuent) » ferme l'app ; « Quitter et arrêter toutes les sessions » arrête aussi le serveur (elles reviendront au prochain lancement).
 - **Lancement au démarrage** de l'ordinateur : activé au premier lancement, réglable dans le menu de l'icône.
-- **Fenêtre noire ou vide** (affichage ou GPU planté, page restée inachevée plus de 25 s, fenêtre figée plus de 20 s) : la fenêtre se **recrée seule**, sans toucher au serveur ni aux sessions. <kbd>F5</kbd> (Windows) / <kbd>Cmd</kbd>+<kbd>R</kbd> (macOS) ou « Recharger la fenêtre » dans le menu de l'icône la recréent aussi à la main.
+- **Fenêtre noire ou vide** (affichage ou GPU planté, page dont le script n'a pas démarré après 25 s, fenêtre figée plus de 20 s ; une page qui attend simplement le serveur, au démarrage de l'ordinateur, n'est recréée qu'au bout de 3 min) : la fenêtre se **recrée seule**, sans toucher au serveur ni aux sessions. <kbd>F5</kbd> (Windows) / <kbd>Cmd</kbd>+<kbd>R</kbd> (macOS) ou « Recharger la fenêtre » dans le menu de l'icône la recréent aussi à la main.
 
 ### 14 ter. Connexion à Claude qui expire (« Your login expires in 3 days »)
 

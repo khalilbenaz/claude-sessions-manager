@@ -691,3 +691,7 @@ ul.prompts li.open .ptext { display: block; -webkit-line-clamp: unset; }
 .ptabs button[data-tab] { padding: 0 7px; font-size: 12.5px; flex: none; white-space: nowrap; }
 .ptabs #panelClose { flex: none; }
 .ptabs .spacer { flex: 1 1 0; min-width: 0; }
+
+/* assistant de premier lancement : installer Claude Code, se connecter */
+.checks .fix { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 0 8px 18px; color: var(--fg); }
+.checks .fix code { font: 12px/1.4 var(--mono, monospace); background: var(--panel2); padding: 6px 8px; border-radius: 6px; user-select: all; word-break: break-all; }

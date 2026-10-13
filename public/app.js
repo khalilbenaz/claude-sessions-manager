@@ -1,4 +1,5 @@
 'use strict';
+document.documentElement.dataset.boot = '1'; // script lancé (surveillance du démarrage, electron/main.js)
 const $ = s => document.querySelector(s);
 const TOKEN = document.querySelector('meta[name="csm-token"]').content;
 const IS_MAC = /Mac/i.test(navigator.platform || navigator.userAgent);

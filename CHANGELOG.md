@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.45.0] — 2026-10-13
+### Corrigé
+- **Premier lancement sur une machine sans Claude Code** : installé après l'ouverture de l'app, il est maintenant trouvé sans rien redémarrer (le serveur, qui continue de tourner quand on ferme l'app, ne le cherchait qu'à son démarrage : relancer l'app ne suffisait pas). Une session lancée sans Claude Code explique quoi installer au lieu de « File not found ».
+- **Démarrage lent de l'ordinateur** : la fenêtre n'est plus détruite et rechargée en boucle quand la page attend simplement le serveur (ouverture de session et sessions Claude relancées en même temps) ; seule une page dont le script n'a jamais démarré est recréée après 25 s, une page qui attend l'est au bout de 3 min. Le journal `update.log` dit à quelle étape elle attendait.
+### Ajouté
+- **Assistant de premier lancement** : vérifie aussi que Claude Code est **connecté à un compte** ; sinon **Se connecter à Claude** ouvre la connexion depuis l'app. Claude Code absent : commande d'installation à copier et **Vérifier de nouveau**.
+- **Affichage d'une session typée toujours à jour après une action** (publication, réassignation, pièce jointe…) : Claude a pour consigne de réécrire l'affichage aussitôt ; s'il finit son tour sans l'avoir fait, l'app le lui demande une fois (l'affichage ne reste plus sur « à publier »).
+- Tests : premier lancement sur une machine neuve (Claude Code installé en cours de route, puis connexion).
+
 ## [3.44.0] — 2026-10-13
 ### Ajouté
 - **Synchro en temps réel** : dès qu'une machine envoie un changement (sessions, conversations, mémoire, règles, skills, agents, plugins…), le serveur de synchro prévient les autres, qui se synchronisent en quelques secondes au lieu d'attendre le relevé de 30 s ou la fréquence choisie (connexion WebSocket, un Durable Object Cloudflare par espace ; le serveur ne voit toujours que des données chiffrées). Serveur injoignable ou auto-hébergé sans cette fonction : relevés habituels, nouvel essai de connexion de plus en plus espacé.

@@ -52,8 +52,20 @@ try { fs.chmodSync(TOKEN_FILE, 0o600); } catch { }
 // d'un dépôt cloné) en hérite ; le jeton complet de l'API ne doit pas en faire partie.
 const HOOK_TOKEN = crypto.randomBytes(24).toString('hex');
 
-const CLAUDE = resolveClaude();
+// Claude Code installé après le démarrage du serveur (premier lancement sur une machine neuve) : cherché de
+// nouveau tant qu'il est introuvable (le serveur survit à la fermeture de l'app, relancer l'app ne suffirait pas).
+let CLAUDE = resolveClaude(), claudeAt = Date.now();
 addBinDirToPath(CLAUDE);
+const claudeFound = p => { try { return path.isAbsolute(p) && fs.statSync(p).isFile(); } catch { return false; } };
+function claudeBin() {
+  if (claudeFound(CLAUDE) || Date.now() - claudeAt < 3000) return CLAUDE;
+  claudeAt = Date.now();
+  const found = resolveClaude();
+  if (found !== CLAUDE && claudeFound(found)) { CLAUDE = found; addBinDirToPath(found); console.log(`Claude Code trouvé : ${found}`); }
+  return CLAUDE;
+}
+// commande d'installation officielle de Claude Code (affichée quand il est introuvable)
+const CLAUDE_INSTALL = IS_WIN ? 'irm https://claude.ai/install.ps1 | iex' : 'curl -fsSL https://claude.ai/install.sh | bash';
 
 // Hooks injectés via --settings : remontent l'état réel (travaille / attend / idle) et le session_id Claude.
 // Chemin absolu de node : le PATH d'un service (launchd, tâche planifiée) ne le contient pas forcément.
@@ -281,13 +293,15 @@ function spawnSession(s, { resume, fork } = {}) {
   Object.assign(env, ctx.typeEnv?.(s) || {}); // type de session : fichier de la vue (CSM_VIEW_FILE)
   let p;
   try {
-    p = pty.spawn(CLAUDE, args, {
+    p = pty.spawn(claudeBin(), args, {
       name: 'xterm-256color', cols: s.cols || 120, rows: s.rows || 32,
       cwd: fs.existsSync(s.cwd) ? s.cwd : os.homedir(), env,
     });
   } catch (e) {
     s.pty = null;
-    appendOut(s, `\r\n\x1b[31m[csm] Échec du lancement : ${e.message}\x1b[0m\r\n`);
+    appendOut(s, claudeFound(claudeBin())
+      ? `\r\n\x1b[31m[csm] Échec du lancement : ${e.message}\x1b[0m\r\n`
+      : `\r\n\x1b[31m[csm] Claude Code est introuvable sur cette machine.\x1b[0m\r\n[csm] Installe-le (${IS_WIN ? 'PowerShell' : 'Terminal'}) :  ${CLAUDE_INSTALL}\r\n[csm] puis clique « Relancer » : inutile de redémarrer l'app.\r\n`);
     setStatus(s, 'exited', 'échec du lancement');
     return;
   }
@@ -657,7 +671,7 @@ const server = http.createServer(async (req, res) => {
       }
       else if (event === 'end') emit('end', s);
       else if (event === 'quota') { emit('quota', s, data || {}); return json(res, 200, {}); } // barre d'état : quotas (lib/queue.js)
-      else if (event === 'working') setStatus(s, 'working', data && data.tool_name ? data.tool_name : '');
+      else if (event === 'working') { setStatus(s, 'working', data && data.tool_name ? data.tool_name : ''); emit('working', s); }
       // « Claude is waiting for your input » : simple rappel de Claude Code après ~1 min d'inactivité (idle_prompt),
       // pas une question. La session reste prête ; seules les vraies demandes (autorisation…) la font attendre.
       else if (event === 'attention' && (data?.notification_type === 'idle_prompt' || /waiting for your input/i.test(data?.message || ''))) {
@@ -849,8 +863,9 @@ on('idle', s => { if (s.applyOnIdle && s.settingsFile !== settingsFor(s)) setTim
 
 const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
-  renameSession, history, transcriptPath, setStatus, lockedResume, splitArgs, DATA, ROOT, PORT, VERSION, CLAUDE, IS_WIN, IS_MAC, TOKEN_FILE,
+  renameSession, history, transcriptPath, setStatus, lockedResume, splitArgs, DATA, ROOT, PORT, VERSION, IS_WIN, IS_MAC, TOKEN_FILE, CLAUDE_INSTALL,
 };
+Object.defineProperty(ctx, 'CLAUDE', { get: claudeBin, enumerable: true }); // chemin toujours à jour (installé après coup)
 for (const mod of ['lock', 'git', 'settings', 'auth', 'extensions', 'secrets', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync', 'schedule']) {
   try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }
 }
