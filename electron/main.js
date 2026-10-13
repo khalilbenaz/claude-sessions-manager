@@ -220,9 +220,11 @@ function createWindow({ hidden = false } = {}) {
         new Promise(r => setTimeout(() => r(''), 5000)),
       ]);
       if (w.isDestroyed() || w !== win || st.endsWith('|1')) return;
-      const waiting = w.webContents.isLoading() || st.startsWith('1|');
+      // script lancé qui attend le serveur, ou page sans réponse parce que le serveur ne répond pas encore ;
+      // page servie dont le script n'a jamais démarré (plantage du GPU) : recréée
+      const waiting = st.startsWith('1|') || (!st && !(await isUp()));
       if (waiting && Date.now() - since < READY_MAX) {
-        if (!noted) { noted = true; updLog(`[fenêtre] page lente à démarrer (${w.webContents.isLoading() ? 'chargement' : 'attente du serveur'}) : on la laisse finir`); }
+        if (!noted) { noted = true; updLog(`[fenêtre] page lente à démarrer (${st ? 'attente du serveur' : 'serveur pas encore prêt'}) : on la laisse finir`); }
         unready = setTimeout(check, 5000);
         return;
       }

@@ -2,7 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
-## [3.45.0] — 2026-10-13
+## [3.45.1] — 2026-10-13
+### Corrigé
+- Démarrage lent : une page dont le script n'a jamais démarré (plantage du GPU) est de nouveau recréée après 25 s ; seules une page qui attend le serveur, ou un serveur pas encore prêt, ont droit aux 3 min (la 3.45.0, jamais publiée, attendait aussi dans ce cas).
+
+## [3.45.0] — 2026-10-13 (non publiée)
 ### Corrigé
 - **Premier lancement sur une machine sans Claude Code** : installé après l'ouverture de l'app, il est maintenant trouvé sans rien redémarrer (le serveur, qui continue de tourner quand on ferme l'app, ne le cherchait qu'à son démarrage : relancer l'app ne suffisait pas). Une session lancée sans Claude Code explique quoi installer au lieu de « File not found ».
 - **Démarrage lent de l'ordinateur** : la fenêtre n'est plus détruite et rechargée en boucle quand la page attend simplement le serveur (ouverture de session et sessions Claude relancées en même temps) ; seule une page dont le script n'a jamais démarré est recréée après 25 s, une page qui attend l'est au bout de 3 min. Le journal `update.log` dit à quelle étape elle attendait.
