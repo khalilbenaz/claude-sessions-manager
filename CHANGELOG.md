@@ -2,6 +2,17 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.46.2] — 2026-10-13
+### Corrigé
+- **macOS : installation automatique des mises à jour** de nouveau active. Depuis la 3.24, la vérification appelait une fonction inexistante (`macWritable`) : l'erreur se répétait chaque minute et la mise à jour attendait toujours un clic.
+- Script de mise à jour macOS : un seul descripteur pour son journal, refermé aussitôt par l'app.
+### Performances
+- Réglages gardés en mémoire, relus seulement s'ils ont changé (avant : fichier relu et décodé à chaque appel, plusieurs fois par seconde).
+- Journal des fichiers reçus (configuration de Claude) raccourci toutes les 200 entrées au lieu d'être relu à chaque entrée.
+- Consommation et export : chemin des conversations pris dans le cache du serveur ; sessions extérieures : historique lu seulement s'il y en a une à nommer.
+### Tests
+- `npm run lint` (ESLint, noms non définis dans le serveur et Electron), lancé avant `npm test`.
+
 ## [3.46.1] — 2026-10-13
 ### Corrigé
 - **Horloges décalées entre machines** : une suite de conversation écrite ici après une version reçue d'une machine dont l'horloge avance était refusée par le serveur (jugée plus ancienne) et ne partait jamais ; elle est maintenant datée après la version reçue.

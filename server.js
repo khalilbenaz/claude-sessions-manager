@@ -501,7 +501,7 @@ function externalSessions() {
   const managedIds = new Set([...sessions.values()].map(s => s.claudeSessionId).filter(Boolean));
   const managedPids = new Set([...sessions.values()].filter(s => s.pty).map(s => s.pty.pid));
   let files = []; try { files = fs.readdirSync(REGISTRY).filter(f => /^\d+\.json$/.test(f)); } catch { }
-  const titles = new Map(history().map(h => [h.id, h.title]));
+  let titles = null; // historique lu seulement s'il y a une session extérieure à nommer
   const out = [];
   for (const f of files) {
     let o; try { o = JSON.parse(fs.readFileSync(path.join(REGISTRY, f), 'utf8')); } catch { continue; }
@@ -509,7 +509,7 @@ function externalSessions() {
     if (managedIds.has(o.sessionId) || managedPids.has(o.pid) || !pidAlive(o.pid)) continue;
     out.push({
       pid: o.pid, sessionId: o.sessionId, cwd: o.cwd, status: o.status, startedAt: o.startedAt,
-      title: titles.get(o.sessionId) || path.basename(o.cwd || '') || o.sessionId.slice(0, 8),
+      title: (titles ||= new Map(history().map(h => [h.id, h.title]))).get(o.sessionId) || path.basename(o.cwd || '') || o.sessionId.slice(0, 8),
     });
   }
   return out.sort((a, b) => b.startedAt - a.startedAt);
