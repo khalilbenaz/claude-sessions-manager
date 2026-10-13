@@ -162,6 +162,12 @@ test('groupes : créer un groupe vide, y glisser une session, le renommer, le su
   await win.fill('#renInput', 'Clients 2');
   await win.click('#dlgRename button[value=ok]');
   await win.waitForFunction(() => groupNames().includes('Clients 2') && !groupNames().includes('Clients'));
+  // Nouvelle session : tous les groupes proposés (même vides), « (aucun) » par défaut = Sans groupe
+  await win.evaluate(() => openNew());
+  const opts = await win.evaluate(() => { const g = document.querySelector('#formNew').group; return { value: g.value, list: [...g.options].map(o => o.value) }; });
+  assert.equal(opts.value, '', 'Sans groupe par défaut');
+  assert.ok(opts.list.includes('Clients 2'), 'groupe vide proposé');
+  await win.evaluate(() => document.querySelector('#dlgNew').close());
   // supprimer par le bouton ✕ : il disparaît
   await win.hover(head('Clients 2'));
   await win.click(`${head('Clients 2')} .gdel`);

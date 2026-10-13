@@ -421,6 +421,29 @@ test('groupes et épinglage', async () => {
   assert.equal(v.group, 'Projet A'); assert.equal(v.pinned, true);
 });
 
+test('arrêt du serveur (mise à jour, Quitter et arrêter) : dernière synchro avant de sortir', async () => {
+  const { encodeCode } = require('../lib/sync');
+  const KEY = 'q'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-arret' });
+    const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'avant-arret' });
+    const sid = await waitFor(async () => { await api('POST', '/api/sync/now'); const x = (await session(s.id)).syncId; return x && fake.plain(KEY, x) && x; }, 10000, 'session envoyée');
+    // renommée puis arrêt aussitôt (avant l'envoi différé de 1,5 s)
+    await api('POST', `/api/sessions/${s.id}/rename`, { name: 'renommee-juste-avant' });
+    const exited = new Promise(r => server.once('exit', r));
+    await api('POST', '/api/shutdown');
+    await exited; server = null;
+    assert.equal(fake.plain(KEY, sid).name, 'renommee-juste-avant', 'renommage parti avant la sortie');
+    await startServer();
+    await api('DELETE', `/api/sessions/${s.id}`);
+  } finally {
+    if (!server) await startServer();
+    await api('PUT', '/api/settings', { syncCode: '' });
+    fake.srv.close();
+  }
+});
+
 test('restauration après redémarrage du serveur', async () => {
   const before = await session(S.id);
   await stopServer();
@@ -792,6 +815,21 @@ test('synchro : la conversation suit la session d’une machine à l’autre, ch
     await waitFor(async () => { await api('POST', '/api/sync/now'); const m = fake.tx(KEY).meta.get('pc-conv-1'); return m.origin === 'win-test' && m.ver !== ver2; }, 15000, 'suite envoyée');
     const m = fake.tx(KEY).meta.get('pc-conv-1');
     assert.match(unseal(KEY, fake.tx(KEY).chunks.get(`pc-conv-1/${m.ver}/0`), aad('pc-conv-1', m)).toString('utf8'), /suite sur le PC[\s\S]*reponse-du-windows/);
+
+    // avancée des deux côtés (ici, machine éteinte avant l'envoi) : la plus récente gagne, la version d'ici est copiée
+    await api('POST', `/api/sessions/${remote.id}/kill`);
+    await waitFor(async () => !(await session(remote.id)).alive, 10000, 'session arrêtée');
+    await api('POST', '/api/sync/now');
+    fs.appendFileSync(file, JSON.stringify({ type: 'user', message: { role: 'user', content: 'jamais-envoyee' }, sessionId: cid }) + '\n');
+    const past = new Date(Date.now() - 60e3); fs.utimesSync(file, past, past);
+    const raw3 = Buffer.from(JSON.stringify({ type: 'user', message: { role: 'user', content: 'version-du-mac' }, sessionId: cid }) + '\n');
+    const ver3 = txVersion(KEY, raw3), m3 = { cid, ver: ver3, chunks: 1, updatedAt: Date.now() + 5000, origin: 'mac' };
+    const blob3 = seal(KEY, raw3, aad('pc-conv-1', m3));
+    fake.tx(KEY).chunks.set(`pc-conv-1/${ver3}/0`, blob3);
+    fake.tx(KEY).meta.set('pc-conv-1', { ...m3, size: blob3.length });
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return /version-du-mac/.test(fs.readFileSync(file, 'utf8')); }, 10000, 'version la plus récente reçue');
+    const kept = fs.readdirSync(path.join(DATA, 'transcript-backup'), { recursive: true }).map(String).filter(f => f.endsWith(cid + '.jsonl'));
+    assert.ok(kept.some(f => /jamais-envoyee/.test(fs.readFileSync(path.join(DATA, 'transcript-backup', f), 'utf8'))), 'version d’ici sauvegardée');
 
     // supprimée de toutes les machines : sa conversation disparaît du serveur
     await api('DELETE', `/api/sessions/${local.id}`);

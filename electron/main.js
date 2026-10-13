@@ -133,11 +133,23 @@ async function ensureServer() {
 
 const windowAway = () => !win || win.isDestroyed() || !win.isVisible() || win.isMinimized();
 
-function stopServer() {
-  try {
-    const pid = Number(fs.readFileSync(path.join(DATA, 'server.pid'), 'utf8'));
-    if (pid) process.kill(pid, IS_WIN ? undefined : 'SIGTERM'); // SIGTERM : les sessions ouvertes sont mémorisées
-  } catch { }
+// Arrêt propre : le serveur mémorise les sessions ouvertes et fait une dernière synchro (≤ 12 s) avant de sortir.
+// Demandé par /api/shutdown (sous Windows, process.kill termine le processus net, sans synchro) ; serveur
+// injoignable ou toujours là après 20 s : arrêt forcé.
+function serverPost(p) {
+  return new Promise(resolve => {
+    let token = ''; try { token = fs.readFileSync(path.join(DATA, 'token'), 'utf8').trim(); } catch { }
+    const req = http.request(`${ORIGIN}${p}`, { method: 'POST', headers: { 'X-CSM-Token': token, 'Content-Length': 0 }, timeout: 3000 }, res => { res.resume(); resolve(res.statusCode === 200); });
+    req.on('error', () => resolve(false)); req.on('timeout', () => { req.destroy(); resolve(false); });
+    req.end();
+  });
+}
+async function stopServer() {
+  let pid = 0; try { pid = Number(fs.readFileSync(path.join(DATA, 'server.pid'), 'utf8')); } catch { }
+  if (await serverPost('/api/shutdown')) for (let i = 0; i < 100 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200));
+  if (!(await isUp())) return;
+  try { if (pid) process.kill(pid, IS_WIN ? undefined : 'SIGTERM'); } catch { } // SIGTERM : les sessions ouvertes sont mémorisées
+  for (let i = 0; i < 75 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200));
 }
 
 // ---------------------------------------------------------------- fenêtre
@@ -193,6 +205,8 @@ function createWindow({ hidden = false } = {}) {
     if (i.type === 'keyDown' && i.key === 'F5' && !i.control && !i.alt && !i.meta) { e.preventDefault(); reloadWindow(); }
   });
   win.on('show', () => updates?.onFocus?.());
+  // fermeture de la session Windows ou extinction : synchro tout de suite (le serveur s'arrête avec)
+  win.on('query-session-end', () => { serverPost('/api/sync/now'); });
 
   // Affichage tué (mémoire saturée, plantage) ou figé : la fenêtre resterait noire, et Cmd+R n'y peut
   // rien puisqu'il n'y a plus de page pour l'exécuter. On recrée la fenêtre ; serveur et sessions intacts.
@@ -352,8 +366,7 @@ function registerIpc() {
   ipcMain.on('csm:app-version', e => { e.returnValue = trusted(e) ? app.getVersion() : ''; });
   ipcMain.handle('csm:restart-server', async e => {
     if (!trusted(e)) return false;
-    stopServer();
-    for (let i = 0; i < 75 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200));
+    await stopServer();
     const ok = await ensureServer();
     if (ok && win && !win.isDestroyed()) win.loadURL(URL_);
     return ok;
@@ -498,10 +511,10 @@ function buildTray() {
     { label: 'Rechercher des mises à jour', click: () => updates?.check(), visible: !!updates && app.isPackaged },
     { label: 'Lancer au démarrage de l’ordinateur', type: 'checkbox', checked: loginItem(), click: i => setLoginItem(i.checked), visible: !process.windowsStore }, // version Store : non géré par l'app
     { label: 'Recharger la fenêtre', click: reloadWindow },
-    { label: 'Redémarrer le serveur (les sessions reviennent)', click: async () => { stopServer(); await new Promise(r => setTimeout(r, 800)); await ensureServer(); win?.loadURL(URL_); } },
+    { label: 'Redémarrer le serveur (les sessions reviennent)', click: async () => { await stopServer(); await ensureServer(); win?.loadURL(URL_); } },
     { type: 'separator' },
     { label: 'Quitter (les sessions continuent)', click: () => { quitting = true; app.quit(); } },
-    { label: 'Quitter et arrêter toutes les sessions', click: () => { quitting = true; stopServer(); app.quit(); } },
+    { label: 'Quitter et arrêter toutes les sessions', click: async () => { quitting = true; await stopServer(); app.quit(); } },
   ]);
   // Menu reconstruit à chaque ouverture (état des sessions à jour).
   const popup = async () => { lastSessions = (await serverGet('/api/sessions')) || []; tray.popUpContextMenu(menu()); };
@@ -550,6 +563,8 @@ app.on('child-process-gone', (e, d) => { if (d.type === 'GPU' && d.reason !== 'c
 app.on('web-contents-created', (e, wc) => { wc.on('will-attach-webview', ev => ev.preventDefault()); });
 
 app.whenReady().then(async () => {
+  // mise en veille (capot fermé) ou extinction : ce qui n'est pas encore parti est envoyé avant la coupure
+  for (const ev of ['suspend', 'shutdown', 'lock-screen']) powerMonitor.on(ev, () => { serverPost('/api/sync/now'); });
   hardenSession();
   registerIpc();
   buildAppMenu();
@@ -580,7 +595,7 @@ app.whenReady().then(async () => {
     beforeInstall: async ({ auto } = {}) => {
       // installée en arrière-plan : l'app revient cachée, sans passer devant ce que tu fais
       if (auto && windowAway()) { try { fs.writeFileSync(HIDDEN_ONCE, '1'); } catch { } }
-      stopServer(); for (let i = 0; i < 75 && (await isUp()); i++) await new Promise(r => setTimeout(r, 200)); },
+      await stopServer(); },
     onState: st => { refreshTray(); if (win && !win.isDestroyed()) win.webContents.send('csm:update-state', st); },
     log: updLog,
   });

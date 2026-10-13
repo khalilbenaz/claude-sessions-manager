@@ -877,12 +877,23 @@ server.listen(PORT, HOST, () => {
   restoreSessions();
 });
 
-function shutdown() {
+// Arrêt (mise à jour, Quitter et arrêter, Redémarrer le serveur, extinction) : dernière synchro avant de sortir,
+// sinon ce qui n'était pas encore parti (renommage, mise en pause, fin de conversation) attendait le prochain
+// démarrage de cette machine. Au plus SHUTDOWN_SYNC_MS : hors ligne, l'arrêt ne traîne pas.
+const SHUTDOWN_SYNC_MS = Number(process.env.CSM_SHUTDOWN_SYNC_MS) || 12000;
+async function shutdown() {
+  if (shuttingDown) return;
   shuttingDown = true;
   persist(); // avant de tuer : les sessions ouvertes seront restaurées au prochain démarrage
   for (const s of sessions.values()) killSession(s);
+  // fin des processus : la conversation est entièrement écrite avant l'envoi (≤ 3 s)
+  for (let i = 0; i < 30 && [...sessions.values()].some(s => s.pty); i++) await new Promise(r => setTimeout(r, 100));
+  for (const s of sessions.values()) s.pty = null; // ne pas relancer ni écrire pendant la synchro
   persist();
+  if (ctx.syncEnabled?.()) await Promise.race([ctx.syncNow().catch(() => { }), new Promise(r => setTimeout(r, SHUTDOWN_SYNC_MS))]);
   process.exit(0);
 }
+// Electron sous Windows : pas de SIGTERM (process.kill y termine le processus net), il passe par cette route.
+route('POST', /^\/api\/shutdown$/, async ({ res }) => { json(res, 200, {}); setImmediate(shutdown); });
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

@@ -415,6 +415,26 @@ function groupNames() {
 const saveGroupList = list => saveSettings({ groupList: [...new Set(list.filter(Boolean))].join('\n') });
 const moveToGroup = (id, g) => api('POST', `/api/sessions/${id}/meta`, { group: g || '' }).catch(e => toast(e.message, true));
 
+// Champ « Groupe » de Nouvelle session : tous les groupes existants (même vides), « (aucun) » par défaut = Sans groupe,
+// et « Nouveau groupe… » pour en créer un sans quitter le formulaire.
+function setGroupField(value) {
+  const sel = $('#formNew').group, v = String(value || '').trim();
+  const names = groupNames();
+  if (v && !names.includes(v)) names.push(v); // groupe d'un modèle venu d'une autre machine
+  const esc = x => x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  sel.innerHTML = `<option value="">${esc(t('(aucun)'))}</option>` + names.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('')
+    + `<option value="\u0000new">${esc(t('Nouveau groupe…'))}</option>`;
+  sel.value = v;
+  sel.dataset.prev = v;
+}
+async function pickNewGroup(sel) {
+  if (sel.value !== '\u0000new') { sel.dataset.prev = sel.value; return; }
+  const name = (await askName(t('Nouveau groupe'), '', '', true))?.trim().slice(0, 60);
+  setGroupField(name || sel.dataset.prev || '');
+}
+
+$('#formNew').group.addEventListener('change', e => pickNewGroup(e.target));
+
 async function newGroup(moveId) {
   const name = (await askName(t('Nouveau groupe'), '', t('Glisse ensuite des sessions sur son titre, ou clic droit sur une session › Déplacer vers le groupe.'), true))?.slice(0, 60);
   if (!name) return;
@@ -449,7 +469,7 @@ function moveItems(id) {
 }
 function groupItems(g) {
   return [
-    [t('Nouvelle session dans ce groupe'), () => { openNew(); $('#formNew').group.value = g; }],
+    [t('Nouvelle session dans ce groupe'), () => { openNew(); setGroupField(g); }],
     [t('Renommer le groupe…'), () => renameGroup(g)],
     '-',
     [t('Supprimer le groupe'), () => deleteGroup(g), { danger: true }],
@@ -576,7 +596,7 @@ function render() {
   }
   const attn = [...sessions.values()].filter(s => s.status === 'attention').length;
   document.title = attn ? `(${attn}) Claude Sessions` : 'Claude Sessions';
-  $('#groups').innerHTML = [...new Set([...sessions.values()].map(x => x.group).filter(Boolean))].map(x => `<option value="${x.replace(/"/g, '&quot;')}">`).join('');
+  if (!$('#dlgNew')?.open) setGroupField($('#formNew').group.value);
   window.csmNative?.setAttention(attn); // pastille Dock / barre des tâches
   document.body.classList.toggle('nosession', sessions.size === 0);
   renderBar();
@@ -1023,7 +1043,7 @@ function openNew(tpl) {
   f.mode.value = SETTINGS.defaultMode || '';
   const cur = sessions.get(active);
   f.cwd.value = LS.get('csm.lastCwd', '') || (cur?.worktree ? cur.worktree.repo : cur?.cwd) || '';
-  f.group.value = cur?.group || '';
+  setGroupField(''); // rien de choisi = Sans groupe
   f.worktree.checked = !!SETTINGS.worktreeDefault;
   f.remote.checked = !!SETTINGS.remoteAll;
   loadHistory();
@@ -1054,7 +1074,7 @@ function applyTemplate(x) {
   if (x.cwd) f.cwd.value = x.cwd;
   f.name.value = x.name || '';
   f.model.value = x.model ?? f.model.value; f.mode.value = x.mode || '';
-  f.extra.value = x.extra || ''; f.prompt.value = x.prompt || ''; f.group.value = x.group || '';
+  f.extra.value = x.extra || ''; f.prompt.value = x.prompt || ''; setGroupField(x.group);
   f.worktree.checked = !!x.worktree;
   f.dataset.type = x.type || ''; // type de session d'une extension (affichage dédié)
   checkRepo();
