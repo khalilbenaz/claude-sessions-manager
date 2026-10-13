@@ -27,6 +27,12 @@ if (argv[0] === 'plugin') {
   }
   console.log('ok'); process.exit(0);
 }
+// `claude auth status --json` : connecté si le fichier de connexion existe (code 1 sinon, comme Claude Code)
+if (argv[0] === 'auth' && argv[1] === 'status') {
+  const on = fs.existsSync(path.join(os.homedir(), '.claude', '.credentials.json'));
+  console.log(JSON.stringify({ loggedIn: on, authMethod: on ? 'claude.ai' : 'none' }));
+  process.exit(on ? 0 : 1);
+}
 // `claude auth login` : lien de connexion, attend le code collé, puis écrit une connexion valable 30 jours
 if (argv[0] === 'auth' && argv[1] === 'login') {
   process.stdout.write('Opening browser to sign in…\r\nIf the browser didn\'t open, visit: \x1b]8;id=1;https://claude.com/cai/oauth/authorize?code=true&state=test\x07https://claude.com/cai/oauth/authorize?code=true&state=test\x1b]8;;\x07\r\nPaste code here if prompted > ');
@@ -99,6 +105,8 @@ async function prompt(text) {
       ],
     }));
   }
+  // publication : l'affichage est réécrit (état « publié »)
+  if (/publie :/.test(text) && process.env.CSM_VIEW_FILE) fs.writeFileSync(process.env.CSM_VIEW_FILE, JSON.stringify({ title: 'Publié', sections: [{ kind: 'text', text: 'publié' }] }));
   if (/montre-jeton/.test(text)) out(`\r\nJETON:${process.env.CSM_TOKEN}\r\n`);
   if (/touch (\S+)/.test(text)) fs.writeFileSync(path.join(cwd, RegExp.$1), `créé par le faux claude (${turn})\n`);
   out(`\r\n● ${reply}\r\n`);

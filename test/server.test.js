@@ -1370,9 +1370,16 @@ test('extensions : import d’un fichier, modèles, session typée avec sa vue e
   await waitFor(async () => (await session(s.id)).status === 'idle', 10000, 'prête');
   await api('POST', `/api/sessions/${s.id}/view-action`, { action: 'corrige' });
   await waitFor(() => (c.out[s.id] || '').includes('echo: corrige le point 1'), 20000, 'action envoyée');
+  // tour fini sans affichage réécrit : Claude est relancé une fois pour le mettre à jour
+  const refresh = () => ((c.out[s.id] || '').match(/echo: \[Claude Sessions\] Mets à jour l'affichage/g) || []).length;
+  await waitFor(() => refresh() === 1, 20000, 'mise à jour de l’affichage demandée');
   await waitFor(async () => (await session(s.id)).status === 'idle', 10000, 'prête');
   await api('POST', `/api/sessions/${s.id}/view-action`, { section: 2, index: 0, draft: 'Bonjour relu' });
   await waitFor(() => (c.out[s.id] || '').includes('echo: publie : Bonjour relu'), 20000, 'brouillon envoyé');
+  // affichage réécrit pendant le tour : rien de plus
+  await waitFor(async () => (await api('GET', `/api/sessions/${s.id}/view`)).view?.title === 'Publié', 10000, 'affichage réécrit');
+  await new Promise(r => setTimeout(r, 3000));
+  assert.equal(refresh(), 1, 'pas de relance inutile');
   assert.equal((await req('POST', `/api/sessions/${s.id}/view-action`, { action: 'inexistante' })).status, 404);
 
   // désactivée : plus de modèles ; supprimée : retirée

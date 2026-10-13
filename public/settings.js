@@ -483,21 +483,37 @@
   if (window.csmNative?.onUpdate) { window.csmNative.onUpdate(onUpdate); window.csmNative.update('state').then(st => st && onUpdate(st)); }
 
   // ---------------------------------------------------------------- assistant de premier lancement
+  // Machine neuve : Claude Code absent (commande d'installation à copier) ou pas connecté à un compte
+  // (connexion depuis l'app) ; « Vérifier de nouveau » relit l'état sans redémarrer quoi que ce soit.
+  async function checkInstall() {
+    const box = $('#welcomeCheck');
+    box.innerHTML = `<p class="hint">${t('Vérification de l’installation…')}</p>`;
+    let r;
+    try { r = await api('GET', '/api/diag'); } catch (e) { box.textContent = e.message; return; }
+    const c = r.claude, rows = [], todo = !c.ok || c.auth?.loggedIn === false;
+    if (c.ok) rows.push(`<div class="ok">✓ Claude Code ${esc(c.version)}</div>`);
+    else rows.push(`<div class="bad">✗ ${t('Claude Code n’est pas installé sur cette machine.')}</div>`,
+      `<div class="fix"><span>${t('Pour l’installer, colle cette commande dans')} ${IS_MAC ? 'Terminal' : 'PowerShell'} :</span><code>${esc(c.install || '')}</code><button type="button" data-a="copy">${t('Copier')}</button></div>`);
+    if (c.auth?.loggedIn === false) rows.push(`<div class="bad">✗ ${t('Claude Code n’est pas connecté à ton compte Claude.')}</div>`,
+      `<div class="fix"><button type="button" class="primary" data-a="login">${t('Se connecter à Claude')}</button></div>`);
+    else if (c.auth?.loggedIn) rows.push(`<div class="ok">✓ ${t('Connecté à Claude')}</div>`);
+    rows.push(`<div class="${r.git.ok ? 'ok' : 'bad'}">${r.git.ok ? '✓ ' + esc(r.git.version) : '✗ ' + t('git introuvable : worktrees et panneau Modifications indisponibles (facultatif).')}</div>`);
+    if (todo) rows.push(`<div class="fix"><button type="button" data-a="recheck">${t('Vérifier de nouveau')}</button></div>`);
+    box.innerHTML = rows.join('');
+    box.dataset.todo = todo ? '1' : '';
+    box.querySelector('[data-a=copy]')?.addEventListener('click', () => { clip.copy(c.install); toast(t('Commande copiée')); });
+    box.querySelector('[data-a=recheck]')?.addEventListener('click', checkInstall);
+    box.querySelector('[data-a=login]')?.addEventListener('click', () => {
+      window.csmFeatures.renewLogin?.();
+      $('#dlgAuth').addEventListener('close', () => { if ($('#dlgWelcome').open) checkInstall(); }, { once: true });
+    });
+  }
   async function welcome() {
     if (SETTINGS.onboarded) return;
     if (sessions.size) { saveSettings({ onboarded: true }); return; } // déjà utilisé : pas d'assistant
     const d = $('#dlgWelcome');
-    const box = $('#welcomeCheck');
-    box.innerHTML = `<p class="hint">${t('Vérification de l’installation…')}</p>`;
     d.showModal();
-    try {
-      const r = await api('GET', '/api/diag');
-      box.innerHTML = [
-        [r.claude.ok, r.claude.ok ? `Claude Code ${esc(r.claude.version)}` : t('Claude Code introuvable : installe-le (docs.claude.com/claude-code) puis relance l’application.')],
-        [r.git.ok, r.git.ok ? esc(r.git.version) : t('git introuvable : worktrees et panneau Modifications indisponibles (facultatif).')],
-      ].map(([ok, txt]) => `<div class="${ok ? 'ok' : 'bad'}">${ok ? '✓' : '✗'} ${txt}</div>`).join('');
-      $('#welcomeCwd').value = r.data && !sessions.size ? '' : '';
-    } catch (e) { box.textContent = e.message; }
+    await checkInstall();
     const choice = await new Promise(res => d.addEventListener('close', () => res(d.returnValue), { once: true }));
     saveSettings({ onboarded: true });
     if (choice === 'ok') {
