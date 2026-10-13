@@ -7,9 +7,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const DIR = path.dirname(new URL('.', import.meta.url).pathname);
-const WRANGLER = path.join(DIR, 'node_modules', '.bin', 'wrangler');
+const DIR = path.dirname(fileURLToPath(new URL('.', import.meta.url)));
+// wrangler lancé par node directement : même commande sous Linux, macOS et Windows
+const WRANGLER = process.execPath, W = path.join(DIR, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
 const PORT = 8800 + Math.floor(Math.random() * 500);
 const U = `http://127.0.0.1:${PORT}`;
 const STATE = fs.mkdtempSync(path.join(os.tmpdir(), 'csm-worker-'));
@@ -29,20 +31,20 @@ async function space() {
   const getPart = (uid, ver, n) => fetch(`${U}/transcripts/${uid}/${ver}/${n}`, { headers: H });
   return { key, H, j, putPart, getPart };
 }
-const sql = cmd => JSON.parse(execFileSync(WRANGLER, ['d1', 'execute', 'csm-sync', '--local', '--persist-to', STATE, '--json', '--command', cmd], { cwd: DIR, encoding: 'utf8' }))[0].results;
+const sql = cmd => JSON.parse(execFileSync(WRANGLER, [W, 'd1', 'execute', 'csm-sync', '--local', '--persist-to', STATE, '--json', '--command', cmd], { cwd: DIR, encoding: 'utf8' }))[0].results;
 const usage = key => sql(`SELECT bytes FROM csm_usage WHERE space = '${sha(key)}'`)[0]?.bytes || 0;
 const V = c => c.repeat(32);
 
 before(async () => {
-  execFileSync(WRANGLER, ['d1', 'execute', 'csm-sync', '--local', '--persist-to', STATE, '--file', 'schema.sql'], { cwd: DIR, stdio: 'ignore' });
-  dev = spawn(WRANGLER, ['dev', '--local', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', STATE, '--test-scheduled', '--show-interactive-dev-session=false'], { cwd: DIR, stdio: 'ignore' });
+  execFileSync(WRANGLER, [W, 'd1', 'execute', 'csm-sync', '--local', '--persist-to', STATE, '--file', 'schema.sql'], { cwd: DIR, stdio: 'ignore' });
+  dev = spawn(WRANGLER, [W, 'dev', '--local', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', STATE, '--test-scheduled', '--show-interactive-dev-session=false'], { cwd: DIR, stdio: 'ignore' });
   for (let i = 0; i < 120; i++) {
     try { if ((await fetch(U + '/health')).ok) return; } catch { }
     await new Promise(r => setTimeout(r, 500));
   }
   throw new Error('wrangler dev ne répond pas');
 });
-after(() => { dev?.kill(); fs.rmSync(STATE, { recursive: true, force: true }); });
+after(() => { dev?.kill(); try { fs.rmSync(STATE, { recursive: true, force: true }); } catch { } }); // Windows : fichiers encore verrouillés
 
 test('conversation : envoi, relecture, nouvelle version, suppression de la session', async () => {
   const s = await space(), uid = 'sess-aaaaaa', blob = crypto.randomBytes(300000);
@@ -130,4 +132,28 @@ test('espace : place occupée, puis effacement complet (changement de code)', as
   assert.equal((await s.j('GET', '/usage')).status, 401, 'ancien code refusé');
   assert.equal(sql(`SELECT COUNT(*) c FROM csm_parts WHERE space = '${sha(s.key)}'`)[0].c, 0);
   assert.equal((await other.getPart('sess-eeeeee', V('a'), 0)).status, 200, 'les autres espaces ne bougent pas');
+});
+
+test('temps réel : les autres machines de l’espace sont prévenues, pas l’auteur ni les autres espaces', async () => {
+  const s = await space(), other = await space();
+  const cA = crypto.randomBytes(8).toString('hex'), cB = crypto.randomBytes(8).toString('hex');
+  const live = (sp, c) => new Promise((res, rej) => {
+    const ws = new WebSocket(U.replace('http', 'ws') + '/live', { headers: { ...sp.H, 'x-csm-client': c } });
+    ws.got = 0; ws.onmessage = e => { if (e.data === 'changed') ws.got++; };
+    ws.onopen = () => res(ws); ws.onerror = () => rej(new Error('connexion /live refusée'));
+  });
+  const a = await live(s, cA), b = await live(s, cB), o = await live(other, cA);
+  const r = await fetch(U + '/sessions', { method: 'POST', headers: { ...s.H, 'content-type': 'application/json', 'x-csm-client': cA }, body: JSON.stringify({ items: [{ uid: 'live-aaaaaa', data: {}, updatedAt: 1 }] }) });
+  assert.equal(r.status, 200);
+  for (let i = 0; i < 50 && !b.got; i++) await new Promise(r => setTimeout(r, 100));
+  await new Promise(r => setTimeout(r, 300));
+  assert.equal(b.got, 1, 'autre machine prévenue');
+  assert.equal(a.got, 0, 'l’auteur ne l’est pas');
+  assert.equal(o.got, 0, 'autre espace jamais prévenu');
+  // rien d'appliqué (version plus ancienne) : personne n'est prévenu
+  await fetch(U + '/sessions', { method: 'POST', headers: { ...s.H, 'content-type': 'application/json' }, body: JSON.stringify({ items: [{ uid: 'live-aaaaaa', data: {}, updatedAt: 0 }] }) });
+  await new Promise(r => setTimeout(r, 500));
+  assert.equal(b.got, 1);
+  await assert.rejects(live({ H: { authorization: 'Bearer ' + 'x'.repeat(32) } }, cB), /refusée/, 'code inconnu refusé');
+  for (const w of [a, b, o]) w.close();
 });

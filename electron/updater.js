@@ -7,6 +7,8 @@
 // dossier de l'app n'est pas modifiable). En cas d'échec : lien vers la release, comme avant.
 // Sur les deux systèmes, une version prête s'installe seule (redémarrage compris) dès que canRestart() le permet :
 // réglage actif, aucune session au travail, fenêtre réduite / cachée ou ordinateur inactif. Les sessions sont restaurées au redémarrage.
+// « Plus tard » (bulle de mise à jour) : cette version ne s'installe plus seule jusqu'au prochain lancement de l'app ;
+// elle reste installable à tout moment (Réglages › À propos, menu de l'icône). Une version plus récente repropose.
 const { app, net, shell, Notification } = require('electron');
 const fs = require('fs');
 const os = require('os');
@@ -192,7 +194,7 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
   // Sur macOS, seulement si l'app peut être remplacée sans mot de passe (sinon personne n'est là pour le taper).
   let installing = false;
   setInterval(async () => {
-    if (installing || state.status !== 'ready') return;
+    if (installing || state.status !== 'ready' || state.later === state.version) return;
     if (process.platform === 'darwin' && !(staged && bundle() && macWritable(bundle()))) return;
     try {
       if (!(await enabled()) || !(await canRestart())) return;
@@ -202,5 +204,6 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
     } catch (e) { installing = false; log(`[maj] installation automatique : ${e.message}`); }
   }, 60e3);
   const onFocus = () => { if (Date.now() - last > 3600e3 && state.status !== 'ready' && state.status !== 'downloading') run(); };
-  return { state, check: run, install, onFocus };
+  const postpone = () => { if (state.version) { log(`[maj] version ${state.version} reportée (Plus tard)`); set({ later: state.version }); } };
+  return { state, check: run, install, onFocus, postpone };
 };

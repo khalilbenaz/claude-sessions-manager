@@ -12,6 +12,15 @@ database_id = "d88de2ad-705f-40ec-988c-5b932b2d21c8"
 binding = "BUCKET"
 bucket_name = "csm-sync-chunks"
 
+# Temps réel : un Durable Object par espace garde les connexions WebSocket des machines (hibernation).
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Hub"]
+
 # Ménage quotidien : morceaux envoyés mais jamais validés.
 [triggers]
 crons = ["17 3 * * *"]

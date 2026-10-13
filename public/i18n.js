@@ -283,7 +283,7 @@ const EN = {
   'Voir les modifications': 'View changes',
   'Déplier la barre latérale': 'Expand the sidebar', 'Réduire la barre latérale': 'Collapse the sidebar',
   'Détails': 'Details', 'Voir plus': 'Show more', 'Voir moins': 'Show less',
-  'Relire': 'Review', 'Replier': 'Collapse', 'Avancement': 'Progress', 'Conclusion': 'Conclusion', 'Prochaine étape': 'Next step', 'Faire': 'Do it', 'avec risque': 'at risk', 'Éléments': 'Items', 'risque': 'risk', 'Élément suivant': 'Next item',
+  'Relire': 'Review', 'Replier': 'Collapse', 'Avancement': 'Progress', 'Conclusion': 'Conclusion', 'Prochaine étape': 'Next step', 'Élément précédent': 'Previous item', 'Faire': 'Do it', 'avec risque': 'at risk', 'Éléments': 'Items', 'risque': 'risk', 'Élément suivant': 'Next item',
   'Groupe de la session': 'Session group', 'Groupes existants': 'Existing groups', '« - » pour retirer la session de son groupe.': '“-” removes the session from its group.',
   // réglages
   'Réglages': 'Settings', 'Système (suit Windows / macOS)': 'System (follows Windows / macOS)', 'Général': 'General', 'Terminal': 'Terminal', 'Notifications': 'Notifications', 'Modèles de session': 'Session templates', 'Prompts': 'Prompts',
@@ -311,7 +311,7 @@ const EN = {
   'Redémarrer pour mettre à jour': 'Restart to update', 'Télécharger': 'Download', 'Recherche de mises à jour…': 'Checking for updates…',
   'Version de développement : mises à jour automatiques désactivées.': 'Development build: automatic updates disabled.', 'Claude Sessions est à jour.': 'Claude Sessions is up to date.',
   'Mises à jour automatiques désactivées dans les réglages.': 'Automatic updates are disabled in Settings.', 'Téléchargement de la version {v}… {p}': 'Downloading version {v}… {p}',
-  'Version {v} prête : installation automatique dès que la fenêtre est en arrière-plan, ou redémarre maintenant.': 'Version {v} is ready: it installs automatically once the window is in the background, or restart now.', 'Version {v} disponible au téléchargement.': 'Version {v} is available for download.',
+  "Fermer : la mise à jour ne s'installe plus seule ; à appliquer quand tu veux (Réglages › À propos, ou l'icône près de l'horloge)": 'Close: the update no longer installs on its own; apply it whenever you like (Settings › About, or the icon near the clock)', 'Version {v} prête, reportée : installe-la quand tu veux avec « Redémarrer pour mettre à jour ».': 'Version {v} is ready, postponed: install it whenever you like with “Restart to update”.', 'Version {v} prête : installation automatique dès que la fenêtre est en arrière-plan, ou redémarre maintenant.': 'Version {v} is ready: it installs automatically once the window is in the background, or restart now.', 'Version {v} disponible au téléchargement.': 'Version {v} is available for download.',
   'Échec de la vérification : {e}': 'Update check failed: {e}', 'Version Microsoft Store : les mises à jour sont installées par le Store.': 'Microsoft Store version: updates are installed by the Store.', 'Réglage non enregistré : ': 'Setting not saved: ',
   // accès depuis l'app Claude
   "Accessible depuis l'": 'Accessible from the ', 'app Claude': 'Claude app', '(téléphone) et claude.ai/code — Remote Control de Claude Code': '(phone) and claude.ai/code — Claude Code Remote Control',
