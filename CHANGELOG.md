@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.46.0] — 2026-10-13
+### Corrigé
+- **Synchro de l'état final à la fermeture** : arrêt du serveur (installation d'une mise à jour, *Quitter et arrêter toutes les sessions*, *Redémarrer le serveur*) suivi d'une **dernière synchro** (au plus 12 s) avant de sortir. Avant, ce qui n'était pas encore parti (renommage, mise en pause, fin de conversation) attendait le prochain démarrage de cette machine. Sous Windows, l'arrêt terminait même le serveur net, sans aucun enregistrement : il passe maintenant par une demande d'arrêt propre.
+- Synchro aussi lancée à la **mise en veille**, à l'**extinction**, au **verrouillage de l'écran** et à la fermeture de la session Windows.
+- **Conversation avancée sur deux machines** (l'une éteinte avant d'avoir envoyé la sienne) : la plus récente gagne toujours, mais la version remplacée est d'abord **copiée** dans `transcript-backup/<date>/` du dossier de données (gardée 30 jours) ; avant, elle était perdue.
+- **Nouvelle session › Groupe** : liste déroulante de **tous les groupes** (même vides), *(aucun)* par défaut — la session va dans « Sans groupe » si rien n'est choisi — et *Nouveau groupe…*. Le champ précédent ne proposait que le groupe déjà saisi (celui de la session active).
+
 ## [3.45.2] — 2026-10-13
 Regroupe les 3.45.0 et 3.45.1, jamais publiées (test du premier lancement écrit pour une machine en français ; les machines de compilation sont en anglais).
 
