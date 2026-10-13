@@ -106,6 +106,7 @@
       ['pulse', t('Diagnostic'), () => F.openSettings('diag')],
       ['log', t('Journaux'), () => F.openSettings('logs')],
     ];
+    if (window.csmNative?.toTray) a.push(['sidebar', trayLabel(), () => window.csmNative.toTray()]);
     if (syncOn) a.push(['sync', t('Synchroniser maintenant'), syncNow]);
     for (const g of groupNames()) a.push(
       ['pen', `${t('Renommer le groupe')} « ${g} »`, () => renameGroup(g)],

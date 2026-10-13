@@ -503,6 +503,12 @@ test('Fermer retire la session de la liste', async () => {
   await win.waitForFunction(id => active !== id, id, { timeout: 10000 }); // passée à une autre session
 });
 
+test('zone de notification : choisie depuis un menu, plus d’option « réduire »', async () => {
+  assert.equal(await win.evaluate(() => !!document.querySelector('[data-set=minimizeToTray]')), false);
+  const labels = await win.evaluate(() => moreItems([...sessions.keys()][0]).filter(Array.isArray).map(x => x[0]));
+  assert.ok(labels.includes('Réduire dans la zone de notification') || labels.includes('Réduire dans la barre des menus'), labels.join(' | '));
+});
+
 test('fermer la fenêtre ne coupe pas les sessions', async () => {
   await win.evaluate(() => window.close());
   await new Promise(r => setTimeout(r, 800));

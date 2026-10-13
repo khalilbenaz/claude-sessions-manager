@@ -293,7 +293,7 @@ const EN = {
   'Mises à jour automatiques': 'Automatic updates',
   'Installer la mise à jour et redémarrer tout seul (fenêtre réduite ou en arrière-plan, ou après 5 min d\'inactivité ; jamais pendant qu\'une session travaille ; les sessions reviennent)': 'Install the update and restart automatically (window minimized or in the background, or after 5 min of inactivity; never while a session is working; sessions come back)',
   "Afficher les quotas et l'heure de leur réinitialisation sous chaque session (si tu n'as pas ta propre barre d'état Claude Code)": 'Show quotas and their reset time under each session (unless you have your own Claude Code status line)',
-  'Réduire dans la zone de notification (au lieu de la barre des tâches)': 'Minimize to the notification area (instead of the taskbar)',
+  'Réduire dans la zone de notification': 'Minimize to the notification area', 'Réduire dans la barre des menus': 'Hide to the menu bar',
   "Fermer la fenêtre la garde dans la zone de notification (sinon l'app se ferme ; les sessions continuent)": 'Closing the window keeps the app in the notification area (otherwise the app quits; sessions keep running)', 'Barre latérale compacte': 'Compact sidebar', 'Taille du texte': 'Font size', 'Police': 'Font',
   'Raccourcis :': 'Shortcuts:', 'pour zoomer.': 'to zoom.', 'Notifications système': 'System notifications', 'Son': 'Sound', 'Aucun': 'None', 'Discret': 'Soft', 'Clochette': 'Bell',
   '▶ Tester': '▶ Test', 'Ne pas déranger (ni notification ni son)': 'Do not disturb (no notification, no sound)',
