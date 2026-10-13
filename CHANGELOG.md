@@ -2,6 +2,17 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.46.1] — 2026-10-13
+### Corrigé
+- **Horloges décalées entre machines** : une suite de conversation écrite ici après une version reçue d'une machine dont l'horloge avance était refusée par le serveur (jugée plus ancienne) et ne partait jamais ; elle est maintenant datée après la version reçue.
+- `sessions.json` écrit dans un fichier temporaire puis renommé : une extinction pendant l'écriture ne le laisse plus tronqué.
+- Fichier de l'interface illisible : la réponse est coupée au lieu de laisser une erreur non gérée.
+- Interruption (Ctrl+C, Échap) : troisième vérification à 4,5 s pour les disques lents.
+### Performances
+- Morceaux d'une conversation envoyés et reçus 4 à la fois.
+- Chemin des conversations et clés dérivées du code de synchro gardés en mémoire.
+- `server.log` ramené à son dernier Mo au démarrage s'il dépasse 5 Mo.
+
 ## [3.46.0] — 2026-10-13
 ### Corrigé
 - **Synchro de l'état final à la fermeture** : arrêt du serveur (installation d'une mise à jour, *Quitter et arrêter toutes les sessions*, *Redémarrer le serveur*) suivi d'une **dernière synchro** (au plus 12 s) avant de sortir. Avant, ce qui n'était pas encore parti (renommage, mise en pause, fin de conversation) attendait le prochain démarrage de cette machine. Sous Windows, l'arrêt terminait même le serveur net, sans aucun enregistrement : il passe maintenant par une demande d'arrêt propre.

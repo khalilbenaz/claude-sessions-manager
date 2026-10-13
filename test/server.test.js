@@ -830,6 +830,10 @@ test('synchro : la conversation suit la session d’une machine à l’autre, ch
     await waitFor(async () => { await api('POST', '/api/sync/now'); return /version-du-mac/.test(fs.readFileSync(file, 'utf8')); }, 10000, 'version la plus récente reçue');
     const kept = fs.readdirSync(path.join(DATA, 'transcript-backup'), { recursive: true }).map(String).filter(f => f.endsWith(cid + '.jsonl'));
     assert.ok(kept.some(f => /jamais-envoyee/.test(fs.readFileSync(path.join(DATA, 'transcript-backup', f), 'utf8'))), 'version d’ici sauvegardée');
+    // horloge de l'autre machine en avance (version reçue datée dans le futur) : la suite écrite ici part quand même
+    fs.appendFileSync(file, JSON.stringify({ type: 'user', message: { role: 'user', content: 'suite-horloge-en-retard' }, sessionId: cid }) + '\n');
+    await waitFor(async () => { await api('POST', '/api/sync/now'); return fake.tx(KEY).meta.get('pc-conv-1').ver !== ver3; }, 10000, 'suite acceptée par le serveur');
+    assert.ok(fake.tx(KEY).meta.get('pc-conv-1').updatedAt > m3.updatedAt, 'datée après la version reçue');
 
     // supprimée de toutes les machines : sa conversation disparaît du serveur
     await api('DELETE', `/api/sessions/${local.id}`);

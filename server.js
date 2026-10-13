@@ -32,6 +32,9 @@ if (!process.env.CSM_DATA && PORT === 7890 && !fs.existsSync(path.join(DATA, 'se
 
 // Journal fichier : le serveur tourne sans console (tâche planifiée / conhost --headless).
 const LOG = path.join(DATA, 'server.log');
+// au-delà de 5 Mo au démarrage : seul le dernier Mo est gardé (écriture synchrone conservée : les dernières
+// lignes avant process.exit ne doivent pas se perdre)
+try { if (fs.statSync(LOG).size > 5 * 1024 * 1024) fs.writeFileSync(LOG, fs.readFileSync(LOG).subarray(-1024 * 1024)); } catch { }
 for (const k of ['log', 'error']) {
   const orig = console[k];
   console[k] = (...a) => {
@@ -175,7 +178,11 @@ function persist() {
     createdAt: s.createdAt, order: s.order, wantRun: s.wantRun !== false, named: !!s.named, titleFor: s.titleFor || null,
     ...extra(s), ...(s.lock ? { lock: s.lock } : {}),
   }));
-  fs.writeFileSync(STORE, JSON.stringify(list, null, 2), { mode: 0o600 });
+  // fichier temporaire puis renommage : une extinction pendant l'écriture ne laisse pas un sessions.json tronqué
+  // (renommage refusé, ex. antivirus sous Windows : écriture directe)
+  const body = JSON.stringify(list, null, 2), tmp = STORE + '.tmp';
+  try { fs.writeFileSync(tmp, body, { mode: 0o600 }); fs.renameSync(tmp, STORE); }
+  catch { fs.writeFileSync(STORE, body, { mode: 0o600 }); try { fs.rmSync(tmp, { force: true }); } catch { } }
   for (const fn of persistHooks) { try { fn(); } catch (e) { console.error('persist hook', e); } }
 }
 
@@ -226,10 +233,16 @@ function splitArgs(str) {
 }
 
 // Claude n'écrit le transcript qu'au premier message : une session jamais utilisée n'est pas reprenable.
+// Chemin retenu par conversation (un transcript ne change pas de dossier) : évite de parcourir tous les
+// dossiers de projets à chaque appel ; revérifié, et recherché de nouveau s'il a disparu.
+const transcriptCache = new Map();
 function transcriptPath(id) {
   if (!/^[\w-]+$/.test(id || '')) return null;
+  const known = transcriptCache.get(id);
+  if (known && fs.existsSync(known)) return known;
+  transcriptCache.delete(id);
   try {
-    for (const d of fs.readdirSync(PROJECTS)) { const f = path.join(PROJECTS, d, `${id}.jsonl`); if (fs.existsSync(f)) return f; }
+    for (const d of fs.readdirSync(PROJECTS)) { const f = path.join(PROJECTS, d, `${id}.jsonl`); if (fs.existsSync(f)) { transcriptCache.set(id, f); return f; } }
   } catch { }
   return null;
 }
@@ -256,7 +269,7 @@ function lastTurnInterrupted(id) {
   return false;
 }
 function watchInterrupt(s) {
-  for (const ms of [700, 2000]) setTimeout(() => {
+  for (const ms of [700, 2000, 4500]) setTimeout(() => { // 4,5 s : disque lent ou machine chargée
     if ((s.status === 'working' || s.status === 'attention') && lastTurnInterrupted(s.claudeSessionId)) setStatus(s, 'idle', 'interrompu');
   }, ms);
 }
@@ -629,7 +642,7 @@ const server = http.createServer(async (req, res) => {
     const file = STATIC[p] ? path.join(ROOT, STATIC[p]) : path.join(ROOT, 'public', p.slice(1));
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' });
-    return fs.createReadStream(file).pipe(res);
+    return fs.createReadStream(file).on('error', () => res.destroy()).pipe(res); // lecture impossible : réponse coupée
   }
 
   if (!p.startsWith('/api/')) { res.writeHead(404); return res.end(); }
