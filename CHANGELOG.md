@@ -2,7 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
-## [3.45.1] — 2026-10-13
+## [3.45.2] — 2026-10-13
+Regroupe les 3.45.0 et 3.45.1, jamais publiées (test du premier lancement écrit pour une machine en français ; les machines de compilation sont en anglais).
+
+## [3.45.1] — 2026-10-13 (non publiée)
 ### Corrigé
 - Démarrage lent : une page dont le script n'a jamais démarré (plantage du GPU) est de nouveau recréée après 25 s ; seules une page qui attend le serveur, ou un serveur pas encore prêt, ont droit aux 3 min (la 3.45.0, jamais publiée, attendait aussi dans ce cas).
 

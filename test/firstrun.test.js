@@ -38,9 +38,9 @@ after(async () => {
 });
 
 test('machine neuve : Claude Code à installer, trouvé sans redémarrer, puis connexion depuis l’app', async () => {
-  // assistant : Claude Code absent, commande d'installation proposée
+  // assistant (dans la langue de la machine : français ou anglais) : Claude Code absent, commande d'installation proposée
   await win.waitForSelector('#dlgWelcome[open] #welcomeCheck .fix code', { timeout: 30000 });
-  assert.match(await win.textContent('#welcomeCheck'), /pas installé/);
+  assert.match(await win.textContent('#welcomeCheck'), /pas installé|not installed/);
   assert.match(await win.textContent('#welcomeCheck code'), /claude\.ai\/install/);
   // installé pendant que l'app tourne : « Vérifier de nouveau » le trouve
   fs.mkdirSync(BIN, { recursive: true });
@@ -48,13 +48,13 @@ test('machine neuve : Claude Code à installer, trouvé sans redémarrer, puis c
   await win.click('#welcomeCheck [data-a=recheck]');
   await win.waitForFunction(() => /Claude Code 0\.0\.0/.test(document.querySelector('#welcomeCheck').textContent), null, { timeout: 20000 });
   // pas connecté : connexion depuis l'app (code collé), puis vérifié de nouveau tout seul
-  assert.match(await win.textContent('#welcomeCheck'), /pas connecté/);
+  assert.match(await win.textContent('#welcomeCheck'), /pas connecté|not signed in/);
   await win.click('#welcomeCheck [data-a=login]');
   await win.waitForSelector('#dlgAuth[open] #authCodeRow:not([hidden])', { timeout: 20000 });
   await win.fill('#authCode', 'CODE-OK');
   await win.click('#authCodeSend');
   await win.waitForFunction(() => /réussie|connecté|Connecté/i.test(document.querySelector('#authStep').textContent), null, { timeout: 20000 }).catch(() => { });
   await win.evaluate(() => document.querySelector('#dlgAuth').close());
-  await win.waitForFunction(() => /✓ Connecté à Claude/.test(document.querySelector('#welcomeCheck').textContent), null, { timeout: 20000 });
+  await win.waitForFunction(() => /✓ (Connecté à Claude|Signed in to Claude)/.test(document.querySelector('#welcomeCheck').textContent), null, { timeout: 20000 });
   assert.equal(await win.$('#welcomeCheck [data-a=recheck]'), null, 'plus rien à faire');
 });
