@@ -37,7 +37,7 @@ let win = null;
 let tray = null;
 let quitting = false;
 // Préférences de fenêtre transmises par la page (réglages du serveur) ; valeurs par défaut en attendant.
-const prefs = { minimizeToTray: true, closeToTray: true };
+const prefs = { closeToTray: true };
 let attention = 0;
 let updates = null; // electron/updater.js
 // Journal des mises à jour (DATA/update.log, 256 Ko max) : dit pourquoi une installation automatique attend.
@@ -183,8 +183,8 @@ function createWindow({ hidden = false } = {}) {
     if (prefs.closeToTray) { e.preventDefault(); toTray(); } // fermer = masquer (notifications, sessions continuent)
     else { quitting = true; } // fermer = quitter l'app ; le serveur et les sessions continuent
   });
-  // Réduire : dans la zone de notification (Windows) / la barre de menus (macOS) plutôt que la barre des tâches.
-  win.on('minimize', () => { if (prefs.minimizeToTray && tray) toTray(true); });
+  // Réduire : dans la barre des tâches / le Dock, comme toute fenêtre ; la zone de notification se choisit dans
+  // un menu (⋯, palette, icône de la zone de notification, Fenêtre sur macOS).
   for (const ev of ['resize', 'move']) win.on(ev, debounce(saveState, 500));
   win.on('focus', () => { win.flashFrame(false); updates?.onFocus?.(); });
   // F5 recharge la fenêtre (Windows n'a pas de barre de menus ; Ctrl+R reste à Claude : recherche dans l'historique)
@@ -254,12 +254,12 @@ function reloadWindow() {
 }
 
 // Masque la fenêtre (plus d'entrée dans la barre des tâches) ; la 1re fois, explique où elle est passée.
-// macOS : fermer (Cmd+W) garde l'icône du Dock, comme toute app Mac (un clic la rouvre) ; seul « réduire »
-// l'enlève du Dock quand le réglage le demande.
-function toTray(minimized = false) {
+// macOS : fermer (Cmd+W) garde l'icône du Dock, comme toute app Mac (un clic la rouvre) ; seul le choix explicite
+// « Réduire dans la barre des menus » l'enlève aussi du Dock.
+function toTray(explicit = false) {
   if (!win || win.isDestroyed()) return;
   win.hide();
-  if (IS_MAC && minimized && prefs.minimizeToTray) app.dock?.hide?.();
+  if (IS_MAC && explicit) app.dock?.hide?.();
   const flag = path.join(DATA, 'app-tray-hint');
   if (tray && !fs.existsSync(flag)) {
     try { fs.writeFileSync(flag, new Date().toISOString()); } catch { }
@@ -318,6 +318,7 @@ function registerIpc() {
     for (const k of Object.keys(prefs)) if (typeof p[k] === 'boolean') prefs[k] = p[k];
   });
   ipcMain.on('csm:focus', e => { if (trusted(e)) showWindow(); });
+  ipcMain.on('csm:to-tray', e => { if (trusted(e) && tray) toTray(true); });
   ipcMain.on('csm:notify', (e, o) => { if (trusted(e) && o && typeof o === 'object') notify(o.title, o.body, typeof o.id === 'string' ? o.id : ''); });
   // Réglages › Notifications › Tester : montre une notification et dit par quel moyen elle passe
   ipcMain.handle('csm:notify-test', e => {
@@ -471,6 +472,7 @@ function buildTray() {
   const menu = () => Menu.buildFromTemplate([
     ...sessionItems(),
     { label: 'Ouvrir Claude Sessions', click: showWindow },
+    { label: IS_MAC ? 'Réduire dans la barre des menus' : 'Réduire dans la zone de notification', click: () => toTray(true), visible: !!win && win.isVisible() },
     ...updateMenuItems(),
     { label: 'Nouvelle session…', click: () => send('new') },
     { label: 'Historique…', click: () => send('history') },
@@ -514,7 +516,7 @@ function buildAppMenu() {
       { role: 'selectAll', label: L('Tout sélectionner', 'Select All') }] },
     { label: L('Présentation', 'View'), submenu: [{ label: L('Recharger', 'Reload'), accelerator: 'Cmd+R', click: reloadWindow }, { role: 'togglefullscreen', label: L('Plein écran', 'Toggle Full Screen') }] },
     { label: L('Fenêtre', 'Window'), role: 'window', submenu: [
-      { role: 'minimize', label: L('Réduire', 'Minimize') }, { role: 'zoom', label: L('Zoom', 'Zoom') }, { type: 'separator' },
+      { role: 'minimize', label: L('Réduire', 'Minimize') }, { label: L('Réduire dans la barre des menus', 'Hide to Menu Bar'), click: () => toTray(true) }, { role: 'zoom', label: L('Zoom', 'Zoom') }, { type: 'separator' },
       { role: 'front', label: L('Tout ramener au premier plan', 'Bring All to Front') }] },
   ]));
 }

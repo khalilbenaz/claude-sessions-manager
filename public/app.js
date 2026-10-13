@@ -37,7 +37,7 @@ function applySettings() {
     const b = $('#btnCompact'), l = SETTINGS.compactSidebar ? t('Déplier la barre latérale') : t('Réduire la barre latérale');
     if (b) { b.title = l; b.setAttribute('aria-label', l); b.setAttribute('aria-pressed', SETTINGS.compactSidebar ? 'true' : 'false'); }
   }
-  window.csmNative?.setPrefs?.({ minimizeToTray: SETTINGS.minimizeToTray !== false, closeToTray: SETTINGS.closeToTray !== false });
+  window.csmNative?.setPrefs?.({ closeToTray: SETTINGS.closeToTray !== false });
   for (const tt of terms.values()) {
     tt.term.options.theme = termTheme();
     tt.el.style.setProperty('--term-bg', termTheme().background);
@@ -928,8 +928,11 @@ function moreItems(id) {
     [t('Mettre en pause'), () => pauseSession(id), { disabled: !s.alive }],
     [t('Supprimer…'), () => deleteSession(id), { danger: true }],
     [t('Arrêter'), () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
+    ...(window.csmNative?.toTray ? ['-', [trayLabel(), () => window.csmNative.toTray()]] : []),
   ];
 }
+// Réduire (bouton de la fenêtre) va dans la barre des tâches ; la zone de notification se choisit ici
+const trayLabel = () => window.csmNative?.platform === 'darwin' ? t('Réduire dans la barre des menus') : t('Réduire dans la zone de notification');
 $('#btnKill').onclick = () => active && api('POST', `/api/sessions/${active}/kill`);
 // Pause : arrêt, puis mémoire et synchro enregistrées avant de rendre la main (le serveur attend les deux)
 async function pauseSession(id) {

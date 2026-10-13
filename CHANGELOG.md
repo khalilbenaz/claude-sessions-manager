@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.43.0] — 2026-10-13
+### Modifié
+- **Réduire laisse l'app dans la barre des tâches** (Dock sur Mac) : elle n'est plus envoyée d'office dans la zone de notification, où son icône disparaissait de la barre des tâches. L'option « Réduire dans la zone de notification » des réglages est retirée.
+### Ajouté
+- **⋯ › Réduire dans la zone de notification** (aussi dans la palette et le clic droit sur l'icône près de l'horloge ; sur Mac « Réduire dans la barre des menus », aussi dans le menu Fenêtre) : range l'app près de l'horloge quand tu le choisis.
+
 ## [3.42.0] — 2026-10-12
 ### Modifié
 - **Fermer retire la session de la liste** de cette machine (la conversation reste dans l'Historique). Synchronisée, elle est d'abord mise en pause, sa mémoire enregistrée et tout synchronisé, puis gardée « en pause » sur tes autres machines ; elle ne revient pas ici. « Supprimer… » la retire de toutes les machines ; « Pause » l'arrête en la gardant dans la liste.
