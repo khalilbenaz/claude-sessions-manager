@@ -11,6 +11,10 @@
 // GET  /transcripts/<uid>/<ver>/<n>   -> octets
 // GET  /usage                 -> { bytes, max, sessions, transcripts, parts }   (place occupée, détail par catégorie)
 // DELETE /space                -> { ok }   efface tout l'espace (données, morceaux R2, accès) : changement de code
+// GET  /live (WebSocket)       -> « changed » dès qu'une autre machine du même espace écrit (sessions ou conversation
+//                                validée) ; l'app synchronise alors tout de suite au lieu d'attendre son relevé.
+//                                X-CSM-Client (en-tête des requêtes et de /live) : l'auteur n'est pas prévenu de ses
+//                                propres écritures. Un Durable Object par espace (Hub), connexions en hibernation.
 // PUT  /transcripts/<uid> { cid, ver, chunks, size, updatedAt, origin } -> { applied }
 //      (valide une version dont tous les morceaux sont envoyés ; les autres versions sont effacées)
 // Une session supprimée (POST /sessions, deleted) efface aussi sa conversation.
@@ -51,6 +55,44 @@ function ipKey(req) {
 }
 
 const partKey = (space, uid, ver, n) => `${space}/${uid}/${ver}/${n}`;
+
+// ---------------------------------------------------------------- temps réel (Durable Object par espace)
+const CLIENT = /^[0-9a-f]{16,32}$/;
+const LIVE_MAX = 50; // connexions par espace
+const clientOf = req => { const c = req.headers.get('x-csm-client') || ''; return CLIENT.test(c) ? c : ''; };
+// Prévient les machines connectées de l'espace (sauf l'auteur), sans retarder la réponse.
+function notify(env, ctx, space, req) {
+  if (!env.HUB) return;
+  const p = env.HUB.get(env.HUB.idFromName(space)).fetch('https://hub/notify?from=' + clientOf(req)).catch(() => { });
+  if (ctx?.waitUntil) ctx.waitUntil(p);
+}
+export class Hub {
+  constructor(state) {
+    this.state = state;
+    // « ping » de maintien de la connexion : répondu sans réveiller l'objet
+    state.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
+  }
+  async fetch(req) {
+    const url = new URL(req.url);
+    if (url.pathname === '/notify') {
+      const from = url.searchParams.get('from') || '';
+      for (const ws of this.state.getWebSockets()) {
+        if (from && this.state.getTags(ws).includes(from)) continue;
+        try { ws.send('changed'); } catch { }
+      }
+      return new Response('ok');
+    }
+    if ((req.headers.get('upgrade') || '').toLowerCase() !== 'websocket') return json({ error: 'websocket attendu' }, 426);
+    if (this.state.getWebSockets().length >= LIVE_MAX) return json({ error: 'trop de connexions' }, 429);
+    const [client, server] = Object.values(new WebSocketPair());
+    const c = clientOf(req);
+    this.state.acceptWebSocket(server, c ? [c] : []);
+    return new Response(null, { status: 101, webSocket: client });
+  }
+  webSocketMessage() { }
+  webSocketClose(ws, code) { try { ws.close(code === 1005 ? 1000 : code, 'bye'); } catch { } }
+  webSocketError(ws) { try { ws.close(1011, 'error'); } catch { } }
+}
 const PENDING_MAX = 200;                   // morceaux envoyés mais pas encore validés, par espace
 // Place occupée = octets de tous les morceaux présents (validés ou en attente), comptés par le serveur à la
 // réception (jamais la taille annoncée par l'app) ; recalculée chaque nuit (scheduled) contre toute dérive.
@@ -74,7 +116,7 @@ async function dropParts(env, rows) {
   await env.DB.batch([...freed].map(([sp, b]) => addUsage(env, sp, -b)));
 }
 
-async function transcripts(req, env, space, parts) {
+async function transcripts(req, env, space, parts, ctx) {
   const [uid, ver, n] = parts;
   if (uid !== undefined && !/^[\w-]{6,64}$/.test(uid)) return json({ error: 'bad uid' }, 400);
   if (ver !== undefined && !/^[0-9a-f]{32}$/.test(ver)) return json({ error: 'bad version' }, 400);
@@ -129,6 +171,7 @@ async function transcripts(req, env, space, parts) {
        WHERE excluded.updatedAt >= csm_transcripts.updatedAt`,
     ).bind(space, uid, b.cid, b.ver, chunks, have.size, Number(b.updatedAt) || 0, String(b.origin || '').slice(0, 80)).run();
     const applied = !!out.meta?.changes;
+    if (applied) notify(env, ctx, space, req);
     const cur = await env.DB.prepare('SELECT ver FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, uid).first();
     if (cur) await env.DB.prepare('UPDATE csm_parts SET ok = 1 WHERE space = ? AND uid = ? AND ver = ?').bind(space, uid, cur.ver).run();
     // anciennes versions validées, et celle-ci si elle a été refusée (plus ancienne) ; les envois en cours
@@ -192,16 +235,17 @@ async function currentRev(env, space) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (url.pathname === '/health') return json({ ok: true });
     if (url.pathname === '/spaces') return req.method === 'POST' ? createSpace(req, env) : json({ error: 'method not allowed' }, 405);
     if (url.pathname === '/spaces/link') return req.method === 'POST' ? linkSpace(req, env) : json({ error: 'method not allowed' }, 405);
     const tx = url.pathname.match(/^\/transcripts(?:\/([^/]+)(?:\/([^/]+)\/([^/]+))?)?$/);
-    if (!['/sessions', '/usage', '/space'].includes(url.pathname) && !tx) return json({ error: 'not found' }, 404);
+    if (!['/sessions', '/usage', '/space', '/live'].includes(url.pathname) && !tx) return json({ error: 'not found' }, 404);
     const space = await spaceOf(req, env);
     if (!space) return json({ error: 'unauthorized' }, 401);
-    if (tx) return transcripts(req, env, space, tx.slice(1).filter(x => x !== undefined));
+    if (url.pathname === '/live') return env.HUB ? env.HUB.get(env.HUB.idFromName(space)).fetch(new Request('https://hub/live', req)) : json({ error: 'not found' }, 404);
+    if (tx) return transcripts(req, env, space, tx.slice(1).filter(x => x !== undefined), ctx);
     if (url.pathname === '/usage') {
       if (req.method !== 'GET') return json({ error: 'method not allowed' }, 405);
       const c = await env.DB.prepare(
@@ -271,7 +315,9 @@ export default {
         await env.DB.prepare('DELETE FROM csm_transcripts WHERE space = ? AND uid = ?').bind(space, u).run();
         await dropParts(env, parts);
       }
-      return json({ rev: await currentRev(env, space), applied: out.filter(r => r.meta?.changes).length });
+      const applied = out.filter(r => r.meta?.changes).length;
+      if (applied) notify(env, ctx, space, req);
+      return json({ rev: await currentRev(env, space), applied });
     }
     return json({ error: 'method not allowed' }, 405);
   },

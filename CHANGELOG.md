@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.44.0] — 2026-10-13
+### Ajouté
+- **Synchro en temps réel** : dès qu'une machine envoie un changement (sessions, conversations, mémoire, règles, skills, agents, plugins…), le serveur de synchro prévient les autres, qui se synchronisent en quelques secondes au lieu d'attendre le relevé de 30 s ou la fréquence choisie (connexion WebSocket, un Durable Object Cloudflare par espace ; le serveur ne voit toujours que des données chiffrées). Serveur injoignable ou auto-hébergé sans cette fonction : relevés habituels, nouvel essai de connexion de plus en plus espacé.
+- **Plus tard** sur le bandeau de mise à jour : il se ferme, et la version ne s'installe plus seule jusqu'au prochain lancement de l'app ; à appliquer quand tu veux (Réglages › À propos, menu de l'icône). Une version plus récente est reproposée.
+- Affichage d'une session typée, lot de plusieurs éléments : **‹ Élément précédent** à côté de « Élément suivant › ».
+### Corrigé
+- **La configuration de Claude reçue s'applique bien toute seule** : la 3.41 n'avait changé que la valeur par défaut, et les réglages déjà enregistrés gardaient « Me demander avant d'appliquer… » coché. La case est décochée une fois sur chaque machine (elle reste recochable).
+- Fichiers reçus qui ne se synchronisent plus (`skills/synced/`, depuis la 3.41) : retirés de « Fichiers reçus » au lieu d'y attendre indéfiniment.
+- « Synchroniser maintenant » et Pause lancent une synchro complète qui commence à ce moment-là, au lieu de reprendre une synchro déjà en cours (qui pouvait avoir manqué les derniers changements).
+
 ## [3.43.0] — 2026-10-13
 ### Modifié
 - **Réduire laisse l'app dans la barre des tâches** (Dock sur Mac) : elle n'est plus envoyée d'office dans la zone de notification, où son icône disparaissait de la barre des tâches. L'option « Réduire dans la zone de notification » des réglages est retirée.

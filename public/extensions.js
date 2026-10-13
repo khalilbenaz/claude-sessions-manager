@@ -259,9 +259,12 @@
       }, el('span', { class: 'tvLotTop' }, x.id ? el('span', { class: 'tvLotId', text: x.id }) : null, x.state ? el('span', { class: 'tvChip', text: x.state }) : null,
         x.risk ? el('span', { class: 'tvRisk', text: t('risque') }) : null),
         el('b', { text: x.title || x.id }), x.verdict ? el('span', { class: 'hint', text: x.verdict.text }) : null)));
-      const next = sel < items.length - 1 ? el('button', { type: 'button', class: 'tvLink', text: t('Élément suivant') + ' ›', onclick: () => { lotSel.set(id, sel + 1); renderView(id); } }) : null;
+      const go = k => () => { lotSel.set(id, k); renderView(id); };
+      const prev = sel > 0 ? el('button', { type: 'button', class: 'tvLink', text: '‹ ' + t('Élément précédent'), onclick: go(sel - 1) }) : null;
+      const next = sel < items.length - 1 ? el('button', { type: 'button', class: 'tvLink', text: t('Élément suivant') + ' ›', onclick: go(sel + 1) }) : null;
       const detail = el('div', { class: 'tvLotDetail' },
-        el('div', { class: 'tvLotHead' }, el('h3', { text: [it.id, it.title].filter(Boolean).join(' · ') }), next),
+        el('div', { class: 'tvLotHead' }, el('h3', { text: [it.id, it.title].filter(Boolean).join(' · ') }),
+          prev || next ? el('span', { class: 'tvLotPager' }, prev, next) : null),
         heroRow(it, id, sel), ...sectionsBlock(it.sections, id, sel));
       b.replaceChildren(...[head, heroRow(v, id), el('div', { class: 'tvLot' }, nav, detail), ...sectionsBlock(v.sections || [], id)].filter(Boolean));
       return;

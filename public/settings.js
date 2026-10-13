@@ -451,7 +451,7 @@
     downloading: 'Téléchargement de la version {v}… {p}', ready: 'Version {v} prête : installation automatique dès que la fenêtre est en arrière-plan, ou redémarre maintenant.',
     available: 'Version {v} disponible au téléchargement.', error: 'Échec de la vérification : {e}',
   };
-  const updText = st => t(UPD_LABEL[st.status] || '').replace('{v}', st.version || '').replace('{p}', st.progress ? st.progress + ' %' : '').replace('{e}', st.error || '');
+  const updText = st => t(st.status === 'ready' && st.later === st.version ? 'Version {v} prête, reportée : installe-la quand tu veux avec « Redémarrer pour mettre à jour ».' : UPD_LABEL[st.status] || '').replace('{v}', st.version || '').replace('{p}', st.progress ? st.progress + ' %' : '').replace('{e}', st.error || '');
   function renderAbout() {
     $('#aboutVersion').textContent = window.csmNative?.appVersion?.() || document.querySelector('meta[name="csm-version"]').content;
     $('#updateStatus').textContent = upd ? updText(upd) : (window.csmNative ? '' : t('Dans le navigateur : mettre à jour avec git pull puis csm restart.'));
@@ -464,12 +464,21 @@
   function onUpdate(st) {
     upd = st;
     const bar = $('#updateBar');
-    bar.hidden = !(st.status === 'ready' || st.status === 'available');
+    // « Plus tard » : bulle fermée pour cette version (reproposée par une version plus récente ou au prochain lancement)
+    bar.hidden = !(st.status === 'ready' || st.status === 'available') || (!!st.version && st.later === st.version) || laterHere === st.version;
+    $('#btnUpdateLater').hidden = !window.csmNative?.update;
     $('#updateMsg').textContent = updText(st);
     $('#btnUpdate').textContent = st.status === 'ready' ? t('Redémarrer pour mettre à jour') : t('Télécharger');
     if (dlg.open) renderAbout();
   }
   $('#btnUpdate').onclick = $('#updateRestart').onclick = () => window.csmNative?.update('install');
+  let laterHere = null; // version « Disponible » (pas encore téléchargée) écartée dans cette fenêtre
+  $('#btnUpdateLater').onclick = async () => {
+    $('#updateBar').hidden = true;
+    laterHere = upd?.version || null;
+    const st = await window.csmNative?.update('later');
+    if (st) onUpdate(st);
+  };
   $('#updateCheck').onclick = async () => { $('#updateStatus').textContent = t('Recherche de mises à jour…'); onUpdate(await window.csmNative.update('check')); };
   if (window.csmNative?.onUpdate) { window.csmNative.onUpdate(onUpdate); window.csmNative.update('state').then(st => st && onUpdate(st)); }
 

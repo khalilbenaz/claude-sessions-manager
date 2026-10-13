@@ -330,6 +330,7 @@ function registerIpc() {
     if (!trusted(e) || !updates) return updates?.state || null;
     if (action === 'check') await updates.check();
     else if (action === 'install') await updates.install();
+    else if (action === 'later') updates.postpone?.();
     return updates.state;
   });
   ipcMain.on('csm:app-version', e => { e.returnValue = trusted(e) ? app.getVersion() : ''; });

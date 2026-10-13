@@ -389,6 +389,18 @@ test('extensions : modèle dans Nouvelle session, affichage dédié rempli par C
     w.remove();
     return ok;
   }, id), 'la vue défile');
+  // lot : « Élément suivant » sur le premier, « Élément précédent » sur le dernier
+  fs.writeFileSync(path.join(DATA, 'views', `${id}.json`), JSON.stringify({ title: 'Lot', items: [{ id: 'A1', title: 'premier' }, { id: 'B2', title: 'second' }] }));
+  await win.waitForSelector('.term.show .typeView .tvLotPager');
+  const pager = () => win.$$eval('.term.show .typeView .tvLotPager button', l => l.map(b => b.textContent));
+  assert.deepEqual(await pager(), ['Élément suivant ›']);
+  await win.click('.term.show .typeView .tvLotPager button');
+  await win.waitForFunction(() => /B2/.test(document.querySelector('.term.show .typeView .tvLotHead h3')?.textContent || ''));
+  assert.deepEqual(await pager(), ['‹ Élément précédent']);
+  await win.click('.term.show .typeView .tvLotPager button');
+  await win.waitForFunction(() => /A1/.test(document.querySelector('.term.show .typeView .tvLotHead h3')?.textContent || ''));
+  await win.evaluate(id => send({ t: 'input', id, d: 'ecris-vue\r' }), id); // vue d'origine pour la suite
+  await win.waitForSelector('.term.show .typeView .tvHead button:has-text("Corriger")');
   // action du type : envoyée à la session
   await win.click('.term.show .typeView .tvHead button:has-text("Corriger")');
   await win.waitForFunction(id => { const b = terms.get(id).term.buffer.active; for (let y = 0; y < b.length; y++) if (b.getLine(y).translateToString().includes('echo: corrige-e2e')) return true; return false; }, id, { timeout: 20000 });
@@ -507,6 +519,22 @@ test('zone de notification : choisie depuis un menu, plus d’option « réduire
   assert.equal(await win.evaluate(() => !!document.querySelector('[data-set=minimizeToTray]')), false);
   const labels = await win.evaluate(() => moreItems([...sessions.keys()][0]).filter(Array.isArray).map(x => x[0]));
   assert.ok(labels.includes('Réduire dans la zone de notification') || labels.includes('Réduire dans la barre des menus'), labels.join(' | '));
+});
+
+test('bulle de mise à jour : « Plus tard » la ferme', async () => {
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('csm:update-state', { status: 'ready', version: '99.0.0' }));
+  await win.waitForSelector('#updateBar:not([hidden])');
+  assert.match(await win.textContent('#updateMsg'), /99\.0\.0/);
+  await win.click('#btnUpdateLater');
+  await win.waitForSelector('#updateBar', { state: 'hidden' });
+  // la même version annoncée de nouveau (vérification suivante) : bulle toujours fermée
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('csm:update-state', { status: 'ready', version: '99.0.0' }));
+  await new Promise(r => setTimeout(r, 300));
+  assert.equal(await win.isHidden('#updateBar'), true);
+  // une version plus récente : reproposée
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('csm:update-state', { status: 'ready', version: '99.0.1' }));
+  await win.waitForSelector('#updateBar:not([hidden])');
+  await win.click('#btnUpdateLater');
 });
 
 test('fermer la fenêtre ne coupe pas les sessions', async () => {

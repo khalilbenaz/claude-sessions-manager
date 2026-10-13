@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('csmNative', {
   toTray: () => ipcRenderer.send('csm:to-tray'), // fenêtre rangée dans la zone de notification / barre des menus
   appVersion: () => ipcRenderer.sendSync('csm:app-version'),
   restartServer: () => ipcRenderer.invoke('csm:restart-server'),
-  update: action => ipcRenderer.invoke('csm:update', ['check', 'install', 'state'].includes(action) ? action : 'state'),
+  update: action => ipcRenderer.invoke('csm:update', ['check', 'install', 'later', 'state'].includes(action) ? action : 'state'),
   onUpdate: cb => { const h = (e, st) => cb(st); ipcRenderer.on('csm:update-state', h); return () => ipcRenderer.removeListener('csm:update-state', h); },
   onAction: cb => {
     const h = (e, action) => { if (typeof action === 'string') cb(action); };

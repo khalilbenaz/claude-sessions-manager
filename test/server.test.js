@@ -537,9 +537,11 @@ function fakeSyncServer(keys, legacy = []) {
   const txOf = k => { if (!txs.has(k)) txs.set(k, { meta: new Map(), chunks: new Map() }); return txs.get(k); };
   const idOf = k => (keys.includes(k) || legacy.includes(k) ? k : 'reg:' + sha(authKey(k))); // code -> espace
   const spaceOf = b => linked.get(sha(b)) || keys.find(k => authKey(k) === b) || (legacy.includes(b) ? b : null);
+  const clients = new Set(), lives = []; // X-CSM-Client reçus ; connexions temps réel (/live)
   const srv = http.createServer((q, r) => {
     const key = (q.headers.authorization || '').replace(/^Bearer /, '');
     if (key) bearers.add(key);
+    if (q.headers['x-csm-client']) clients.add(q.headers['x-csm-client']);
     const send = (code, v) => { r.writeHead(code, { 'content-type': 'application/json' }); r.end(JSON.stringify(v)); };
     const parts = []; q.on('data', c => parts.push(c)); q.on('end', () => {
       const raw = Buffer.concat(parts), b = raw.toString('utf8');
@@ -598,10 +600,18 @@ function fakeSyncServer(keys, legacy = []) {
       send(200, { rev, applied });
     });
   });
+  const wss = new (require('ws').WebSocketServer)({ noServer: true });
+  srv.on('upgrade', (q, sock, head) => {
+    const key = (q.headers.authorization || '').replace(/^Bearer /, '');
+    if (q.url !== '/live' || !spaceOf(key)) { sock.end('HTTP/1.1 401 Unauthorized\r\n\r\n'); return; }
+    wss.handleUpgrade(q, sock, head, ws => { const l = { ws, key, client: q.headers['x-csm-client'] || '', msgs: [] }; ws.on('message', m => l.msgs.push(String(m))); lives.push(l); });
+  });
+  const close = srv.close.bind(srv);
+  srv.close = cb => { for (const l of lives) l.ws.terminate(); wss.close(); return close(cb); };
   const { openJson } = require('../lib/sync');
   const rowsOf = k => spaces.get(idOf(k)) || new Map();
   return new Promise(res => srv.listen(0, '127.0.0.1', () => res({
-    srv, url: `http://127.0.0.1:${srv.address().port}`, rows: rowsOf, tx: k => txOf(idOf(k)), bearers, stats,
+    srv, url: `http://127.0.0.1:${srv.address().port}`, rows: rowsOf, tx: k => txOf(idOf(k)), bearers, stats, clients, lives,
     // contenu en clair d'une ligne (déchiffré avec le code, comme sur une autre machine)
     plain: (k, uid) => { const x = rowsOf(k).get(uid); return x && (x.data?.e ? openJson(k, x.data, `s|${x.uid}|${x.updatedAt}`) : x.data); },
     find: (k, fn) => [...rowsOf(k).values()].find(x => !x.deleted && fn(x.data?.e ? openJson(k, x.data, `s|${x.uid}|${x.updatedAt}`) : x.data)),
@@ -610,6 +620,30 @@ function fakeSyncServer(keys, legacy = []) {
 }
 // Ligne chiffrée comme par une autre machine
 const sealed = (k, uid, updatedAt, obj) => require('../lib/sync').sealJson(k, obj, `s|${uid}|${updatedAt}`);
+
+test('synchro : connexion temps réel au serveur, synchro dès qu’une autre machine écrit', async () => {
+  const { encodeCode, authKey } = require('../lib/sync');
+  const KEY = '7'.repeat(32);
+  const fake = await fakeSyncServer([KEY]);
+  try {
+    await api('PUT', '/api/settings', { syncCode: encodeCode(fake.url, KEY), syncMachine: 'pc-live' });
+    const l = await waitFor(() => fake.lives.find(x => x.key === authKey(KEY) && x.ws.readyState === 1), 10000, 'connexion /live');
+    assert.match(l.client, /^[0-9a-f]{16}$/);
+    await waitFor(async () => (await api('GET', '/api/sync')).live, 5000, 'connexion signalée');
+    await api('POST', '/api/sync/now');
+    assert.ok(fake.clients.has(l.client), 'mêmes identifiant sur les requêtes : le serveur ne nous renvoie pas nos écritures');
+    // une autre machine écrit : signalée, la session arrive
+    const t = Date.now() + 1000;
+    fake.put(KEY, { uid: 'live-session-1', updatedAt: t, origin: 'mac', data: sealed(KEY, 'live-session-1', t, { name: 'venue-en-direct', cwd: '{home}' }) });
+    l.ws.send('changed');
+    await waitFor(async () => (await api('GET', '/api/sessions')).some(s => s.name === 'venue-en-direct'), 5000, 'synchro aussitôt');
+    assert.ok((await api('GET', '/api/sync')).liveAt > 0);
+    for (const s of await api('GET', '/api/sessions')) if (s.name === 'venue-en-direct') await api('DELETE', `/api/sessions/${s.id}`);
+  } finally {
+    await api('PUT', '/api/settings', { syncCode: '' });
+    fake.srv.close();
+  }
+});
 
 test('synchro : désactivée par défaut, isolée par code', async () => {
   const st = await api('GET', '/api/sync');
@@ -928,6 +962,13 @@ test('synchro : règles, skills, agents et mémoire de Claude partagés entre ma
     assert.equal(fs.readFileSync(path.join(C, memRel), 'utf8'), '- [Mac](mac.md) — du Mac\n- [Ici](ici.md) — locale\n', 'index fusionné');
     await waitFor(async () => { await api('POST', '/api/sync/now'); return /ici\.md/.test(Buffer.from(get('projects/~-proj/memory/MEMORY.md').e.d, 'base64').toString()); }, 15000, 'index fusionné renvoyé');
     assert.equal(get('skills/synced/compte/manifest.json'), null, 'skills du compte non synchronisées');
+    // reçu avant la 3.41 et resté en attente : retiré de la liste, même avec la validation
+    await api('PUT', '/api/settings', { claudeSyncReview: true });
+    fs.writeFileSync(path.join(DATA, 'claude-sync-pending.json'), JSON.stringify({ 'cf-ancien': { p: 'skills/synced/compte/manifest.json', d: b64('{}'), from: 'mac', ver: 'x', updatedAt: 1 } }));
+    assert.equal((await api('GET', '/api/claude-sync')).pending.length, 1);
+    await api('POST', '/api/sync/now');
+    assert.equal((await api('GET', '/api/claude-sync')).pending.length, 0, 'plus en attente');
+    await api('PUT', '/api/settings', { claudeSyncReview: false });
 
     // option décochée : plus rien n'est envoyé pour cette catégorie
     await api('PUT', '/api/settings', { syncClaudeAgents: false });

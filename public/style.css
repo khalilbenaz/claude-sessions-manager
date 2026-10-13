@@ -668,7 +668,7 @@ dialog.secrets .row.end { display: flex; justify-content: flex-end; }
 .typeView .tvRisk { margin-left: auto; font-size: 11px; color: var(--work); }
 .typeView .tvLotDetail { padding: 18px 20px; min-width: 0; display: flex; flex-direction: column; gap: 0; }
 .typeView .tvLotHead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
-.typeView .tvLotHead h3 { margin: 0; font-size: 16px; } .typeView .tvLotHead .tvLink { margin-left: auto; }
+.typeView .tvLotHead h3 { margin: 0; font-size: 16px; } .typeView .tvLotPager { margin-left: auto; display: flex; gap: 14px; flex: none; }
 .typeView .tvLotDetail .tvBody { grid-template-columns: 1fr; }
 .typeView { container-type: inline-size; }
 .typeView .tvBody { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
