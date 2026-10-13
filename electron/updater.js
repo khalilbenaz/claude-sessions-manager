@@ -163,11 +163,12 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
       'rm -rf "$CSM_STAGE"',
       'open "$CSM_DEST"',
     ].join('\n');
-    const out = path.join(os.tmpdir(), 'csm-update.log');
+    const out = path.join(os.tmpdir(), 'csm-update.log'), fd = fs.openSync(out, 'a');
     spawn('/bin/sh', ['-c', script], {
-      detached: true, stdio: ['ignore', fs.openSync(out, 'a'), fs.openSync(out, 'a')],
+      detached: true, stdio: ['ignore', fd, fd],
       env: { ...process.env, CSM_PID: String(process.pid), CSM_SRC: staged.app, CSM_DEST: dest, CSM_STAGE: STAGE },
     }).unref();
+    fs.closeSync(fd); // le script garde sa propre copie
     app.quit();
   }
 
@@ -195,7 +196,7 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
   let installing = false;
   setInterval(async () => {
     if (installing || state.status !== 'ready' || state.later === state.version) return;
-    if (process.platform === 'darwin' && !(staged && bundle() && macWritable(bundle()))) return;
+    if (process.platform === 'darwin' && !(staged && bundle() && macMode(bundle()) !== 'admin')) return; // (3.24 → 3.46 : macWritable inexistant, l'installation automatique ne partait jamais)
     try {
       if (!(await enabled()) || !(await canRestart())) return;
       installing = true;
