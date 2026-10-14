@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.47.1] — 2026-10-14
+### Corrigé
+- Barre du haut (3.46.3) : le compactage passe par un minuteur au lieu de `requestAnimationFrame`, que Windows n'exécute pas dans une fenêtre couverte ou masquée ; recalcul aussi au redimensionnement de la fenêtre et, en secours, toutes les 3 s si elle déborde encore. Les versions 3.46.3 et 3.47.0 n'ont pas été publiées (test Windows en échec) : leur contenu arrive avec celle-ci.
+
 ## [3.47.0] — 2026-10-14
 ### Ajouté
 - **Extensions : champ à remplir.** Un modèle peut déclarer `input` (`label`, `placeholder`) : le champ s'affiche en haut de Nouvelle session et sa valeur remplace `{input}` dans le premier message (vide : aucun premier message). Un type de session peut déclarer `input` (`label`, `placeholder`, `button`, `send`) : un champ dans son affichage, dont le bouton envoie `send` à la session avec la saisie. Format : docs/extensions.md.

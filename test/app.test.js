@@ -83,7 +83,8 @@ test('barre de session : aucun bouton coupé, quelle que soit la largeur', async
     await win.waitForTimeout(100);
     // libellés longs (type de session + Affichage) : le cas qui débordait sur Mac
     await win.evaluate(() => { $('#curType').hidden = false; $('#curType').textContent = 'TICKET WFC'; $('#btnView').hidden = false; $('#btnView .lbl').textContent = 'Affichage'; $('#btnAttention').hidden = false; $('#atCount').textContent = '2'; });
-    await win.waitForTimeout(100);
+    // fenêtre redimensionnée par étapes (Windows) : on laisse la barre se stabiliser avant de mesurer
+    await win.waitForFunction(() => $('#bar').scrollWidth - $('#bar').clientWidth <= 1, null, { timeout: 5000 }).catch(() => { });
     const r = await win.evaluate(() => {
       const bar = $('#bar'), b = bar.getBoundingClientRect(), close = $('#btnClose').getBoundingClientRect();
       return { over: bar.scrollWidth - bar.clientWidth, closeIn: close.right <= b.right + 1 && close.width > 0, cls: bar.className, name: bar.querySelector('.curId').clientWidth };
