@@ -184,10 +184,15 @@ function fitBar() {
   for (let n = 1; n <= 4 && (over() || (n <= 2 && id && id.clientWidth < 200)); n++) bar.classList.add(`fit${n}`);
 }
 {
+  // minuteur plutôt que requestAnimationFrame : une fenêtre masquée ou couverte (Windows) n'en exécute aucun
   let queued = false;
-  const ro = new ResizeObserver(() => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; fitBar(); }); } });
+  const later = () => { if (!queued) { queued = true; setTimeout(() => { queued = false; fitBar(); }, 0); } };
+  const ro = new ResizeObserver(later);
   ro.observe($('#bar'));
   for (const el of $('#bar').children) ro.observe(el);
+  addEventListener('resize', later);
+  // filet : barre qui déborde encore (notification manquée) recalculée
+  setInterval(() => { const b = $('#bar'); if (b.scrollWidth > b.clientWidth + 1 && !b.classList.contains('fit4')) fitBar(); }, 3000);
 }
 // contrôle régulier (fenêtre visible) : un terminal qui déborde de sa zone est réajusté
 setInterval(() => {
