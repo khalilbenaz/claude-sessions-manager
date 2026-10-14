@@ -148,6 +148,8 @@ Un **groupe** est une étiquette libre qui sert à **ranger tes sessions par pro
 
 ## 6. Vue partagée
 
+La **barre du haut** ne coupe jamais un bouton : quand la place manque (fenêtre étroite, type de session, vue partagée), les libellés laissent place aux icônes (survol = nom du bouton), puis le message d'état se masque, et en dernier recours les boutons passent sur une seconde ligne.
+
 Pour **suivre plusieurs sessions en même temps** : boutons de disposition dans la barre (▢ une, ◫ deux colonnes, ⊟ deux lignes, ⊞ grille 2×2) ou palette.
 
 - **Placer une session** : glisse-la depuis la barre latérale sur un panneau, ou clique-la (elle va dans le panneau actif, surligné en orange).

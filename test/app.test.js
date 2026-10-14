@@ -77,6 +77,23 @@ test('menu clic droit du terminal : tient dans une fenêtre basse et défile', a
   await win.setViewportSize({ width: 1280, height: 800 });
 });
 
+test('barre de session : aucun bouton coupé, quelle que soit la largeur', async () => {
+  for (const width of [1700, 1500, 1400, 1300, 1180, 1000, 860, 700]) {
+    await win.setViewportSize({ width, height: 700 });
+    await win.waitForTimeout(100);
+    // libellés longs (type de session + Affichage) : le cas qui débordait sur Mac
+    await win.evaluate(() => { $('#curType').hidden = false; $('#curType').textContent = 'TICKET WFC'; $('#btnView').hidden = false; $('#btnView .lbl').textContent = 'Affichage'; $('#btnAttention').hidden = false; $('#atCount').textContent = '2'; });
+    await win.waitForTimeout(100);
+    const r = await win.evaluate(() => {
+      const bar = $('#bar'), b = bar.getBoundingClientRect(), close = $('#btnClose').getBoundingClientRect();
+      return { over: bar.scrollWidth - bar.clientWidth, closeIn: close.right <= b.right + 1 && close.width > 0, cls: bar.className, name: bar.querySelector('.curId').clientWidth };
+    });
+    assert.ok(r.over <= 1 && r.closeIn, `largeur ${width} : ${JSON.stringify(r)}`);
+  }
+  await win.evaluate(() => { $('#curType').hidden = true; $('#btnView').hidden = true; $('#btnAttention').hidden = true; });
+  await win.setViewportSize({ width: 1280, height: 800 });
+});
+
 test('vue partagée et palette', async () => {
   await win.evaluate(() => api('POST', '/api/sessions', { cwd: document.querySelector('#formNew [name=cwd]').value, name: 'deuxième' }));
   await win.waitForFunction(() => sessions.size >= 2);

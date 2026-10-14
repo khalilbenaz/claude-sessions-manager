@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.46.3] — 2026-10-14
+### Corrigé
+- **Barre du haut coupée à droite** (« Fermer » hors de vue, macOS surtout) : les seuils de largeur fixes ne tenaient plus compte du badge de type, du bouton Affichage, de Pause ni du centre d'attention. La barre mesure maintenant son contenu et se compacte par paliers tant qu'elle déborde : icônes seules pour Ouvrir et Modifications, puis pour tous les boutons, puis message d'état masqué, puis seconde ligne.
+
 ## [3.46.2] — 2026-10-13
 ### Corrigé
 - **macOS : installation automatique des mises à jour** de nouveau active. Depuis la 3.24, la vérification appelait une fonction inexistante (`macWritable`) : l'erreur se répétait chaque minute et la mise à jour attendait toujours un clic.
