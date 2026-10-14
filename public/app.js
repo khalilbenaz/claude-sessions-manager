@@ -174,6 +174,21 @@ function fitOne(id, redraw) {
 function fitAll(redraw) { for (const id of visibleIds()) fitOne(id, redraw); }
 const fitActive = redraw => fitOne(active, redraw);
 new ResizeObserver(() => requestAnimationFrame(() => fitAll(false))).observe($('#terms'));
+// barre de session : on retire les libellés par paliers tant qu'elle déborde ou que le nom n'a plus de place
+// (largeur de fenêtre, police et boutons visibles varient : un seuil fixe en pixels ne suffit pas)
+function fitBar() {
+  const bar = $('#bar'), id = bar.querySelector('.curId');
+  bar.classList.remove('fit1', 'fit2', 'fit3', 'fit4');
+  const over = () => bar.scrollWidth > bar.clientWidth + 1;
+  // libellés retirés aussi pour laisser lire le nom ; message masqué et seconde ligne seulement en cas de débordement
+  for (let n = 1; n <= 4 && (over() || (n <= 2 && id && id.clientWidth < 200)); n++) bar.classList.add(`fit${n}`);
+}
+{
+  let queued = false;
+  const ro = new ResizeObserver(() => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; fitBar(); }); } });
+  ro.observe($('#bar'));
+  for (const el of $('#bar').children) ro.observe(el);
+}
 // contrôle régulier (fenêtre visible) : un terminal qui déborde de sa zone est réajusté
 setInterval(() => {
   if (document.hidden) return;

@@ -57,24 +57,19 @@ body.compact #btnCompact svg path:last-child { transform: scaleX(-1); }
 /* barre étroite (type de session, vue partagée, fenêtre réduite) : on garde tous les boutons visibles en
    réduisant d'abord les libellés, au lieu de couper les derniers à droite */
 #bar .idRow .msg { flex: 0 1 auto; min-width: 48px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
-@container (max-width: 1060px) {
-  #btnOpen, #btnChanges { font-size: 0; gap: 0; padding: 0 10px; }
-  #btnChanges.has::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: 4px; }
-}
-@container (max-width: 880px) {
-  #bar .idRow .msg { max-width: 150px; }
-  #btnAttention { font-size: 0; gap: 0; } #btnAttention b { font-size: 12px; }
-}
+/* paliers posés par fitBar() (app.js) tant que la barre déborde : 1 = icônes seules pour Ouvrir et
+   Modifications, 2 = tous les boutons en icône, 3 = message et branche masqués, 4 = seconde ligne */
+#bar.fit1 #btnOpen, #bar.fit1 #btnChanges, #bar.fit1 #btnAttention { font-size: 0; gap: 0; padding: 0 10px; }
+#bar.fit1 #btnAttention b { font-size: 12px; }
+#bar.fit1 #btnChanges.has::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: 4px; }
+#bar.fit2 button .lbl { display: none; }
+#bar.fit2 #btnRestart, #bar.fit2 #btnClose, #bar.fit2 #btnPause, #bar.fit2 #btnView { gap: 0; padding: 0 10px; }
+#bar.fit2 .idRow .msg { max-width: 150px; }
+#bar.fit3 .idRow .msg, #bar.fit3 .branch, #bar.fit3 > .spacer { display: none; }
+#bar.fit4 { flex-wrap: wrap; row-gap: 8px; overflow-x: visible; }
 
 #bar .layouts { flex: none; } /* jamais coupé */
 
 /* nom toujours lisible ; en barre très étroite, les boutons texte ne gardent que leur icône */
 #bar .curId { min-width: 130px; overflow: hidden; }
 #bar button .lbl:empty { display: none; }
-@container (max-width: 900px) {
-  #btnRestart .lbl, #btnClose .lbl, #btnView .lbl { display: none; }
-  #btnRestart, #btnClose, #btnView { gap: 0; padding: 0 10px; }
-}
-@container (max-width: 680px) { #bar > .spacer { display: none; } }
-/* dernier recours (fenêtre très étroite) : les boutons passent sur une seconde ligne au lieu d'être coupés */
-@media (max-width: 1040px) { #bar { flex-wrap: wrap; row-gap: 8px; overflow-x: visible; } }
