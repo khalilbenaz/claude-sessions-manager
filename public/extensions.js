@@ -135,7 +135,7 @@
   const views = new Map(); // id -> { type, view }
 
   // états d'affichage qui survivent aux mises à jour de la vue : sections ouvertes, brouillons dépliés, élément choisi
-  const openFolds = new Set(), openDrafts = new Set(), lotSel = new Map(), draftVals = new Map();
+  const openFolds = new Set(), openDrafts = new Set(), lotSel = new Map(), draftVals = new Map(), inputVals = new Map();
   const ICON = {
     ok: '<path d="m5 12 5 5 9-10"/>',
     warn: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
@@ -220,7 +220,7 @@
   }
   async function act(id, body, confirmText) {
     if (confirmText && !confirm(confirmText)) return;
-    try { await api('POST', `/api/sessions/${id}/view-action`, body); toast(t('Envoyé à la session')); } catch (e) { toast(e.message, true); }
+    try { await api('POST', `/api/sessions/${id}/view-action`, body); toast(t('Envoyé à la session')); return true; } catch (e) { toast(e.message, true); return false; }
   }
   function boxOf(id) {
     const tt = terms.get(id); if (!tt) return null;
@@ -249,6 +249,21 @@
         type: 'button', class: a.primary ? 'primary' : '', text: a.label,
         onclick: () => act(id, { action: a.id }, a.confirm ? `${a.label} ?` : ''),
       }))));
+    // champ du type (ex. numéros de tickets) : envoyé à la session avec son bouton
+    if (ti.input) {
+      const inp = el('input', { type: 'text', autocomplete: 'off', spellcheck: 'false', placeholder: ti.input.placeholder || '', 'aria-label': ti.input.label || t('Valeur') });
+      inp.value = inputVals.get(id) || '';
+      if (b.contains(document.activeElement) && document.activeElement.closest('.tvInput')) queueMicrotask(() => inp.focus()); // vue mise à jour pendant la saisie
+      inp.addEventListener('input', () => inputVals.set(id, inp.value));
+      const form = el('form', { class: 'tvInput' }, ti.input.label ? el('label', { text: ti.input.label }) : null, inp,
+        el('button', { type: 'submit', class: 'primary', text: ti.input.button || t('Envoyer') }));
+      form.onsubmit = async e => {
+        e.preventDefault();
+        if (!inp.value.trim()) return inp.focus();
+        if (await act(id, { input: inp.value })) { inputVals.delete(id); inp.value = ''; }
+      };
+      head.append(form);
+    }
     const empty = !v || (!v.sections?.length && !items.length && !v.verdict && !v.next);
     if (empty) { b.replaceChildren(head, el('p', { class: 'tvEmpty', text: t('L’affichage se remplira quand Claude aura avancé. La conversation reste dans « Terminal ».') })); return; }
     if (items.length) {

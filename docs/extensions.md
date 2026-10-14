@@ -48,6 +48,7 @@ Une extension **n'exécute aucun code** dans l'application : elle décrit, Claud
 | `worktree` | `true` : worktree git dédié |
 | `prompt` | premier message, envoyé dès que Claude est prêt |
 | `type` | `id` d'un type de session de la même extension |
+| `input` | `{ "label", "placeholder" }` : un champ affiché en haut de Nouvelle session (ex. numéros de tickets) ; sa valeur remplace `{input}` dans `prompt`. Laissé vide, aucun premier message n'est envoyé |
 
 ### Prompts (`prompts`)
 
@@ -61,6 +62,9 @@ Une extension **n'exécute aucun code** dans l'application : elle décrit, Claud
 | `badge`, `color` | étiquette courte et couleur (`#RRGGBB`) affichées en haut de la session |
 | `instructions` | consignes ajoutées au prompt système de Claude pour ce type de session |
 | `actions` | boutons : `{ "id", "label", "send", "primary", "confirm" }`. Un clic envoie le texte `send` à la session (`confirm` : demande d'abord). |
+| `input` | `{ "label", "placeholder", "button", "send" }` : un champ dans l'affichage, sous le titre ; son bouton (ou Entrée) envoie `send` à la session, `{input}` remplacé par la saisie. `send` doit contenir `{input}` |
+
+Exemple : choisir dans une liste fournie par Claude. Une action « Lister » demande à Claude d'écrire un **lot** (`items`, voir plus bas) avec, pour chaque élément, un `next` dont le bouton (« Traiter ») envoie la demande pour cet élément ; le champ `input` sert à saisir directement des numéros.
 
 Une session d'un type a deux vues, **Affichage** et **Terminal** (bouton en haut). L'application donne à Claude le chemin d'un fichier (variable `CSM_VIEW_FILE`) et lui explique le format ci-dessous ; Claude y écrit l'état de l'affichage, qui se met à jour tout seul.
 

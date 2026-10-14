@@ -10,3 +10,5 @@
 .atCmdLbl { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
 .atCmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--term); color: var(--fg); border: 1px solid var(--line2); font-family: var(--mono, ui-monospace, monospace); font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; max-height: 160px; overflow: auto; }
 .atCard.risk .atCmd { border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+/* champ demandé par un modèle d'extension (ex. numéros de tickets) : repris dans le premier message ({input}) */
+.nsInput input { width: 100%; font-size: 15px; }

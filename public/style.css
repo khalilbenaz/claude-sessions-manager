@@ -407,6 +407,10 @@ section[data-st=extensions].dropping { outline: 2px dashed var(--accent); outlin
 .typeView .tvBox { width: 18px; height: 18px; flex: none; border-radius: 5px; border: 1px solid var(--hover); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--ok); }
 .typeView textarea { width: 100%; resize: vertical; font: inherit; line-height: 1.5; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
 .typeView .tvEmpty { color: var(--dim); }
+/* champ du type de session (numéros de tickets…) : sur sa propre ligne, sous le titre */
+.typeView .tvInput { flex: 1 0 100%; display: flex; align-items: center; gap: 8px; }
+.typeView .tvInput label { color: var(--dim); font-size: 13px; white-space: nowrap; }
+.typeView .tvInput input { flex: 1; min-width: 0; max-width: 520px; height: 34px; }
 
 /* ================================================================ refonte « Atelier » (3.30)
    Graphite, accent argile, IBM Plex Sans + JetBrains Mono (embarquées, licence OFL : public/fonts).

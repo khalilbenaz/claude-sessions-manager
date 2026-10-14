@@ -352,7 +352,7 @@ const EN = {
   'Ouvrir dans l’éditeur': 'Open in editor', 'Ouvrir dans le Finder': 'Open in Finder', 'Ouvrir dans l’Explorateur': 'Open in Explorer', 'Ouvrir un terminal ici': 'Open a terminal here',
   'File d’attente de la session': 'Session queue', 'Exporter la conversation': 'Export conversation', 'Relancer la session': 'Restart session', 'Reprendre la session': 'Resume session',
   'Lancer le modèle': 'Launch template', 'Prompt': 'Prompt', 'session': 'session', 'sessions': 'sessions', 'modèle': 'template', 'prompt': 'prompt', 'action': 'action', 'conversation': 'conversation',
-  'Aucun résultat': 'No results', 'Aucun résultat dans les terminaux ouverts.': 'No results in open terminals.', 'Insérer': 'Insert', 'Envoyer': 'Send',
+  'Aucun résultat': 'No results', 'Aucun résultat dans les terminaux ouverts.': 'No results in open terminals.', 'Insérer': 'Insert', 'Envoyer': 'Send', 'Valeur': 'Value',
   'Aucun prompt. « + Nouveau » pour en créer un (ex. « Relis les modifications et propose des tests »).': 'No prompts yet. Use “+ New” to create one (e.g. “Review the changes and suggest tests”).',
   'Supprimer ce prompt ?': 'Delete this prompt?', 'Envoyé à': 'Sent to', 'Aucune session active.': 'No running sessions.', 'Monter': 'Move up', 'Retirer': 'Remove', 'File vide.': 'Queue is empty.',
   'Session, conversation, action…': 'Session, conversation, action…', 'Rechercher dans les sessions': 'Search sessions', 'Texte à chercher dans tous les terminaux ouverts…': 'Text to find in all open terminals…',

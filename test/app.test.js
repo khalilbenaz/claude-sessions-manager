@@ -375,8 +375,9 @@ test('notifications et pastille : test depuis les réglages, nombre sur l’icô
 });
 
 test('extensions : modèle dans Nouvelle session, affichage dédié rempli par Claude, action', async () => {
-  const ext = { csm: 1, id: 'ext-e2e', name: 'Extension e2e', templates: [{ id: 'rev', name: 'Revue e2e', type: 'rev' }],
-    sessionTypes: [{ id: 'rev', name: 'Revue', badge: 'REVUE', color: '#7A9BEA', instructions: 'mode revue', actions: [{ id: 'go', label: 'Corriger', send: 'corrige-e2e', primary: true }] }] };
+  const ext = { csm: 1, id: 'ext-e2e', name: 'Extension e2e', templates: [{ id: 'rev', name: 'Revue e2e', type: 'rev', prompt: 'analyse-e2e {input}', input: { label: 'Numéros', placeholder: '123 456' } }],
+    sessionTypes: [{ id: 'rev', name: 'Revue', badge: 'REVUE', color: '#7A9BEA', instructions: 'mode revue', actions: [{ id: 'go', label: 'Corriger', send: 'corrige-e2e', primary: true }],
+      input: { label: 'Points', placeholder: '25077', button: 'Analyser', send: 'points-e2e {input}' } }] };
   await win.evaluate(c => api('POST', '/api/extensions', { content: c }), JSON.stringify(ext));
   // Réglages › Extensions : listée
   await win.evaluate(() => window.csmFeatures.openSettings('extensions')); // ouverture directe : la liste se charge
@@ -393,6 +394,10 @@ test('extensions : modèle dans Nouvelle session, affichage dédié rempli par C
   await win.click('#tplCards .tplCard:has-text("Revue e2e")');
   assert.equal(await win.evaluate(() => document.querySelector('#formNew [name=template]').value), 'ext-e2e/rev');
   assert.equal(await win.evaluate(() => document.querySelector('#tplCards .tplCard.on .tn').textContent), 'Revue e2e');
+  // champ du modèle : affiché avec son libellé, sa valeur remplace {input} dans le premier message
+  assert.equal(await win.isVisible('#nsInputRow'), true);
+  assert.equal(await win.textContent('#nsInputLbl'), 'Numéros');
+  await win.fill('#formNew [name=input]', 'T-42 $&');
   await win.fill('#formNew [name=cwd]', WORK);
   await win.click('#formNew button[value=ok]');
   const id = await win.waitForFunction(() => [...sessions.values()].find(s => s.typeInfo?.name === 'Revue' && s.status === 'idle')?.id, null, { timeout: 60000 }).then(h => h.jsonValue());
@@ -424,6 +429,13 @@ test('extensions : modèle dans Nouvelle session, affichage dédié rempli par C
   await win.waitForFunction(() => /A1/.test(document.querySelector('.term.show .typeView .tvLotHead h3')?.textContent || ''));
   await win.evaluate(id => send({ t: 'input', id, d: 'ecris-vue\r' }), id); // vue d'origine pour la suite
   await win.waitForSelector('.term.show .typeView .tvHead button:has-text("Corriger")');
+  const seen = txt => win.waitForFunction(([id, txt]) => { const b = terms.get(id).term.buffer.active; for (let y = 0; y < b.length; y++) if (b.getLine(y).translateToString().includes(txt)) return true; return false; }, [id, txt], { timeout: 20000 });
+  await seen('analyse-e2e T-42 $&');
+  // champ de l'affichage : envoyé avec son bouton, vidé ensuite
+  await win.fill('.term.show .typeView .tvInput input', '25077 36200');
+  await win.click('.term.show .typeView .tvInput button:has-text("Analyser")');
+  await seen('points-e2e 25077 36200');
+  assert.equal(await win.inputValue('.term.show .typeView .tvInput input'), '');
   // action du type : envoyée à la session
   await win.click('.term.show .typeView .tvHead button:has-text("Corriger")');
   await win.waitForFunction(id => { const b = terms.get(id).term.buffer.active; for (let y = 0; y < b.length; y++) if (b.getLine(y).translateToString().includes('echo: corrige-e2e')) return true; return false; }, id, { timeout: 20000 });
