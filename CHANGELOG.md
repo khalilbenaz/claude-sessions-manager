@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.47.0] — 2026-10-14
+### Ajouté
+- **Extensions : champ à remplir.** Un modèle peut déclarer `input` (`label`, `placeholder`) : le champ s'affiche en haut de Nouvelle session et sa valeur remplace `{input}` dans le premier message (vide : aucun premier message). Un type de session peut déclarer `input` (`label`, `placeholder`, `button`, `send`) : un champ dans son affichage, dont le bouton envoie `send` à la session avec la saisie. Format : docs/extensions.md.
+
 ## [3.46.3] — 2026-10-14
 ### Corrigé
 - **Barre du haut coupée à droite** (« Fermer » hors de vue, macOS surtout) : les seuils de largeur fixes ne tenaient plus compte du badge de type, du bouton Affichage, de Pause ni du centre d'attention. La barre mesure maintenant son contenu et se compacte par paliers tant qu'elle déborde : icônes seules pour Ouvrir et Modifications, puis pour tous les boutons, puis message d'état masqué, puis seconde ligne.

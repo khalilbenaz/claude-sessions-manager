@@ -1062,7 +1062,7 @@ function openNew(tpl) {
   f.worktree.checked = !!SETTINGS.worktreeDefault;
   f.remote.checked = !!SETTINGS.remoteAll;
   loadHistory();
-  f.dataset.type = '';
+  f.dataset.type = ''; showTplInput(null);
   Promise.all([loadTemplates(), loadExtTemplates()]).then(([list, ext]) => {
     $('#tplRow').hidden = false;
     const sel = f.template;
@@ -1092,9 +1092,25 @@ function applyTemplate(x) {
   f.extra.value = x.extra || ''; f.prompt.value = x.prompt || ''; setGroupField(x.group);
   f.worktree.checked = !!x.worktree;
   f.dataset.type = x.type || ''; // type de session d'une extension (affichage dédié)
+  showTplInput(x.input);
   checkRepo();
 }
-$('#formNew').template.onchange = e => { const f = $('#formNew'); f.dataset.type = ''; applyTemplate([...templates, ...extTemplates].find(x => x.id === e.target.value)); };
+// modèle d'extension avec « input » : un champ (numéros de tickets…) dont la valeur remplace {input} dans le premier message
+function showTplInput(inp) {
+  const f = $('#formNew'), row = $('#nsInputRow');
+  row.hidden = !inp; f.input.value = ''; f.input.required = false;
+  if (!inp) return;
+  $('#nsInputLbl').textContent = inp.label || t('Valeur');
+  f.input.placeholder = inp.placeholder || '';
+  setTimeout(() => f.input.focus(), 0);
+}
+function firstPrompt(f) {
+  const p = f.prompt.value.trim();
+  if ($('#nsInputRow').hidden || !p.includes('{input}')) return p;
+  const v = f.input.value.trim();
+  return v ? p.replaceAll('{input}', () => v) : ''; // champ vide : pas de premier message, l'affichage propose la suite
+}
+$('#formNew').template.onchange = e => { const f = $('#formNew'); f.dataset.type = ''; showTplInput(null); applyTemplate([...templates, ...extTemplates].find(x => x.id === e.target.value)); };
 let extTemplates = [];
 async function loadExtTemplates() { try { extTemplates = await api('GET', '/api/extensions/templates'); } catch { extTemplates = []; } return extTemplates; }
 // Worktree : proposé seulement dans un dépôt git ; nom de branche suggéré depuis le nom de la session.
@@ -1155,7 +1171,7 @@ $('#dlgNew').addEventListener('close', async () => {
   const cwd = f.cwd.value.trim().replace(/^"|"$/g, '');
   LS.set('csm.lastCwd', cwd);
   const wantLock = f.lockpw.checked;
-  const body = { cwd, name: f.name.value.trim() || undefined, args, group: f.group.value.trim() || undefined, initialPrompt: f.prompt.value.trim() || undefined, remote: f.remote.checked, type: f.dataset.type || undefined };
+  const body = { cwd, name: f.name.value.trim() || undefined, args, group: f.group.value.trim() || undefined, initialPrompt: firstPrompt(f) || undefined, remote: f.remote.checked, type: f.dataset.type || undefined };
   try {
     const s = f.worktree.checked && !$('#wtBox').hidden
       ? await api('POST', '/api/worktree/session', { ...body, branch: f.branch.value.trim() })

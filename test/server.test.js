@@ -1785,3 +1785,14 @@ test('vue : verdict, avancement, prochaine étape et lot (format validé)', () =
   assert.equal(v.items[0].sections.length, 1, 'section inconnue écartée');
   assert.equal(cleanView({ title: 'x' }).verdict, null);
 });
+
+test('extensions : champ input du modèle et du type (send sans {input} écarté)', () => {
+  const { cleanExtension } = require('../lib/extensions');
+  const e = cleanExtension({ csm: 1, id: 'x-in',
+    templates: [{ id: 'ta', prompt: 'p {input}', input: { label: 'Points', placeholder: '1 2' } }, { id: 'tb' }],
+    sessionTypes: [{ id: 'ty', input: { label: 'L', button: 'Go', send: 'fais {input}' } }, { id: 'tz', input: { send: 'sans champ' } }] });
+  assert.deepEqual(e.templates[0].input, { label: 'Points', placeholder: '1 2' });
+  assert.equal(e.templates[1].input, null);
+  assert.equal(e.sessionTypes[0].input.send, 'fais {input}');
+  assert.equal(e.sessionTypes[1].input, null, 'send sans {input} : champ ignoré');
+});
