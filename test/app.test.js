@@ -91,6 +91,9 @@ test('barre de session : aucun bouton coupé, quelle que soit la largeur', async
     });
     assert.ok(r.over <= 1 && r.closeIn, `largeur ${width} : ${JSON.stringify(r)}`);
   }
+  // pastille « en cours » : son halo (4 px) n'est pas rogné par la zone du nom
+  const halo = await win.evaluate(() => { const d = $('#curDot'); d.className = 'dot working'; const a = $('#curId').getBoundingClientRect(), b = d.getBoundingClientRect(); return b.left - a.left; });
+  assert.ok(halo >= 4, `halo de la pastille visible (${halo} px)`);
   await win.evaluate(() => { $('#curType').hidden = true; $('#btnView').hidden = true; $('#btnAttention').hidden = true; });
   await win.setViewportSize({ width: 1280, height: 800 });
 });

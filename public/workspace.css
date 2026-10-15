@@ -71,5 +71,5 @@ body.compact #btnCompact svg path:last-child { transform: scaleX(-1); }
 #bar .layouts { flex: none; } /* jamais coupé */
 
 /* nom toujours lisible ; en barre très étroite, les boutons texte ne gardent que leur icône */
-#bar .curId { min-width: 130px; overflow: hidden; }
+#bar .curId { min-width: 130px; overflow: hidden; padding-left: 5px; margin-left: -5px; } /* place pour le halo de la pastille (box-shadow 4px), sinon rogné */
 #bar button .lbl:empty { display: none; }

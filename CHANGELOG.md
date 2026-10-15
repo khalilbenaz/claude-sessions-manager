@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.47.2] — 2026-10-15
+### Corrigé
+- Barre du haut : le halo de la pastille d'état (session en cours ou en attente) n'est plus coupé à gauche du nom (rogné depuis la 3.46.3).
+
 ## [3.47.1] — 2026-10-14
 ### Corrigé
 - Barre du haut (3.46.3) : le compactage passe par un minuteur au lieu de `requestAnimationFrame`, que Windows n'exécute pas dans une fenêtre couverte ou masquée ; recalcul aussi au redimensionnement de la fenêtre et, en secours, toutes les 3 s si elle déborde encore. Les versions 3.46.3 et 3.47.0 n'ont pas été publiées (test Windows en échec) : leur contenu arrive avec celle-ci.
