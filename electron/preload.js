@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('csmNative', {
   platform: process.platform,
+  pickSave: name => ipcRenderer.invoke('csm:pick-save', typeof name === 'string' ? name : ''),
   pickFolder: initial => ipcRenderer.invoke('csm:pick-folder', typeof initial === 'string' ? initial : ''),
   setAttention: n => ipcRenderer.send('csm:attention', Number(n) || 0),
   focus: () => ipcRenderer.send('csm:focus'),

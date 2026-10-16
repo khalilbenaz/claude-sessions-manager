@@ -355,6 +355,7 @@
       <button data-st="schedules">Programmées</button>
       <button data-st="memory">Mémoire</button>
       <button data-st="sync">Synchronisation</button>
+<button data-st="transfer">Export / import</button>
       <button data-st="diag">Diagnostic</button>
       <button data-st="logs">Journaux</button>
       <button data-st="about">À propos</button>
@@ -450,6 +451,26 @@
         <p class="hint">Dépôt GitHub : les fichiers <code>.csm.json</code> à la racine ou dans <code>csm/</code> ou <code>extensions/</code>. Dépôt privé : connecte la CLI GitHub (<code>gh auth login</code>).</p>
         <ul id="extsList" class="results extList"></ul>
         <p class="hint"><a href="https://github.com/khalilbenaz/claude-sessions-manager/blob/main/docs/extensions.md" target="_blank" rel="noopener">Créer une extension : le format</a></p>
+      </section>
+      <section data-st="transfer" hidden>
+        <p class="hint">Pour changer d’ordinateur sans synchronisation : un fichier avec toutes les sessions de cette machine (noms, dossiers, groupes, options), leurs conversations, les groupes, les modèles, les extensions importées et la mémoire des sessions. Copie-le sur le nouvel ordinateur (clé USB, cloud…) et importe-le ici. Rien n’est envoyé sur internet.</p>
+        <h4>Exporter</h4>
+        <label class="check"><input type="checkbox" id="trConv" checked> <span>Avec les conversations (reprises avec « Reprendre » sur l’autre ordinateur)</span></label>
+        <div class="trPw"><label>Mot de passe <input type="password" id="trPw" autocomplete="new-password"></label>
+          <label>Confirmer <input type="password" id="trPw2" autocomplete="new-password"></label></div>
+        <p class="hint">Mot de passe conseillé : le fichier contient tes conversations. Il sera demandé à l’import.</p>
+        <div class="row"><button type="button" id="trExport" class="primary">Exporter les sessions…</button></div>
+        <p class="hint" id="trExportMsg" aria-live="polite"></p>
+        <h4>Importer</h4>
+        <div class="row"><button type="button" id="trImport">Choisir un fichier .csmx…</button><input type="file" id="trFile" accept=".csmx" hidden></div>
+        <div id="trPreview" hidden>
+          <div class="trPw" id="trPwRow" hidden><label>Mot de passe du fichier <input type="password" id="trInPw" autocomplete="off"></label><button type="button" id="trOpen">Ouvrir</button></div>
+          <p id="trSummary"></p>
+          <ul id="trList" class="results"></ul>
+          <div class="row"><button type="button" id="trGo" class="primary" hidden>Importer</button><button type="button" id="trCancel">Annuler</button></div>
+        </div>
+        <p class="hint" id="trImportMsg" aria-live="polite"></p>
+        <p class="hint">Une session déjà présente ici (même conversation) n’est pas ajoutée en double, et une conversation déjà présente n’est jamais remplacée. Dossier introuvable sur cet ordinateur : la session s’ouvre dans le dossier personnel. Les réglages et le code de synchro ne sont pas exportés.</p>
       </section>
       <section data-st="sync" hidden>
         <p class="hint">Retrouve tes sessions (nom, dossier, modèle, groupe) et leurs conversations sur tes autres machines. Les conversations sont chiffrées avec ton code avant l’envoi : le serveur ne peut pas les lire. Seules les machines qui partagent le même code se voient.</p>
@@ -619,5 +640,6 @@
 <script src="atelier.js"></script>
 <script src="attention.js"></script>
 <script src="dashboard.js"></script>
+<script src="transfer.js"></script>
 </body>
 </html>
