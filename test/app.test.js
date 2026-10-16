@@ -209,6 +209,7 @@ test('sous-groupes : créer, ranger une session, replier le parent, renommer, su
   await win.fill('#renInput', 'Alpha');
   await win.click('#dlgRename button[value=ok]');
   await win.waitForFunction(() => groupNames().join('|').includes('Projets|Projets/Alpha'));
+  await win.waitForSelector(head('Alpha'));
   assert.equal(await win.$eval(head('Alpha'), h => h.style.getPropertyValue('--gd').trim()), '1');
   const src = await win.evaluate(() => [...sessions.values()].find(s => s.name === 'e2e').id);
   await win.evaluate(id => showMenu(moveItems(id), 50, 50), src);
