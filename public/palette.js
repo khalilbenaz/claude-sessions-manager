@@ -109,8 +109,9 @@
     if (window.csmNative?.toTray) a.push(['sidebar', trayLabel(), () => window.csmNative.toTray()]);
     if (syncOn) a.push(['sync', t('Synchroniser maintenant'), syncNow]);
     for (const g of groupNames()) a.push(
-      ['pen', `${t('Renommer le groupe')} « ${g} »`, () => renameGroup(g)],
-      ['x', `${t('Supprimer le groupe')} « ${g} »`, () => deleteGroup(g)],
+      ['pen', `${t('Renommer le groupe')} « ${gLabel(g)} »`, () => renameGroup(g)],
+      ['plus', `${t('Nouveau sous-groupe')} « ${gLabel(g)} »`, () => newGroup(null, g)],
+      ['x', `${t('Supprimer le groupe')} « ${gLabel(g)} »`, () => deleteGroup(g)],
     );
     if (s) a.push(
       ['pen', `${t('Renommer')} « ${s.name} »`, () => renameSession(s.id), `${MOD}+Alt+R`],

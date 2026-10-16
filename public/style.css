@@ -699,3 +699,9 @@ ul.prompts li.open .ptext { display: block; -webkit-line-clamp: unset; }
 /* assistant de premier lancement : installer Claude Code, se connecter */
 .checks .fix { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 0 8px 18px; color: var(--fg); }
 .checks .fix code { font: 12px/1.4 var(--mono, monospace); background: var(--panel2); padding: 6px 8px; border-radius: 6px; user-select: all; word-break: break-all; }
+
+/* sous-groupes : retrait par niveau (titre, sessions, zone de dépôt) */
+#list li[style*="--gd"] { margin-left: calc(var(--gd, 0) * 12px); }
+#list li.ghead[style*="--gd"]:not([style*="--gd: 0"]) { text-transform: none; letter-spacing: .01em; }
+#list li.gempty[style*="--gd"] { margin-left: calc(6px + var(--gd, 0) * 12px); }
+body.compact #list li[style*="--gd"] { margin-left: 0; }

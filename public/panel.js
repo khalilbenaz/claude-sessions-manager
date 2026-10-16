@@ -245,10 +245,10 @@
   // ---------------------------------------------------------------- groupe
   F.setGroup = async id => {
     const s = sessions.get(id); if (!s) return;
-    const existing = [...new Set([...sessions.values()].map(x => x.group).filter(Boolean))];
-    const g = await askName(t('Groupe de la session'), s.group || '', (existing.length ? `${t('Groupes existants')} : ${existing.join(', ')}. ` : '') + t('« - » pour retirer la session de son groupe.'), true);
+    const existing = groupNames();
+    const g = await askName(t('Groupe de la session'), s.group || '', (existing.length ? `${t('Groupes existants')} : ${existing.join(', ')}. ` : '') + t('« Parent/Enfant » pour un sous-groupe.') + ' ' + t('« - » pour retirer la session de son groupe.'), true);
     if (g === null) return;
-    api('POST', `/api/sessions/${id}/meta`, { group: g.trim() === '-' ? '' : g }).catch(e => toast(e.message, true));
+    api('POST', `/api/sessions/${id}/meta`, { group: g.trim() === '-' ? '' : gClean(g) }).catch(e => toast(e.message, true));
   };
 
   // ---------------------------------------------------------------- rafraîchissements
