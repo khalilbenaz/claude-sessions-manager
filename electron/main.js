@@ -332,6 +332,15 @@ function registerIpc() {
     });
     return r.canceled ? null : r.filePaths[0] || null;
   });
+  // Réglages › Export / import : emplacement du fichier d'export (le serveur local l'écrit lui-même)
+  ipcMain.handle('csm:pick-save', async (e, name) => {
+    if (!trusted(e)) return null;
+    const r = await dialog.showSaveDialog(win, {
+      title: 'Exporter les sessions', defaultPath: path.join(app.getPath('downloads'), typeof name === 'string' ? path.basename(name) : 'claude-sessions.csmx'),
+      filters: [{ name: 'Export Claude Sessions', extensions: ['csmx'] }],
+    });
+    return r.canceled ? null : r.filePath || null;
+  });
   ipcMain.on('csm:attention', (e, n) => {
     if (!trusted(e)) return;
     n = Math.max(0, Math.min(99, Number(n) || 0));

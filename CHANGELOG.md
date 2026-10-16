@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.48.0] — 2026-10-16
+### Ajouté
+- **Changer d'ordinateur sans synchronisation** : Réglages › Export / import. *Exporter les sessions…* écrit un fichier `.csmx` avec toutes les sessions de la machine, leurs conversations, les groupes, les modèles, les extensions importées et la mémoire des sessions, chiffré si un mot de passe est donné (AES-256-GCM, scrypt). *Choisir un fichier .csmx…* sur le nouvel ordinateur : aperçu des sessions, puis import ; « Reprendre » continue chaque conversation. Dossiers retrouvés d'un système à l'autre, rien en double, aucune conversation existante remplacée, fichier lu en flux (conversations de plusieurs centaines de Mo). Session verrouillée : exportée sans sa conversation.
+
 ## [3.47.2] — 2026-10-15
 ### Corrigé
 - Barre du haut : le halo de la pastille d'état (session en cours ou en attente) n'est plus coupé à gauche du nom (rogné depuis la 3.46.3).

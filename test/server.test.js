@@ -1796,3 +1796,56 @@ test('extensions : champ input du modèle et du type (send sans {input} écarté
   assert.equal(e.sessionTypes[0].input.send, 'fais {input}');
   assert.equal(e.sessionTypes[1].input, null, 'send sans {input} : champ ignoré');
 });
+
+test('export / import des sessions dans un fichier (changer d’ordinateur)', async () => {
+  const { writeArchive, readArchive } = require('../lib/transfer');
+  // fichier fabriqué comme par une autre machine : une session et sa conversation, un groupe, un modèle
+  const cid = 'imp-' + require('crypto').randomBytes(4).toString('hex');
+  const conv = Buffer.from('{"type":"user","message":"bonjour"}\n'.repeat(2000));
+  const file = path.join(TMP, 'transfert.csmx');
+  const recs = async function* () {
+    yield { h: { k: 'meta', machine: 'ANCIEN-PC', platform: 'win32', exportedAt: Date.now() } };
+    yield { h: { k: 'session', d: { cwd: '{home}', name: 'Importée', group: 'Clients', paused: true }, cid, syncId: 'abc123def456abc123', origin: 'ANCIEN-PC' }, data: conv };
+    yield { h: { k: 'groups', list: ['Clients'] } };
+    yield { h: { k: 'template', t: { id: 'tpl-import-e2e', name: 'Modèle importé', cwd: '{home}' } } };
+    yield { h: { k: 'memory', rel: '../evasion.md' }, data: Buffer.from('x') };
+    yield { h: { k: 'end' } };
+  };
+  await writeArchive(file, 'secret-123', recs());
+  // relu tel quel ; mauvais mot de passe et fichier tronqué refusés
+  const seen = [];
+  await readArchive(file, 'secret-123', (h, d) => seen.push([h.k, d.length]), true);
+  assert.deepEqual(seen.map(x => x[0]), ['meta', 'session', 'groups', 'template', 'memory', 'end']);
+  assert.equal(seen[1][1], conv.length);
+  await assert.rejects(readArchive(file, 'faux', () => { }, false), /mot de passe incorrect/);
+  const cut = path.join(TMP, 'tronque.csmx');
+  fs.writeFileSync(cut, fs.readFileSync(file).subarray(0, 300));
+  await assert.rejects(readArchive(cut, 'secret-123', () => { }, false));
+
+  // envoi, aperçu (mot de passe demandé), import
+  const up = r => req('POST', '/api/transfer/upload', fs.readFileSync(r), { raw: true, headers: { 'Content-Type': 'application/octet-stream' } });
+  assert.equal((await up(file)).status, 200);
+  const noPw = await req('POST', '/api/transfer/preview', {});
+  assert.equal(noPw.status, 401); assert.equal(noPw.body.password, true);
+  const pv = await api('POST', '/api/transfer/preview', { password: 'secret-123' });
+  assert.equal(pv.machine, 'ANCIEN-PC'); assert.equal(pv.sessions.length, 1); assert.equal(pv.sessions[0].here, false); assert.equal(pv.sessions[0].found, true);
+  const r = await api('POST', '/api/transfer/import', { password: 'secret-123' });
+  assert.equal(r.sessions, 1); assert.equal(r.transcripts, 1); assert.equal(r.templates, 1); assert.equal(r.memory, 0, 'chemin de mémoire hors du dossier refusé');
+  const s = (await api('GET', '/api/sessions')).find(x => x.name === 'Importée');
+  assert.ok(s, 'session importée dans la liste'); assert.equal(s.group, 'Clients'); assert.equal(s.claudeSessionId, cid);
+  let real = HOME; try { real = fs.realpathSync(HOME); } catch { }
+  assert.equal(fs.readFileSync(path.join(HOME, '.claude', 'projects', real.replace(/[^a-zA-Z0-9]/g, '-'), `${cid}.jsonl`)).length, conv.length, 'conversation remise en place');
+  // deuxième import du même fichier : rien en double
+  await up(file);
+  const again = await api('POST', '/api/transfer/import', { password: 'secret-123' });
+  assert.equal(again.sessions, 0); assert.equal(again.skipped, 1); assert.equal(again.keptLocal, 1);
+  assert.equal((await api('GET', '/api/sessions')).filter(x => x.name === 'Importée').length, 1);
+
+  // export de cette machine (sans mot de passe) : relisible, avec la session importée et sa conversation
+  const out = path.join(TMP, 'export-ici');
+  const ex = await api('POST', '/api/transfer/export', { path: out });
+  assert.equal(ex.path, out + '.csmx'); assert.ok(ex.sessions >= 1 && ex.transcripts >= 1);
+  const names = [];
+  await readArchive(ex.path, '', h => { if (h.k === 'session') names.push([h.d.name, h.len]); }, false);
+  assert.ok(names.some(([n, len]) => n === 'Importée' && len === conv.length));
+});

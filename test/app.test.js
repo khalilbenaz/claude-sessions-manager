@@ -449,6 +449,28 @@ test('extensions : modèle dans Nouvelle session, affichage dédié rempli par C
   await win.evaluate(() => api('DELETE', '/api/extensions/ext-e2e'));
 });
 
+test('export / import : fichier relu, aperçu des sessions, import sans doublon', async () => {
+  const file = path.join(TMP, 'app-export');
+  const ex = await win.evaluate(p => api('POST', '/api/transfer/export', { path: p, password: 'pw-e2e' }), file);
+  assert.ok(ex.sessions >= 1 && ex.encrypted);
+  await win.evaluate(() => window.csmFeatures.openSettings('transfer'));
+  await win.setInputFiles('#trFile', ex.path);
+  await win.waitForSelector('#trPwRow:not([hidden])'); // protégé : mot de passe demandé
+  await win.fill('#trInPw', 'faux'); await win.click('#trOpen');
+  await win.waitForFunction(() => /mot de passe incorrect/.test(document.querySelector('#trImportMsg').textContent));
+  await win.fill('#trInPw', 'pw-e2e'); await win.click('#trOpen');
+  await win.waitForSelector('#trGo:not([hidden])');
+  assert.match(await win.textContent('#trSummary'), new RegExp(`${ex.sessions} sessions \\(0 nouvelles ici\\)`));
+  assert.equal(await win.$$eval('#trList li.dim', l => l.length), ex.sessions, 'toutes « déjà ici »');
+  // champs de mot de passe à hauteur normale (pas écrasés)
+  assert.ok(await win.evaluate(() => document.querySelector('#trInPw').offsetHeight >= 30));
+  const before = await win.evaluate(() => sessions.size);
+  await win.click('#trGo');
+  await win.waitForFunction(() => /^Importé/.test(document.querySelector('#trImportMsg').textContent));
+  assert.equal(await win.evaluate(() => sessions.size), before, 'aucune session en double');
+  await win.evaluate(() => document.querySelector('#dlgSettings').close());
+});
+
 test('nouvelle session : premier message visible, raccourci, indication du dépôt du dossier', async () => {
   const REPO = path.join(TMP, 'depot');
   fs.mkdirSync(REPO, { recursive: true });

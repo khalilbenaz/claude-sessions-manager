@@ -23,7 +23,7 @@ Une seule fenêtre pour piloter plusieurs sessions [Claude Code](https://docs.cl
 13. [Verrouiller une session par mot de passe](#13-verrouiller-une-session-par-mot-de-passe)
 14. [Notifications, zone de notification, arrière-plan](#14-notifications-zone-de-notification-arrière-plan) — et [accès depuis l'app Claude (téléphone)](#14-bis-accès-depuis-lapp-claude-téléphone) — et [connexion à Claude qui expire](#14-ter-connexion-à-claude-qui-expire--your-login-expires-in-3-days-)
 15. [Thème clair / sombre, langue](#15-thème-clair--sombre-langue)
-16. [Réglages](#16-réglages) — [mémoire des sessions](#16-ter-mémoire-des-sessions) et [synchroniser les sessions entre machines](#16-bis-synchroniser-les-sessions-entre-machines)
+16. [Réglages](#16-réglages) — [mémoire des sessions](#16-ter-mémoire-des-sessions) et [synchroniser les sessions entre machines](#16-bis-synchroniser-les-sessions-entre-machines) — et [changer d'ordinateur (export / import)](#16-quater-changer-dordinateur--export--import)
 17. [Mises à jour](#17-mises-à-jour)
 18. [Raccourcis clavier](#18-raccourcis-clavier)
 19. [Données, sécurité, confidentialité](#19-données-sécurité-confidentialité)
@@ -475,6 +475,19 @@ npx wrangler deploy                       # affiche l'adresse https://csm-sync.<
 Mise à jour d'un serveur existant : `npx wrangler d1 execute csm-sync --remote --file migrations/2026-10-02-parts-ok.sql` une fois, puis `npx wrangler deploy`. Les tests du Worker : `cd sync-worker && npm install && npm test` (serveur local, D1 et R2 locaux) ; GitHub Actions les lance à chaque modification et déploie au tag si le secret `CLOUDFLARE_API_TOKEN` est configuré.
 
 Chaque code a son propre espace. Le serveur refuse tout code qu'il n'a pas créé et ne stocke que les champs listés plus haut.
+
+### 16 quater. Changer d'ordinateur : export / import
+
+Sans synchronisation, un **fichier** suffit pour retrouver toutes tes sessions sur un nouvel ordinateur (Mac ou Windows, dans un sens ou dans l'autre).
+
+1. **Sur l'ancien** : Réglages › **Export / import** › *Exporter les sessions…*. Le fichier `.csmx` contient toutes les sessions de la liste (noms, dossiers, groupes, couleurs, options, pause), **leurs conversations** (case à décocher pour un fichier léger), les groupes, les modèles, les extensions importées et la mémoire des sessions. Un **mot de passe** (conseillé) chiffre le fichier (AES-256-GCM, clé dérivée par scrypt) ; il sera demandé à l'import.
+2. Copie le fichier sur le nouvel ordinateur (clé USB, cloud, e-mail…). Rien ne passe par internet de la part de l'app.
+3. **Sur le nouveau** : Réglages › **Export / import** › *Choisir un fichier .csmx…* : l'aperçu liste les sessions (déjà présentes, dossier introuvable ici, sans conversation), puis *Importer*. **Reprendre** continue chaque conversation.
+
+- Les dossiers sous ton dossier personnel sont retrouvés d'un système à l'autre (`/Users/toi/Projets/app` ↔ `C:\Users\toi\Projets\app`, et les racines de Réglages › Synchronisation) ; un dossier absent ouvre la session dans le dossier personnel.
+- Rien en double : une session déjà présente (même conversation) est ignorée, une conversation déjà présente n'est jamais remplacée, une mémoire déjà présente est gardée. Importer deux fois le même fichier ne change rien.
+- Non exportés : les réglages de la machine, le code de synchro, les jetons d'accès. Une session **verrouillée** est exportée sans sa conversation (à déverrouiller avant).
+- Les plugins et la configuration de Claude Code (`~/.claude`) ne sont pas dans le fichier : réinstalle-les, ou utilise la synchro (§ 16 bis) qui les propose.
 
 ## 17. Mises à jour
 
