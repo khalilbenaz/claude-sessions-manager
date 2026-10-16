@@ -428,80 +428,135 @@ setInterval(() => {
 
 // ------------------------------------------------------------------ groupes
 // Groupes créés à la main (réglage groupList, visibles même vides) puis ceux portés par les sessions.
-const declaredGroups = () => String(SETTINGS.groupList || '').split('\n').map(x => x.trim()).filter(Boolean);
+// Sous-groupes : chemin « Parent/Enfant » (séparateur /), stocké tel quel dans le groupe de la session et dans
+// groupList ; une version sans sous-groupes l'affiche simplement comme un groupe nommé « Parent/Enfant ».
+const GSEP = '/', GMAX = 120;
+const gClean = x => String(x || '').split(GSEP).map(p => p.trim()).filter(Boolean).join(GSEP).slice(0, GMAX);
+const gOf = s => gClean(s.group);
+const gParent = g => (g.includes(GSEP) ? g.slice(0, g.lastIndexOf(GSEP)) : '');
+const gLeaf = g => g.slice(g.lastIndexOf(GSEP) + 1);
+const gDepth = g => (g && g !== '📌' ? g.split(GSEP).length - 1 : 0);
+const gUnder = (x, g) => x === g || x.startsWith(g + GSEP);
+const gLabel = g => g.split(GSEP).join(' › ');
+const gIndent = g => ' '.repeat(gDepth(g));
+const declaredGroups = () => String(SETTINGS.groupList || '').split('\n').map(gClean).filter(Boolean);
+// Tous les groupes, parents compris, en arbre : un sous-groupe suit son parent, dans l'ordre d'apparition.
 function groupNames() {
-  return [...new Set([...declaredGroups(), ...[...sessions.values()].sort((a, b) => (a.order || 0) - (b.order || 0)).map(s => s.group).filter(Boolean)])];
+  const flat = [...declaredGroups(), ...[...sessions.values()].sort((a, b) => (a.order || 0) - (b.order || 0)).map(gOf).filter(Boolean)];
+  const all = [];
+  for (const g of flat) { const p = g.split(GSEP); for (let i = 1; i <= p.length; i++) { const x = p.slice(0, i).join(GSEP); if (!all.includes(x)) all.push(x); } }
+  const out = [], walk = parent => { for (const x of all.filter(y => gParent(y) === parent)) { out.push(x); walk(x); } };
+  walk('');
+  return out;
 }
-const saveGroupList = list => saveSettings({ groupList: [...new Set(list.filter(Boolean))].join('\n') });
-const moveToGroup = (id, g) => api('POST', `/api/sessions/${id}/meta`, { group: g || '' }).catch(e => toast(e.message, true));
+const saveGroupList = list => saveSettings({ groupList: [...new Set(list.map(gClean).filter(Boolean))].join('\n') });
+const moveToGroup = (id, g) => api('POST', `/api/sessions/${id}/meta`, { group: gClean(g) }).catch(e => toast(e.message, true));
 
 // Champ « Groupe » de Nouvelle session : tous les groupes existants (même vides), « (aucun) » par défaut = Sans groupe,
 // et « Nouveau groupe… » pour en créer un sans quitter le formulaire.
 function setGroupField(value) {
-  const sel = $('#formNew').group, v = String(value || '').trim();
+  const sel = $('#formNew').group, v = gClean(value);
   const names = groupNames();
   if (v && !names.includes(v)) names.push(v); // groupe d'un modèle venu d'une autre machine
   const esc = x => x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-  sel.innerHTML = `<option value="">${esc(t('(aucun)'))}</option>` + names.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('')
+  sel.innerHTML = `<option value="">${esc(t('(aucun)'))}</option>` + names.map(x => `<option value="${esc(x)}">${esc(gLabel(x))}</option>`).join('')
     + `<option value="\u0000new">${esc(t('Nouveau groupe…'))}</option>`;
   sel.value = v;
   sel.dataset.prev = v;
 }
 async function pickNewGroup(sel) {
   if (sel.value !== '\u0000new') { sel.dataset.prev = sel.value; return; }
-  const name = (await askName(t('Nouveau groupe'), '', '', true))?.trim().slice(0, 60);
+  const name = gClean(await askName(t('Nouveau groupe'), '', t('« Parent/Enfant » crée un sous-groupe.'), true));
   setGroupField(name || sel.dataset.prev || '');
 }
 
 $('#formNew').group.addEventListener('change', e => pickNewGroup(e.target));
 
-async function newGroup(moveId) {
-  const name = (await askName(t('Nouveau groupe'), '', t('Glisse ensuite des sessions sur son titre, ou clic droit sur une session › Déplacer vers le groupe.'), true))?.slice(0, 60);
+// Nouveau groupe, ou sous-groupe de parent.
+async function newGroup(moveId, parent = '') {
+  const name = gClean(await askName(parent ? t('Nouveau sous-groupe') : t('Nouveau groupe'), '',
+    (parent ? `${t('Dans')} « ${gLabel(parent)} ». ` : '') + t('Glisse ensuite des sessions sur son titre, ou clic droit sur une session › Déplacer vers le groupe.'), true));
   if (!name) return;
-  await saveGroupList([...declaredGroups(), name]);
-  if (moveId) await moveToGroup(moveId, name);
-  collapsed.delete(name);
+  const full = gClean(parent ? `${parent}${GSEP}${name}` : name);
+  await saveGroupList([...declaredGroups(), full]);
+  if (moveId) await moveToGroup(moveId, full);
+  for (let g = full; g; g = gParent(g)) collapsed.delete(g);
+  LS.set('csm.collapsed', [...collapsed]);
+  render();
+}
+// Change le chemin d'un groupe : ses sous-groupes, leurs sessions et l'état replié suivent.
+async function repathGroup(from, to) {
+  to = gClean(to);
+  if (!to || to === from) return;
+  const swap = x => (gUnder(x, from) ? to + x.slice(from.length) : x);
+  const list = declaredGroups();
+  await saveGroupList(list.some(x => gUnder(x, from)) ? list.map(swap) : [...list, to]);
+  await Promise.all([...sessions.values()].filter(s => gUnder(gOf(s), from)).map(s => moveToGroup(s.id, swap(gOf(s)))));
+  for (const g of [...collapsed]) if (gUnder(g, from)) { collapsed.delete(g); collapsed.add(swap(g)); }
+  LS.set('csm.collapsed', [...collapsed]);
   render();
 }
 async function renameGroup(g) {
-  const name = (await askName(t('Renommer le groupe'), g, t('Toutes les sessions du groupe suivent.')))?.slice(0, 60);
-  if (!name) return;
-  const list = declaredGroups();
-  await saveGroupList(list.includes(g) ? list.map(x => (x === g ? name : x)) : [...list, name]);
-  await Promise.all([...sessions.values()].filter(s => s.group === g).map(s => moveToGroup(s.id, name)));
-  render();
+  const leaf = (await askName(t('Renommer le groupe'), gLeaf(g), t('Toutes les sessions du groupe suivent.')))?.replaceAll(GSEP, '-').trim();
+  if (!leaf) return;
+  await repathGroup(g, gParent(g) ? `${gParent(g)}${GSEP}${leaf}` : leaf);
 }
+// Range le groupe (avec ses sous-groupes) dans dest, ou au premier niveau si dest est vide.
+function moveGroup(g, dest) {
+  if (dest && gUnder(dest, g)) return; // pas dans lui-même ni dans un de ses sous-groupes
+  return repathGroup(g, dest ? `${dest}${GSEP}${gLeaf(g)}` : gLeaf(g));
+}
+// Supprimer un groupe supprime aussi ses sous-groupes ; leurs sessions remontent dans le groupe parent.
 async function deleteGroup(g) {
-  const members = [...sessions.values()].filter(s => s.group === g);
-  if (members.length && !confirm(`${t('Supprimer le groupe')} « ${g} » ? ${members.length} ${t('session(s) passent dans « Sans groupe » (elles ne sont pas fermées).')}`)) return;
-  await saveGroupList(declaredGroups().filter(x => x !== g));
-  await Promise.all(members.map(s => moveToGroup(s.id, '')));
+  const members = [...sessions.values()].filter(s => gUnder(gOf(s), g));
+  const subs = groupNames().filter(x => x !== g && gUnder(x, g));
+  const dest = gParent(g);
+  if ((members.length || subs.length) && !confirm(`${t('Supprimer le groupe')} « ${gLabel(g)} »${subs.length ? ` ${t('et ses sous-groupes')} (${subs.length})` : ''} ?`
+    + (members.length ? ` ${members.length} ${t('session(s) passent dans')} « ${dest ? gLabel(dest) : t('Sans groupe')} » ${t('(elles ne sont pas fermées).')}` : ''))) return;
+  const rest = declaredGroups().filter(x => !gUnder(x, g));
+  if (dest && !rest.some(x => gUnder(x, dest))) rest.push(dest); // le parent reste, même vide
+  await saveGroupList(rest);
+  await Promise.all(members.map(s => moveToGroup(s.id, dest)));
   render();
 }
 function moveItems(id) {
   const s = sessions.get(id); if (!s) return [];
+  const cur = gOf(s);
   return [
-    ...groupNames().map(g => [(s.group === g ? '✓ ' : '') + g, () => moveToGroup(id, g), { disabled: s.group === g }]),
+    ...groupNames().map(g => [(cur === g ? '✓ ' : '') + gIndent(g) + gLeaf(g), () => moveToGroup(id, g), { disabled: cur === g }]),
     '-',
     [t('Nouveau groupe…'), () => newGroup(id)],
-    [t('Sans groupe'), () => moveToGroup(id, ''), { disabled: !s.group }],
+    [t('Sans groupe'), () => moveToGroup(id, ''), { disabled: !cur }],
+  ];
+}
+function groupMoveItems(g) {
+  return [
+    [t('Premier niveau'), () => moveGroup(g, ''), { disabled: !gParent(g) }],
+    '-',
+    ...groupNames().filter(x => !gUnder(x, g)).map(x => [gIndent(x) + gLeaf(x), () => moveGroup(g, x), { disabled: gParent(g) === x }]),
   ];
 }
 function groupItems(g) {
   return [
     [t('Nouvelle session dans ce groupe'), () => { openNew(); setGroupField(g); }],
+    [t('Nouveau sous-groupe…'), () => newGroup(null, g)],
     [t('Renommer le groupe…'), () => renameGroup(g)],
+    [t('Déplacer le groupe vers…'), () => showMenu(groupMoveItems(g), ...lastMenuPos)],
     '-',
     [t('Supprimer le groupe'), () => deleteGroup(g), { danger: true }],
   ];
 }
-// Titre de groupe : on y dépose une session (glisser depuis la liste) ; clic droit = menu du groupe.
+// Titre de groupe : on y dépose une session ou un autre groupe (qui devient son sous-groupe ; sur « Sans groupe » =
+// premier niveau) ; clic droit = menu du groupe.
 function groupHeadEvents(el, g) {
   if (g === '📌') return;
-  el.ondragover = e => { if ([...e.dataTransfer.types].includes('text/csm-session')) { e.preventDefault(); el.classList.add('dragover'); } };
+  const types = e => [...e.dataTransfer.types];
+  el.ondragover = e => { if (types(e).includes('text/csm-session') || types(e).includes('text/csm-group')) { e.preventDefault(); el.classList.add('dragover'); } };
   el.ondragleave = () => el.classList.remove('dragover');
   el.ondrop = e => {
     el.classList.remove('dragover');
+    const grp = e.dataTransfer.getData('text/csm-group');
+    if (grp) { e.preventDefault(); e.stopPropagation(); if (grp !== g) moveGroup(grp, g); return; }
     const id = e.dataTransfer.getData('text/csm-session'); if (!id) return;
     e.preventDefault(); e.stopPropagation();
     moveToGroup(id, g);
@@ -511,17 +566,21 @@ function groupHeadEvents(el, g) {
     showMenu(g ? groupItems(g) : [[t('Nouveau groupe…'), () => newGroup()]], e.clientX, e.clientY);
   };
 }
-// Titre d'un groupe : nom, nombre de sessions et, pour un groupe nommé, ✎ renommer / ✕ supprimer
-// (aussi : double-clic = renommer, clic droit = menu).
+// Titre d'un groupe : nom, nombre de sessions (sous-groupes compris) et, pour un groupe nommé, ✎ renommer / ✕ supprimer
+// (aussi : double-clic = renommer, clic droit = menu, glisser le titre sur un autre groupe = en faire un sous-groupe).
 let groupClickTimer = null;
 function groupHead(g, count) {
   const h = document.createElement('li');
   h.innerHTML = '<span class="gcar">▾</span><span class="gname"></span><span class="gacts"></span><span class="gcount"></span>';
-  h.querySelector('.gname').textContent = g === '📌' ? t('Épinglées') : g || t('Sans groupe');
+  h.querySelector('.gname').textContent = g === '📌' ? t('Épinglées') : g ? gLeaf(g) : t('Sans groupe');
   h.querySelector('.gcount').textContent = count;
   if (g && g !== '📌') {
+    h.title = gLabel(g);
+    h.style.setProperty('--gd', gDepth(g));
+    h.draggable = true;
+    h.ondragstart = e => e.dataTransfer.setData('text/csm-group', g);
     const acts = h.querySelector('.gacts');
-    for (const [cls, icon, title, run] of [['gren', '<svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', t('Renommer le groupe…'), renameGroup], ['gdel', '<svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>', t('Supprimer le groupe'), deleteGroup]]) {
+    for (const [cls, icon, title, run] of [['gsub', '<svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>', t('Nouveau sous-groupe…'), x => newGroup(null, x)], ['gren', '<svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>', t('Renommer le groupe…'), renameGroup], ['gdel', '<svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>', t('Supprimer le groupe'), deleteGroup]]) {
       const b = document.createElement('button');
       b.className = cls; b.innerHTML = icon; b.title = title; b.setAttribute('aria-label', title); // icône fixe (pas de donnée)
       b.onclick = e => { e.stopPropagation(); clearTimeout(groupClickTimer); run(g); };
@@ -540,7 +599,7 @@ $('#btnNewGroup').onclick = () => newGroup();
 function sorted() {
   const all = [...sessions.values()].sort((a, b) => (a.order || 0) - (b.order || 0));
   const groups = [...groupNames(), ''];
-  return all.sort((a, b) => (!!b.pinned - !!a.pinned) || (a.pinned && b.pinned ? 0 : groups.indexOf(a.group || '') - groups.indexOf(b.group || '')) || (a.order || 0) - (b.order || 0));
+  return all.sort((a, b) => (!!b.pinned - !!a.pinned) || (a.pinned && b.pinned ? 0 : groups.indexOf(gOf(a)) - groups.indexOf(gOf(b))) || (a.order || 0) - (b.order || 0));
 }
 const collapsed = new Set(LS.get('csm.collapsed', []));
 
@@ -553,26 +612,41 @@ function ago(ts) {
 function render() {
   const ul = $('#list');
   ul.innerHTML = '';
-  let lastGroup = null;
-  sorted().forEach((s, i) => {
-    const g = s.pinned ? '📌' : (s.group || '');
-    if (g !== lastGroup && (g || lastGroup !== null)) {
-      lastGroup = g;
-      if (g || groupNames().length || [...sessions.values()].some(x => x.pinned)) {
-        const h = groupHead(g, [...sessions.values()].filter(x => (x.pinned ? '📌' : (x.group || '')) === g).length);
-        h.className = 'ghead' + (collapsed.has(g) ? ' closed' : '');
-        // simple clic = replier (différé pour laisser le double-clic renommer)
-        h.onclick = e => {
-          clearTimeout(groupClickTimer);
-          if (e.detail > 1) return;
-          groupClickTimer = setTimeout(() => { collapsed.has(g) ? collapsed.delete(g) : collapsed.add(g); LS.set('csm.collapsed', [...collapsed]); render(); }, g && g !== '📌' ? 220 : 0);
-        };
-        ul.appendChild(h);
+  // Sections dans l'ordre de sorted() : épinglées, groupes en arbre (un sous-groupe sous son parent), Sans groupe.
+  const list = sorted(), names = groupNames();
+  const keyOf = s => (s.pinned ? '📌' : gOf(s));
+  const showHeads = names.length || list.some(x => x.pinned);
+  // replié par un groupe parent : titre masqué
+  const underClosed = g => { for (let p = gParent(g); p; p = gParent(p)) if (collapsed.has(p)) return true; return false; };
+  for (const g of ['📌', ...names, '']) {
+    const own = list.filter(s => keyOf(s) === g);
+    const total = g === '📌' || !g ? own.length : list.filter(s => !s.pinned && gUnder(gOf(s), g)).length;
+    if ((g === '📌' || !g) && !own.length) continue;
+    const hidden = g !== '📌' && underClosed(g), closed = hidden || collapsed.has(g);
+    if (showHeads && !hidden) {
+      const h = groupHead(g, total);
+      h.className = 'ghead' + (collapsed.has(g) ? ' closed' : '') + (total ? '' : ' empty');
+      // simple clic = replier (différé pour laisser le double-clic renommer)
+      h.onclick = e => {
+        clearTimeout(groupClickTimer);
+        if (e.detail > 1) return;
+        groupClickTimer = setTimeout(() => { collapsed.has(g) ? collapsed.delete(g) : collapsed.add(g); LS.set('csm.collapsed', [...collapsed]); render(); }, g && g !== '📌' ? 220 : 0);
+      };
+      ul.appendChild(h);
+      if (!total && !collapsed.has(g) && !names.some(x => gParent(x) === g)) {
+        const hint = document.createElement('li');
+        hint.className = 'gempty';
+        hint.style.setProperty('--gd', gDepth(g));
+        hint.textContent = t('Glisse une session ici');
+        groupHeadEvents(hint, g);
+        ul.appendChild(hint);
       }
     }
-    lastGroup = g;
-    if (collapsed.has(g) && s.id !== active) return;
+    for (const s of own) if (!closed || s.id === active) renderItem(s, list.indexOf(s), gDepth(g));
+  }
+  function renderItem(s, i, depth) {
     const li = document.createElement('li');
+    if (depth) li.style.setProperty('--gd', depth);
     li.className = `${s.id === active ? 'active' : ''} ${visibleIds().includes(s.id) ? 'shown' : ''} ${s.status}`;
     if (s.color) li.style.setProperty('--sc', s.color);
     li.draggable = true;
@@ -596,23 +670,12 @@ function render() {
       e.preventDefault(); li.classList.remove('dragover');
       const from = e.dataTransfer.getData('text/plain'); if (!from || from === s.id) return;
       const src = sessions.get(from);
-      if (src && !s.pinned && (src.group || '') !== (s.group || '')) moveToGroup(from, s.group || '');
+      if (src && !s.pinned && gOf(src) !== gOf(s)) moveToGroup(from, gOf(s));
       const ids = sorted().map(x => x.id).filter(x => x !== from);
       ids.splice(ids.indexOf(s.id), 0, from);
       api('POST', '/api/order', { ids });
     };
     ul.appendChild(li);
-  });
-  const used = new Set([...sessions.values()].map(s => s.group || ''));
-  for (const g of groupNames().filter(x => !used.has(x))) {
-    const h = groupHead(g, 0);
-    h.className = 'ghead empty';
-    ul.appendChild(h);
-    const hint = document.createElement('li');
-    hint.className = 'gempty';
-    hint.textContent = t('Glisse une session ici');
-    groupHeadEvents(hint, g);
-    ul.appendChild(hint);
   }
   const attn = [...sessions.values()].filter(s => s.status === 'attention').length;
   document.title = attn ? `(${attn}) Claude Sessions` : 'Claude Sessions';

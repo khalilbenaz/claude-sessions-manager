@@ -195,6 +195,47 @@ test('groupes : créer un groupe vide, y glisser une session, le renommer, le su
   await win.waitForFunction(() => !groupNames().includes('Clients 2'));
 });
 
+test('sous-groupes : créer, ranger une session, replier le parent, renommer, supprimer', async () => {
+  const head = n => `#list li.ghead:has(.gname:text-is("${n}"))`;
+  await win.click('#btnNewGroup');
+  await win.waitForSelector('#dlgRename[open]');
+  await win.fill('#renInput', 'Projets');
+  await win.click('#dlgRename button[value=ok]');
+  await win.waitForSelector(head('Projets'));
+  // bouton + du titre : sous-groupe, affiché sous son parent avec un retrait
+  await win.hover(head('Projets'));
+  await win.click(`${head('Projets')} .gsub`);
+  await win.waitForSelector('#dlgRename[open]');
+  await win.fill('#renInput', 'Alpha');
+  await win.click('#dlgRename button[value=ok]');
+  await win.waitForFunction(() => groupNames().join('|').includes('Projets|Projets/Alpha'));
+  assert.equal(await win.$eval(head('Alpha'), h => h.style.getPropertyValue('--gd').trim()), '1');
+  const src = await win.evaluate(() => [...sessions.values()].find(s => s.name === 'e2e').id);
+  await win.evaluate(id => showMenu(moveItems(id), 50, 50), src);
+  await win.click('#ctx button:has-text("Alpha")');
+  await win.waitForFunction(id => sessions.get(id).group === 'Projets/Alpha', src, { timeout: 15000 });
+  // le parent compte les sessions de ses sous-groupes ; replié, il masque ses sous-groupes
+  await win.waitForFunction(() => document.querySelector('#list li.ghead[title="Projets"] .gcount')?.textContent === '1');
+  await win.click(head('Projets'));
+  await win.waitForFunction(() => !document.querySelector('#list li.ghead[title="Projets › Alpha"]'));
+  await win.click(head('Projets'));
+  await win.waitForSelector(head('Alpha'));
+  // renommer le parent : sous-groupe et session suivent
+  await win.hover(head('Projets'));
+  await win.click(`${head('Projets')} .gren`);
+  await win.waitForSelector('#dlgRename[open]');
+  await win.fill('#renInput', 'Clients');
+  await win.click('#dlgRename button[value=ok]');
+  await win.waitForFunction(id => sessions.get(id).group === 'Clients/Alpha' && !groupNames().some(g => g.startsWith('Projets')), src, { timeout: 15000 });
+  // supprimer le sous-groupe : la session remonte dans le parent ; puis le parent : retour dans « Sans groupe »
+  await win.evaluate(() => { window.confirm = () => true; });
+  await win.evaluate(() => deleteGroup('Clients/Alpha'));
+  await win.waitForFunction(id => sessions.get(id).group === 'Clients' && !groupNames().includes('Clients/Alpha'), src, { timeout: 15000 });
+  await win.evaluate(() => deleteGroup('Clients'));
+  await win.waitForFunction(id => !sessions.get(id).group && !groupNames().length, src, { timeout: 15000 });
+  await win.evaluate(() => { delete window.confirm; });
+});
+
 test('synchro : créer un code l’affiche en clair, prêt à copier', async () => {
   const http = require('http');
   const auths = new Set(), sha = x => require('crypto').createHash('sha256').update(x).digest('hex');
