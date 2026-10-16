@@ -2,9 +2,9 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
-## [3.49.0] — 2026-10-16
+## [3.49.1] — 2026-10-16
 ### Ajouté
-- **Sous-groupes** : un groupe peut en contenir d'autres, sur plusieurs niveaux. Bouton **+** au survol du titre d'un groupe, clic droit › *Nouveau sous-groupe…* ou *Déplacer le groupe vers…*, palette, ou glisser le titre d'un groupe sur un autre. Affichage en retrait sous le parent, qui compte les sessions de ses sous-groupes et les masque tous une fois replié. Renommer ou déplacer un groupe emmène ses sous-groupes et leurs sessions ; en supprimer un fait remonter ses sessions dans le parent. Stockés comme chemin « Parent/Enfant » : synchronisés, exportés, et lisibles par une version plus ancienne (groupe nommé « Parent/Enfant »). Nom de groupe complet jusqu'à 120 caractères.
+- **Sous-groupes** : un groupe peut en contenir d'autres, sur plusieurs niveaux. Bouton **+** au survol du titre d'un groupe, clic droit › *Nouveau sous-groupe…* ou *Déplacer le groupe vers…*, palette, ou glisser le titre d'un groupe sur un autre. Affichage en retrait sous le parent, qui compte les sessions de ses sous-groupes et les masque tous une fois replié. Renommer ou déplacer un groupe emmène ses sous-groupes et leurs sessions ; en supprimer un fait remonter ses sessions dans le parent. Stockés comme chemin « Parent/Enfant » : synchronisés, exportés, et lisibles par une version plus ancienne (groupe nommé « Parent/Enfant »). Nom de groupe complet jusqu'à 120 caractères. La version 3.49.0 n'a pas été publiée (test Windows en échec) : son contenu arrive avec celle-ci.
 
 ## [3.48.0] — 2026-10-16
 ### Ajouté
