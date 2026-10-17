@@ -513,6 +513,32 @@ test('export / import : fichier relu, aperçu des sessions, import sans doublon'
   await win.evaluate(() => document.querySelector('#dlgSettings').close());
 });
 
+test('nouvelle session : plafond de quota choisi à la création, repris par un modèle', async () => {
+  await win.click('#btnNew');
+  await win.waitForSelector('#dlgNew[open]');
+  assert.equal(await win.inputValue('#formNew [name=qSeven]'), '', 'aucun plafond par défaut');
+  assert.equal(await win.isDisabled('#formNew [name=qResume]'), true, 'reprise grisée sans seuil');
+  await win.selectOption('#formNew [name=qSeven]', '95');
+  await win.check('#formNew [name=qResume]');
+  await win.fill('#formNew [name=cwd]', WORK);
+  await win.fill('#formNew [name=name]', 'avec-plafond');
+  await win.click('#formNew button[value=ok]');
+  const q = await win.waitForFunction(() => [...sessions.values()].find(s => s.name === 'avec-plafond')?.quotaStop, null, { timeout: 30000 }).then(h => h.jsonValue());
+  assert.equal(q.seven, 95); assert.equal(q.five, null); assert.equal(q.resume, true);
+  // modèle enregistré avec le plafond, réappliqué dans Nouvelle session
+  await win.evaluate(() => api('PUT', '/api/templates', [{ id: 'tpl-cap', name: 'Avec plafond', cwd: '', quotaStop: { five: 90, seven: null, resume: false } }]));
+  await win.click('#btnNew');
+  await win.waitForFunction(() => [...document.querySelectorAll('#formNew [name=template] option')].some(o => o.value === 'tpl-cap'));
+  await win.evaluate(() => { const f = document.querySelector('#formNew'); f.template.value = 'tpl-cap'; f.template.dispatchEvent(new Event('change')); });
+  assert.equal(await win.inputValue('#formNew [name=qFive]'), '90');
+  assert.equal(await win.inputValue('#formNew [name=qSeven]'), '');
+  await win.evaluate(() => { document.querySelector('#dlgNew').close(); return api('PUT', '/api/templates', []); });
+  const id = await win.evaluate(() => [...sessions.values()].find(s => s.name === 'avec-plafond').id);
+  await win.evaluate(id => api('DELETE', '/api/sessions/' + id), id);
+  await win.waitForFunction(id => !sessions.has(id), id);
+  await win.evaluate(() => select([...sessions.keys()][0])); // une session active pour la suite
+});
+
 test('plafond de quota : réglé depuis le menu ⋯, relu, retiré', async () => {
   const id = await win.evaluate(() => active);
   assert.match(await win.evaluate(id => moreItems(id).map(x => x[0]).join('|'), id), /Plafond de quota…/);
