@@ -50,3 +50,12 @@ section[data-st=transfer] .hint.bad { color: var(--warn); }
 #trPwRow { grid-template-columns: 1fr auto; }
 #trPwRow button { height: 34px; }
 .trPw[hidden] { display: none; }
+/* Plafond de quota d'une session */
+#dlgQuotaStop form { display: flex; flex-direction: column; gap: 10px; max-width: 560px; }
+#dlgQuotaStop .qsRow { display: flex; align-items: center; gap: 12px; }
+#dlgQuotaStop .qsRow .check { min-width: 150px; }
+#dlgQuotaStop .qsNow { font-weight: 500; margin: 0; }
+#dlgQuotaStop .qsText textarea { width: 100%; box-sizing: border-box; margin-top: 6px; }
+#dlgQuotaStop button[hidden] { display: none; }
+#dlgQuotaStop .qsRow label { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
+#dlgQuotaStop .qsRow select { width: auto; min-width: 90px; height: 32px; }

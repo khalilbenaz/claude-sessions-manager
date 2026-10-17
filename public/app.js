@@ -1030,6 +1030,7 @@ function moreItems(id) {
     [s.alerts?.mute ? t('Réactiver les alertes') : t('Couper les alertes de cette session'), () => api('POST', `/api/sessions/${id}/meta`, { alerts: { mute: !s.alerts?.mute } })],
     '-',
     [t('Mettre en pause'), () => pauseSession(id), { disabled: !s.alive }],
+    [window.csmFeatures.quotaStopLabel?.(s) || t('Plafond de quota…'), () => window.csmFeatures.openQuotaStop(id)],
     [t('Supprimer…'), () => deleteSession(id), { danger: true }],
     [t('Arrêter'), () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
     ...(window.csmNative?.toTray ? ['-', [trayLabel(), () => window.csmNative.toTray()]] : []),
