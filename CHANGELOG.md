@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.51.0] — 2026-10-17
+### Ajouté
+- **Nouvelle session : plafond de quota** dès la création (5 h, 7 jours, reprise automatique ; « aucun » par défaut). Les modèles le gardent (*Enregistrer comme modèle*, depuis le formulaire ou depuis une session) et le réappliquent ; il suit les modèles synchronisés.
+
 ## [3.50.0] — 2026-10-17
 ### Ajouté
 - **Plafond de quota d'une session** (⋯ › Plafond de quota…, palette) : un seuil sur le quota 5 h et/ou 7 jours. Atteint, Claude reçoit la demande d'enregistrer où il en est (notes de reprise, commit du travail en cours sans pousser) — à la fin du tour en cours s'il travaille — puis, sa réponse terminée, la session se met en pause comme avec *Mettre en pause* (mémoire et synchro), avec une notification. Option de reprise automatique à la réinitialisation du quota atteint, avec un message pour continuer. Seuil déjà dépassé au moment du réglage : appliqué tout de suite. Message modifiable.

@@ -332,7 +332,7 @@ const EN = {
   'Désactiver l’accès depuis l’app Claude': 'Turn off Claude app access', 'Accès depuis l’app Claude (téléphone)': 'Access from the Claude app (phone)',
   // modèles / prompts
   'Enregistrer comme modèle…': 'Save as template…', 'Enregistrer la session comme modèle': 'Save session as template',
-  'Reprend le dossier, le groupe, le modèle et le mode de cette session. Retrouvable dans « Nouvelle session » et la palette (Ctrl+K).': 'Uses this session\u2019s folder, group, model and mode. Available in “New session” and the palette (Ctrl+K).',
+  'Reprend le dossier, le groupe, le modèle, le mode et le plafond de quota de cette session. Retrouvable dans « Nouvelle session » et la palette (Ctrl+K).': 'Uses this session\u2019s folder, group, model, mode and quota cap. Available in “New session” and the palette (Ctrl+K).',
   'Un modèle relance en un clic une session type : même dossier, groupe, modèle Claude, mode, worktree et premier prompt.': 'A template relaunches a typical session in one click: same folder, group, Claude model, mode, worktree and first prompt.',
   'Créer depuis la session active': 'Create from active session', 'Nouvelle session…': 'New session…', '— aucun modèle : « Enregistrer comme modèle » en bas —': '— no templates: use “Save as template” below —',
   // verrouillage
@@ -453,6 +453,9 @@ const EN = {
   "reprise automatique à la réinitialisation": "automatic resume on reset",
   "« Reprendre » pour continuer": "“Resume” to continue",
   "en pause (plafond de quota)": "paused (quota cap)",
+  "aucun": "none",
+  "reprise automatique": "automatic resume",
+  "Atteint : Claude enregistre où il en est, puis la session se met en pause (mémoire et synchro)": "Reached: Claude saves where it is, then the session pauses (memory and sync)",
 };
 
 let LANG = 'fr';

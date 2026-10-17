@@ -1111,10 +1111,11 @@ async function saveSessionAsTemplate(id) {
     else if (parts[i] === '--permission-mode') mode = parts[++i] || '';
     else extra.push(parts[i]);
   }
-  const name = await askName(t('Nom du modèle'), s.name, t('Reprend le dossier, le groupe, le modèle et le mode de cette session. Retrouvable dans « Nouvelle session » et la palette (Ctrl+K).'), true);
+  const name = await askName(t('Nom du modèle'), s.name, t('Reprend le dossier, le groupe, le modèle, le mode et le plafond de quota de cette session. Retrouvable dans « Nouvelle session » et la palette (Ctrl+K).'), true);
   if (!name) return;
   const list = await loadTemplates();
-  list.push({ name, cwd: s.worktree ? s.worktree.repo : s.cwd, model, mode, extra: extra.join(' '), worktree: !!s.worktree, prompt: '', group: s.group || '' });
+  list.push({ name, cwd: s.worktree ? s.worktree.repo : s.cwd, model, mode, extra: extra.join(' '), worktree: !!s.worktree, prompt: '', group: s.group || '',
+    ...(s.quotaStop ? { quotaStop: { five: s.quotaStop.five, seven: s.quotaStop.seven, resume: !!s.quotaStop.resume } } : {}) });
   try { await api('PUT', '/api/templates', list); toast(`${t('Modèle enregistré')} : ${name}`); } catch (e) { toast(e.message, true); }
 }
 async function loadTemplates() { try { templates = await api('GET', '/api/templates'); } catch { templates = []; } return templates; }
@@ -1131,7 +1132,7 @@ function openNew(tpl) {
   f.worktree.checked = !!SETTINGS.worktreeDefault;
   f.remote.checked = !!SETTINGS.remoteAll;
   loadHistory();
-  f.dataset.type = ''; showTplInput(null);
+  f.dataset.type = ''; showTplInput(null); setQuotaFields(null);
   Promise.all([loadTemplates(), loadExtTemplates()]).then(([list, ext]) => {
     $('#tplRow').hidden = false;
     const sel = f.template;
@@ -1162,8 +1163,24 @@ function applyTemplate(x) {
   f.worktree.checked = !!x.worktree;
   f.dataset.type = x.type || ''; // type de session d'une extension (affichage dédié)
   showTplInput(x.input);
+  setQuotaFields(x.quotaStop);
   checkRepo();
 }
+// plafond de quota (5 h / 7 jours) de la nouvelle session ; « reprise automatique » seulement avec un seuil
+function setQuotaFields(q) {
+  const f = $('#formNew');
+  f.qFive.value = q?.five ? String(q.five) : ''; f.qSeven.value = q?.seven ? String(q.seven) : '';
+  if (q?.five && !f.qFive.value) f.qFive.value = '95';
+  if (q?.seven && !f.qSeven.value) f.qSeven.value = '95';
+  f.qResume.checked = !!q?.resume;
+  syncQuotaResume();
+}
+function quotaFields() {
+  const f = $('#formNew'), five = Number(f.qFive.value) || null, seven = Number(f.qSeven.value) || null;
+  return five || seven ? { five, seven, resume: f.qResume.checked } : null;
+}
+function syncQuotaResume() { const f = $('#formNew'); f.qResume.disabled = !f.qFive.value && !f.qSeven.value; if (f.qResume.disabled) f.qResume.checked = false; }
+for (const n of ['qFive', 'qSeven']) $('#formNew')[n].addEventListener('change', syncQuotaResume);
 // modèle d'extension avec « input » : un champ (numéros de tickets…) dont la valeur remplace {input} dans le premier message
 function showTplInput(inp) {
   const f = $('#formNew'), row = $('#nsInputRow');
@@ -1214,7 +1231,7 @@ $('#btnSaveTpl').onclick = async () => {
   const name = await askName(t('Nom du modèle'), f.name.value || f.cwd.value.split(/[\\/]/).filter(Boolean).pop() || t('Modèle'), t('Retrouvable dans « Modèle de session » et la palette (Ctrl+K).'), true);
   if (!name) return $('#dlgNew').showModal();
   const list = await loadTemplates();
-  list.push({ name, cwd: f.cwd.value.trim(), model: f.model.value, mode: f.mode.value, extra: f.extra.value.trim(), worktree: f.worktree.checked, prompt: f.prompt.value, group: f.group.value.trim() });
+  list.push({ name, cwd: f.cwd.value.trim(), model: f.model.value, mode: f.mode.value, extra: f.extra.value.trim(), worktree: f.worktree.checked, prompt: f.prompt.value, group: f.group.value.trim(), ...(quotaFields() ? { quotaStop: quotaFields() } : {}) });
   try { await api('PUT', '/api/templates', list); toast(`${t('Modèle enregistré')} : ${name}`); } catch (e) { toast(e.message, true); }
   if (!$('#dlgNew').open) $('#dlgNew').showModal();
 };
@@ -1239,13 +1256,14 @@ $('#dlgNew').addEventListener('close', async () => {
   const args = [f.model.value && `--model ${f.model.value}`, f.mode.value && `--permission-mode ${f.mode.value}`, f.extra.value.trim()].filter(Boolean).join(' ');
   const cwd = f.cwd.value.trim().replace(/^"|"$/g, '');
   LS.set('csm.lastCwd', cwd);
-  const wantLock = f.lockpw.checked;
+  const wantLock = f.lockpw.checked, cap = quotaFields();
   const body = { cwd, name: f.name.value.trim() || undefined, args, group: f.group.value.trim() || undefined, initialPrompt: firstPrompt(f) || undefined, remote: f.remote.checked, type: f.dataset.type || undefined };
   try {
     const s = f.worktree.checked && !$('#wtBox').hidden
       ? await api('POST', '/api/worktree/session', { ...body, branch: f.branch.value.trim() })
       : await api('POST', '/api/sessions', body);
     sessions.set(s.id, s); ensureTerm(s.id); select(s.id);
+    if (cap) api('POST', `/api/sessions/${s.id}/quota-stop`, cap).catch(e => toast(`${t('Plafond de quota')} : ${e.message}`, true));
     if (wantLock) window.csmFeatures.setPassword?.(s.id); // même flux que « Verrouiller par mot de passe… »
   } catch (e) { alert(`${t('Création impossible')} : ${e.message}`); return; }
   delete f.branch.dataset.touched;
