@@ -1849,3 +1849,41 @@ test('export / import des sessions dans un fichier (changer d’ordinateur)', as
   await readArchive(ex.path, '', h => { if (h.k === 'session') names.push([h.d.name, h.len]); }, false);
   assert.ok(names.some(([n, len]) => n === 'Importée' && len === conv.length));
 });
+
+test('plafond de quota d’une session : demande d’enregistrer, pause, reprise à la réinitialisation', async () => {
+  await stopServer(); await startServer(); // quota remis à zéro (gardé en mémoire) : fenêtres des tests précédents oubliées
+  const S = await api('POST', '/api/sessions', { cwd: WORK, name: 'plafond' });
+  await idle(S.id);
+  const c = await wsClient();
+  const q7 = (pct, resetAt) => api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 10, resetAt: Date.now() + 3600e3, seven: { pct, resetAt } } });
+  try {
+    const set = await api('POST', `/api/sessions/${S.id}/quota-stop`, { seven: 95, resume: true });
+    assert.equal(set.triggered, false); assert.equal(set.session.quotaStop.seven, 95); assert.equal(set.session.quotaStop.five, null);
+    const reset = Date.now() + 9000; // même fenêtre de 7 jours pour les deux relevés
+    await q7(80, reset);
+    await new Promise(r => setTimeout(r, 400));
+    assert.ok(!(c.out[S.id] || '').includes('atteindre'), 'sous le seuil : rien');
+    // seuil atteint : demande envoyée, puis pause à la fin de la réponse (mémoire + synchro, comme le bouton Pause)
+    await q7(96, reset);
+    await waitFor(() => (c.out[S.id] || '').includes('7 jours vient d’atteindre 96 %'), 10000, 'demande envoyée à la session');
+    const p = await waitFor(async () => { const s = await session(S.id); return !s.alive && s.paused && s.quotaStop.stage === 'done' && s; }, 15000, 'mise en pause');
+    assert.match(p.message, /quota 7 jours à 96 %/);
+    // reprise automatique après la réinitialisation, avec un message pour continuer
+    await waitFor(async () => (await session(S.id)).alive, 20000, 'reprise automatique');
+    await waitFor(() => (c.out[S.id] || '').includes('le quota Claude est réinitialisé'.replace(/^l/, 'L')), 15000, 'message de reprise');
+    const after = await session(S.id);
+    assert.equal(after.paused, false); assert.equal(after.quotaStop.stage, '', 'plafond de nouveau armé');
+    // déjà au-dessus du seuil quand on le règle : appliqué tout de suite (5 h ici)
+    await idle(S.id);
+    await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 70, resetAt: Date.now() + 3600e3 } });
+    const now = await api('POST', `/api/sessions/${S.id}/quota-stop`, { five: 60, text: 'arret-e2e {quota} {pct}' });
+    assert.equal(now.triggered, true);
+    await waitFor(() => (c.out[S.id] || '').includes('arret-e2e 5 h 70'), 10000, 'texte personnalisé');
+    // retiré : plus rien
+    const off = await api('POST', `/api/sessions/${S.id}/quota-stop`, { off: true });
+    assert.equal(off.session.quotaStop, undefined);
+  } finally {
+    c.ws.close();
+    await api('DELETE', `/api/sessions/${S.id}`);
+  }
+});

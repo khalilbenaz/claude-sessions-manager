@@ -167,7 +167,7 @@ const STORE = path.join(DATA, 'sessions.json');
 const sessions = new Map();
 
 // Champs ajoutés par les modules (lib/*) : mémorisés et envoyés à l'interface tels quels.
-const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'quotaWait', 'alerts', 'remote', 'syncId', 'origin', 'syncCwd', 'type', 'paused'];
+const EXTRA_FIELDS = ['group', 'pinned', 'color', 'worktree', 'queue', 'quotaWait', 'alerts', 'remote', 'syncId', 'origin', 'syncCwd', 'type', 'paused', 'quotaStop'];
 const extra = s => Object.fromEntries(EXTRA_FIELDS.filter(k => s[k] !== undefined).map(k => [k, s[k]]));
 
 // Appelés après chaque écriture de sessions.json (lib/sync : repère les changements à envoyer).
@@ -876,10 +876,10 @@ on('idle', s => { if (s.applyOnIdle && s.settingsFile !== settingsFor(s)) setTim
 
 const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
-  renameSession, history, transcriptPath, setStatus, lockedResume, splitArgs, DATA, ROOT, PORT, VERSION, IS_WIN, IS_MAC, TOKEN_FILE, CLAUDE_INSTALL,
+  renameSession, history, transcriptPath, setStatus, pauseAndSave, restartSession, lockedResume, splitArgs, DATA, ROOT, PORT, VERSION, IS_WIN, IS_MAC, TOKEN_FILE, CLAUDE_INSTALL,
 };
 Object.defineProperty(ctx, 'CLAUDE', { get: claudeBin, enumerable: true }); // chemin toujours à jour (installé après coup)
-for (const mod of ['lock', 'git', 'settings', 'auth', 'extensions', 'secrets', 'usage', 'tools', 'queue', 'remote', 'memory', 'sync', 'schedule', 'transfer']) {
+for (const mod of ['lock', 'git', 'settings', 'auth', 'extensions', 'secrets', 'usage', 'tools', 'queue', 'quotastop', 'remote', 'memory', 'sync', 'schedule', 'transfer']) {
   try { require(`./lib/${mod}`)(ctx); } catch (e) { console.error(`module ${mod} :`, e); }
 }
 

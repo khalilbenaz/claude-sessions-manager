@@ -513,6 +513,26 @@ test('export / import : fichier relu, aperçu des sessions, import sans doublon'
   await win.evaluate(() => document.querySelector('#dlgSettings').close());
 });
 
+test('plafond de quota : réglé depuis le menu ⋯, relu, retiré', async () => {
+  const id = await win.evaluate(() => active);
+  assert.match(await win.evaluate(id => moreItems(id).map(x => x[0]).join('|'), id), /Plafond de quota…/);
+  await win.evaluate(id => window.csmFeatures.openQuotaStop(id), id);
+  await win.waitForSelector('#dlgQuotaStop[open]');
+  assert.match(await win.inputValue('#formQS [name=text]'), /\{pct\} %/, 'message par défaut affiché');
+  await win.selectOption('#formQS [name=seven]', '90'); // choisir un seuil coche la case
+  assert.equal(await win.isChecked('#formQS [name=sevenOn]'), true);
+  await win.check('#formQS [name=resume]');
+  await win.click('#formQS button[value=ok]');
+  const q = await win.waitForFunction(id => sessions.get(id)?.quotaStop, id).then(h => h.jsonValue());
+  assert.equal(q.seven, 90); assert.equal(q.five, null); assert.equal(q.resume, true); assert.equal(q.text, '', 'texte par défaut non recopié');
+  assert.match(await win.evaluate(id => moreItems(id).map(x => x[0]).join('|'), id), /Plafond de quota \(7 j ≥ 90 %\)…/);
+  await win.evaluate(id => window.csmFeatures.openQuotaStop(id), id);
+  await win.waitForSelector('#dlgQuotaStop[open]');
+  assert.equal(await win.isChecked('#formQS [name=fiveOn]'), false);
+  await win.click('#qsOff');
+  await win.waitForFunction(id => !sessions.get(id)?.quotaStop, id);
+});
+
 test('nouvelle session : premier message visible, raccourci, indication du dépôt du dossier', async () => {
   const REPO = path.join(TMP, 'depot');
   fs.mkdirSync(REPO, { recursive: true });
