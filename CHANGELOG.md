@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.52.3] — 2026-10-18
+### Corrigé
+- **Plafond de quota sur une session qui ne s'arrête jamais de travailler** : la demande d'enregistrer et de se mettre en pause attendait la fin du tour en cours, qui pouvait ne jamais venir (session enchaînant les commandes) ; la session continuait au-delà du seuil. La demande part maintenant tout de suite, même en plein travail (Claude Code la prend au tour suivant), et la pause suit la fin du tour qui la traite, pas celle du tour en cours. Seule une demande d'autorisation en attente la retarde (le texte y répondrait).
+
 ## [3.52.2] — 2026-10-18
 ### Corrigé
 - **Ramener une session de terminal qui travaillait** (« Déplacer ») : l'arrêt du terminal interrompait sa tâche, et dans l'app elle attendait sans rien faire (il fallait taper « continue »). Elle reçoit maintenant « continue » dès qu'elle est prête et reprend la tâche d'elle-même.

@@ -18,7 +18,9 @@ function send() {
   try { data = JSON.parse(input || '{}'); } catch { }
   const body = JSON.stringify({
     csm: CSM_ID, event,
-    data: { session_id: data.session_id, message: data.message, tool_name: data.tool_name, source: data.source },
+    data: { session_id: data.session_id, message: data.message, tool_name: data.tool_name, source: data.source,
+      // début du message envoyé (UserPromptSubmit) : reconnaît la demande du plafond de quota (lib/quotastop.js) ; local seulement
+      ...(typeof data.prompt === 'string' ? { prompt: data.prompt.slice(0, 200) } : {}) },
   });
   const req = http.request({
     host: '127.0.0.1', port: Number(CSM_PORT), path: '/api/hook', method: 'POST', timeout: 8000,

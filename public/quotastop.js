@@ -11,7 +11,7 @@
   const summary = q => [q?.five ? `5 h ≥ ${q.five} %` : '', q?.seven ? `7 j ≥ ${q.seven} %` : ''].filter(Boolean).join(', ');
   F.quotaStopLabel = s => (s?.quotaStop ? `${t('Plafond de quota')} (${summary(s.quotaStop)})…` : `${t('Plafond de quota')}…`);
   const stageText = q => ({
-    pending: t('Seuil atteint : la demande partira à la fin du tour en cours.'),
+    pending: t('Seuil atteint : la demande partira dès que la demande d’autorisation en cours sera réglée.'),
     asked: t('Demande envoyée : pause à la fin de la réponse de Claude.'),
     pausing: t('Mise en pause…'),
     done: t('En pause (plafond atteint).') + (q.resume ? ' ' + t('Reprise automatique à la réinitialisation du quota.') : ''),

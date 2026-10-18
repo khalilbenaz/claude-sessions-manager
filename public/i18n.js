@@ -440,7 +440,7 @@ const EN = {
   "Reprendre automatiquement à la réinitialisation du quota atteint": "Resume automatically when the reached quota resets",
   "Message envoyé à Claude": "Message sent to Claude",
   "Retirer le plafond": "Remove the cap",
-  "Seuil atteint : la demande partira à la fin du tour en cours.": "Threshold reached: the request will be sent at the end of the current turn.",
+  "Seuil atteint : la demande partira dès que la demande d’autorisation en cours sera réglée.": "Threshold reached: the request will be sent once the pending permission request is answered.",
   "Demande envoyée : pause à la fin de la réponse de Claude.": "Request sent: pause at the end of Claude’s reply.",
   "Mise en pause…": "Pausing…",
   "En pause (plafond atteint).": "Paused (cap reached).",

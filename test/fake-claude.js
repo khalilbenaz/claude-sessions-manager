@@ -84,7 +84,8 @@ function hook(ev, data = {}) {
 
 const out = s => process.stdout.write(s);
 let turn = 0;
-let pending = null; // 'long' : réponse en cours (Ctrl+C l'interrompt) ; 'ask' : attend une permission (Entrée répond)
+const queued = []; // comme Claude Code : un message tapé pendant un tour part au tour suivant
+let pending = null; // 'busy' : long tour qui finit seul ; 'long' : réponse en cours (Ctrl+C l'interrompt) ; 'ask' : attend une permission (Entrée répond)
 async function prompt(text) {
   turn++;
   log({ type: 'user', message: { role: 'user', content: text }, uuid: crypto.randomUUID() });
@@ -92,6 +93,14 @@ async function prompt(text) {
   await hook('PreToolUse', { tool_name: 'Read' });
   // comme Claude Code : Ctrl+C n'appelle aucun hook, seule une ligne est ajoutée au transcript
   if (/longue/.test(text)) { pending = 'long'; out('\r\n✻ réfléchit…'); return; }
+  if (/travail-long/.test(text)) { // long tour qui se termine seul ; les messages reçus entre-temps partent ensuite
+    pending = 'busy'; out('\r\n✻ travaille…');
+    for (let k = 0; k < 6; k++) { await new Promise(r => setTimeout(r, 400)); await hook('PreToolUse', { tool_name: 'Bash' }); }
+    out(`\r\n● echo: ${text}\r\n`); await hook('Stop'); out('\r\n❯ ');
+    pending = null;
+    for (const l of queued.splice(0)) await prompt(l);
+    return;
+  }
   if (/demande/.test(text)) { pending = 'ask'; await hook('Notification', { message: 'Claude needs your permission' }); out('\r\nDo you want to proceed? ❯ 1. Yes'); return; }
   const images = (text.match(/\S+\.(png|jpe?g|gif|webp)/gi) || []).length;
   const reply = `echo: ${text.replace(/\S+\.(png|jpe?g|gif|webp)/gi, m => `[Image #${images}]`)}`;
@@ -151,7 +160,8 @@ async function prompt(text) {
     while ((i = buf.search(/[\r\n]/)) >= 0) {
       const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
       if (line === '/exit') { hook('SessionEnd').then(() => process.exit(0)); return; }
-      if (line) prompt(line);
+      if (line && pending === 'busy') queued.push(line);
+      else if (line) prompt(line);
     }
   });
 })();
