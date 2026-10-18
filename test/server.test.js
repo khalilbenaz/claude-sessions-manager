@@ -1903,3 +1903,37 @@ test('signature de Claude dans les commits et PR : retirée par défaut, remise 
     assert.equal(await sigOf({ commitSignature: true }), 'claude', 'signature de Claude Code laissée telle quelle');
   } finally { c.ws.close(); await api('PUT', '/api/settings', { commitSignature: false }); }
 });
+
+test('ramener une session de terminal (Déplacer) : reprise dans le dossier de la conversation, pas celui du terminal', async () => {
+  // Claude Code indique parfois un autre dossier que celui où la conversation est rangée (session passée dans un
+  // worktree, dossier changé) : la reprise depuis ce dossier échouait (« No conversation found »)
+  const id = '22222222-3333-4444-8555-666666666666';
+  const proj = path.join(HOME, '.claude', 'projects', fs.realpathSync(WORK).replace(/[^a-zA-Z0-9]/g, '-')); // chemin réel, comme Claude Code (/var → /private/var)
+  fs.mkdirSync(proj, { recursive: true });
+  fs.writeFileSync(path.join(proj, `${id}.jsonl`), [
+    { type: 'user', cwd: WORK, sessionId: id, message: { role: 'user', content: 'travail dans le worktree' } },
+    { type: 'assistant', cwd: WORK, sessionId: id, message: { id: 'm1', model: 'claude-sonnet-4-5', role: 'assistant', content: [{ type: 'text', text: 'ok' }] } },
+  ].map(o => JSON.stringify(o)).join('\n') + '\n');
+  const term = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' }); // le « claude » du terminal
+  const reg = path.join(HOME, '.claude', 'sessions');
+  fs.mkdirSync(reg, { recursive: true });
+  fs.writeFileSync(path.join(reg, `${term.pid}.json`), JSON.stringify({ pid: term.pid, sessionId: id, cwd: HOME, kind: 'interactive', entrypoint: 'cli', status: 'idle', startedAt: Date.now() }));
+  const c = await wsClient();
+  let sid;
+  try {
+    const ext = await waitFor(async () => (await api('GET', '/api/external')).find(x => x.sessionId === id), 5000, 'session de terminal détectée');
+    const r = await api('POST', '/api/import', { mode: 'move', items: [ext] });
+    assert.equal(r.errors.length, 0, r.errors.join());
+    sid = r.done[0].id;
+    assert.equal(r.done[0].cwd, WORK, 'dossier de la conversation');
+    await waitFor(() => term.exitCode !== null || term.signalCode !== null, 5000, 'terminal arrêté');
+    await waitFor(() => (c.out[sid] || '').includes('FAUX CLAUDE prêt(reprise 22222222'), 15000, 'reprise de la conversation dans csm');
+    assert.ok(!(c.out[sid] || '').includes('No conversation found'));
+    assert.equal((await session(sid)).alive, true, 'session relancée dans csm');
+  } finally {
+    try { term.kill(); } catch { }
+    fs.rmSync(path.join(reg, `${term.pid}.json`), { force: true });
+    c.ws.close();
+    if (sid) await api('DELETE', `/api/sessions/${sid}`);
+  }
+});

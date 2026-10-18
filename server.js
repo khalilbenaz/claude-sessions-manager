@@ -539,17 +539,36 @@ function conversationModelArgs(id) {
 
 // Déplace une session de terminal dans csm : arrête le processus du terminal puis reprend la conversation ici.
 // mode 'copy' : le terminal continue, csm reprend une copie de la conversation (--fork-session, nouvel id).
+// Dossier où la conversation a lieu (champ cwd de ses derniers messages). Claude Code n'en indique parfois pas
+// le même dans ~/.claude/sessions (session passée dans un worktree, dossier changé en cours de route) ; or
+// --resume ne cherche la conversation que dans le dossier courant : la reprise échouait et la session s'arrêtait.
+function conversationCwd(id) {
+  const f = transcriptPath(id);
+  if (!f) return null;
+  try {
+    const size = fs.statSync(f).size, len = Math.min(size, 256 * 1024), buf = Buffer.alloc(len);
+    const fd = fs.openSync(f, 'r'); fs.readSync(fd, buf, 0, len, size - len); fs.closeSync(fd);
+    for (const l of buf.toString('utf8').split('\n').reverse()) {
+      let o; try { o = JSON.parse(l); } catch { continue; }
+      if (typeof o.cwd === 'string' && o.cwd && fs.existsSync(o.cwd)) return o.cwd;
+    }
+  } catch { }
+  return null;
+}
 async function importExternal(pid, sessionId, mode) {
   const ext = externalSessions().find(x => x.pid === pid && x.sessionId === sessionId);
   if (!ext) throw new Error('session introuvable (déjà fermée ou déjà dans csm)');
+  const cwd = conversationCwd(sessionId) || ext.cwd;
   if (mode === 'copy') {
-    return createSession({ cwd: ext.cwd, name: `${ext.title.slice(0, 34)} (copie)`, resume: sessionId, args: conversationModelArgs(sessionId), fork: true });
+    const has = !!transcriptPath(sessionId);
+    return createSession({ cwd, name: `${ext.title.slice(0, 34)} (copie)`, resume: has ? sessionId : undefined, args: conversationModelArgs(sessionId), fork: has });
   }
   try { process.kill(pid); } catch { }
   for (let i = 0; i < 50 && pidAlive(pid); i++) await new Promise(r => setTimeout(r, 100));
   if (pidAlive(pid)) throw new Error(`le processus ${pid} ne s'arrête pas`);
   await new Promise(r => setTimeout(r, 300)); // laisse le transcript se fermer
-  return createSession({ cwd: ext.cwd, name: ext.title.slice(0, 40), resume: sessionId, args: conversationModelArgs(sessionId) });
+  // aucun message échangé dans le terminal : pas de conversation à reprendre (--resume échouerait), une neuve
+  return createSession({ cwd, name: ext.title.slice(0, 40), resume: transcriptPath(sessionId) ? sessionId : undefined, args: conversationModelArgs(sessionId) });
 }
 
 // ---------------------------------------------------------------- HTTP

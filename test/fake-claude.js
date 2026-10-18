@@ -59,6 +59,12 @@ const cwd = process.cwd();
 const dir = path.join(os.homedir(), '.claude', 'projects', cwd.replace(/[^a-zA-Z0-9]/g, '-'));
 fs.mkdirSync(dir, { recursive: true });
 const transcript = path.join(dir, `${sessionId}.jsonl`);
+// comme Claude Code : --resume ne cherche la conversation que dans le dossier de travail ; rangée sous un autre
+// dossier, « No conversation found » et arrêt (une conversation absente partout reste acceptée : session neuve)
+if (resume && !fork && !fs.existsSync(transcript) && fs.readdirSync(path.dirname(dir)).some(d => fs.existsSync(path.join(path.dirname(dir), d, `${resume}.jsonl`)))) {
+  process.stdout.write(`No conversation found with session ID: ${resume}\r\n`);
+  process.exit(1);
+}
 if (resume && fork) { const src = fs.readdirSync(path.dirname(dir)).map(d => path.join(path.dirname(dir), d, `${resume}.jsonl`)).find(fs.existsSync); if (src) fs.copyFileSync(src, transcript); }
 // variables claude-mem reçues (test de la mémoire synchronisée)
 if (process.env.CSM_ID && process.env.CLAUDE_MEM_DATA_DIR) fs.writeFileSync(path.join(process.env.CLAUDE_MEM_DATA_DIR, `env-${process.env.CSM_ID}.json`), JSON.stringify({ CLAUDE_MEM_DATA_DIR: process.env.CLAUDE_MEM_DATA_DIR, CLAUDE_MEM_WORKER_PORT: process.env.CLAUDE_MEM_WORKER_PORT }));

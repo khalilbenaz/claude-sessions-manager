@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.52.1] — 2026-10-18
+### Corrigé
+- **Ramener une session de terminal** (« Déplacer ») arrêtait le terminal sans relancer la session dans l'app quand Claude Code indiquait un autre dossier que celui de la conversation (session passée dans un worktree, dossier changé en cours de route) : `--resume` ne trouvait pas la conversation (« No conversation found ») et s'arrêtait. La session reprend maintenant dans le dossier enregistré dans la conversation. Une session de terminal sans aucun message échangé s'ouvre sur une nouvelle conversation au lieu d'échouer (« Copier » aussi).
+
 ## [3.52.0] — 2026-10-18
 ### Ajouté
 - **Commits et PR sans signature de Claude** (Réglages › Général › *Signer les commits et les PR faits par Claude*, décoché par défaut) : les sessions lancées par l'app reçoivent le réglage `attribution` de Claude Code vide (et `includeCoAuthoredBy: false` pour les anciennes versions) ; plus de `Co-Authored-By: Claude…`, de « Generated with Claude Code » ni de lien de session. Sessions ouvertes : appliqué à leur relance, proposée par l'app.
