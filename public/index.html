@@ -398,6 +398,7 @@
         <label id="editorCmdRow">Commande personnalisée <input data-set="editorCommand" placeholder="mon-editeur {path}" spellcheck="false"></label>
         <label class="check"><input type="checkbox" data-set="authReminder"> <span>🔑 Prévenir avant l'expiration de la connexion à Claude et la renouveler en un clic</span></label>
         <label>Prévenir combien de jours avant <input type="number" min="1" max="30" data-set="authWarnDays"></label>
+        <label class="check"><input type="checkbox" data-set="commitSignature"> <span>Signer les commits et les PR faits par Claude (<code>Co-Authored-By: Claude…</code>, « Generated with Claude Code », lien de la session). Décoché : aucune signature.</span></label>
         <label class="check"><input type="checkbox" data-set="statusLine"> <span>Afficher les quotas et l'heure de leur réinitialisation sous chaque session (si tu n'as pas ta propre barre d'état Claude Code)</span></label>
         <fieldset class="syncWhat memChoice">
           <legend>Mémoire des sessions : laquelle utiliser ?</legend>

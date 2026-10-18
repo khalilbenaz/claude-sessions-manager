@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.52.0] — 2026-10-18
+### Ajouté
+- **Commits et PR sans signature de Claude** (Réglages › Général › *Signer les commits et les PR faits par Claude*, décoché par défaut) : les sessions lancées par l'app reçoivent le réglage `attribution` de Claude Code vide (et `includeCoAuthoredBy: false` pour les anciennes versions) ; plus de `Co-Authored-By: Claude…`, de « Generated with Claude Code » ni de lien de session. Sessions ouvertes : appliqué à leur relance, proposée par l'app.
+
 ## [3.51.1] — 2026-10-18
 ### Corrigé
 - Barre latérale : l'état de la synchro (« Synchronisé · machine ») était coupé (« Synchroni… ») sur la ligne des boutons du bas ; il a de nouveau sa propre ligne, sous les quotas, et le bouton Historique retrouve son libellé.

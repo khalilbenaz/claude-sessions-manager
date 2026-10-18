@@ -146,6 +146,9 @@ function sessionSettings(withStatusLine) {
   // Langue des réponses de Claude (réglage « language » de Claude Code) : par défaut celle de l'app
   const lang = replyLanguage(st);
   if (lang) o.language = lang;
+  // signature de Claude dans les commits et les PR (Co-Authored-By, « Generated with Claude Code », lien de
+  // session) : retirée sauf si l'utilisateur la veut (Réglages › Général) ; includeCoAuthoredBy pour les anciennes versions
+  if (st.commitSignature !== true) { o.attribution = { commit: '', pr: '' }; o.includeCoAuthoredBy = false; }
   const w = COMPACT_WINDOW[st.autoCompactWindow || 'model'];
   if (w) o.env = { CLAUDE_CODE_AUTO_COMPACT_WINDOW: w };
   const txt = JSON.stringify(o, null, 2);

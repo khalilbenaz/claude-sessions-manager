@@ -1887,3 +1887,19 @@ test('plafond de quota d’une session : demande d’enregistrer, pause, reprise
     await api('DELETE', `/api/sessions/${S.id}`);
   }
 });
+
+test('signature de Claude dans les commits et PR : retirée par défaut, remise par le réglage', async () => {
+  const c = await wsClient();
+  const sigOf = async opts => {
+    await api('PUT', '/api/settings', opts);
+    const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'signature' });
+    await waitFor(() => (c.out[s.id] || '').includes('FAUX CLAUDE prêt'), 15000, 'démarrage');
+    const m = (c.out[s.id] || '').match(/SIGNATURE:(\S+)/);
+    await api('DELETE', `/api/sessions/${s.id}`);
+    return m && m[1];
+  };
+  try {
+    assert.equal(await sigOf({}), '{"commit":"","pr":""}|false', 'par défaut : aucune signature');
+    assert.equal(await sigOf({ commitSignature: true }), 'claude', 'signature de Claude Code laissée telle quelle');
+  } finally { c.ws.close(); await api('PUT', '/api/settings', { commitSignature: false }); }
+});
