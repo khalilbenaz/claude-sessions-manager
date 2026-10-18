@@ -1963,3 +1963,52 @@ test('plafond de quota atteint en plein travail : demande envoyée tout de suite
     await api('DELETE', `/api/sessions/${S.id}`);
   }
 });
+
+test('quota remis à zéro avant sa date : le relevé le plus récent gagne, une session inactive ne réimpose pas l’ancien', async () => {
+  await stopServer(); await startServer(); // quota remis à zéro (gardé en mémoire)
+  const A = await api('POST', '/api/sessions', { cwd: WORK, name: 'quota-a' });
+  const B = await api('POST', '/api/sessions', { cwd: WORK, name: 'quota-b' });
+  await idle(A.id); await idle(B.id);
+  const R = Date.now() + 2 * 86400e3;
+  const hook = (s, event, data) => api('POST', '/api/hook', { csm: s.id, event, data });
+  try {
+    await hook(A, 'working', {});
+    await hook(A, 'quota', { pct: 10, resetAt: Date.now() + 3600e3, seven: { pct: 100, resetAt: R } });
+    assert.equal((await api('GET', '/api/quota')).seven.pct, 100);
+    await new Promise(r => setTimeout(r, 20));
+    // B vient d'échanger avec Claude : 7 jours remis à 0 %, même date de réinitialisation
+    await hook(B, 'working', {});
+    await hook(B, 'quota', { pct: 10, resetAt: Date.now() + 3600e3, seven: { pct: 0, resetAt: R } });
+    assert.equal((await api('GET', '/api/quota')).seven.pct, 0, 'remise à zéro prise');
+    // A, inactive depuis, renvoie son ancien relevé : écarté
+    await hook(A, 'quota', { pct: 10, resetAt: Date.now() + 3600e3, seven: { pct: 100, resetAt: R } });
+    assert.equal((await api('GET', '/api/quota')).seven.pct, 0, 'ancien relevé écarté');
+    // B continue : son quota monte normalement
+    await hook(B, 'quota', { pct: 10, resetAt: Date.now() + 3600e3, seven: { pct: 2, resetAt: R } });
+    assert.equal((await api('GET', '/api/quota')).seven.pct, 2);
+  } finally {
+    await api('DELETE', `/api/sessions/${A.id}`); await api('DELETE', `/api/sessions/${B.id}`);
+  }
+});
+
+test('plafond de quota : session en pause reprise dès que le quota est remis à zéro avant sa date', async () => {
+  await stopServer(); await startServer();
+  const S = await api('POST', '/api/sessions', { cwd: WORK, name: 'plafond-reset' });
+  const B = await api('POST', '/api/sessions', { cwd: WORK, name: 'autre' });
+  await idle(S.id); await idle(B.id);
+  const c = await wsClient();
+  const R = Date.now() + 2 * 86400e3; // réinitialisation lointaine : seule la remise à zéro peut la relancer
+  try {
+    await api('POST', `/api/sessions/${S.id}/quota-stop`, { seven: 95, resume: true });
+    await api('POST', '/api/hook', { csm: S.id, event: 'quota', data: { pct: 10, resetAt: Date.now() + 3600e3, seven: { pct: 96, resetAt: R } } });
+    await waitFor(async () => { const s = await session(S.id); return !s.alive && s.quotaStop.stage === 'done'; }, 15000, 'mise en pause');
+    await new Promise(r => setTimeout(r, 20));
+    await api('POST', '/api/hook', { csm: B.id, event: 'working', data: {} });
+    await api('POST', '/api/hook', { csm: B.id, event: 'quota', data: { pct: 10, resetAt: Date.now() + 3600e3, seven: { pct: 0, resetAt: R } } });
+    await waitFor(async () => (await session(S.id)).alive, 15000, 'reprise automatique après la remise à zéro');
+    await waitFor(() => (c.out[S.id] || '').includes('Le quota Claude est réinitialisé'), 15000, 'message de reprise');
+  } finally {
+    c.ws.close();
+    await api('DELETE', `/api/sessions/${S.id}`); await api('DELETE', `/api/sessions/${B.id}`);
+  }
+});

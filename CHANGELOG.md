@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.52.4] — 2026-10-18
+### Corrigé
+- **Quota remis à zéro avant sa date** (barre latérale bloquée à 100 % alors que Claude Code affichait 0 %) : dans une même fenêtre, l'app ne gardait que le relevé le plus haut, pour écarter les valeurs anciennes des sessions inactives ; un quota remis à zéro sans changer sa date de réinitialisation était donc ignoré. Le relevé gardé est maintenant celui de la session qui a échangé avec Claude le plus récemment ; un relevé plus ancien est écarté, même plus haut.
+- **Plafond de quota** : une session mise en pause reprend dès que le quota repasse sous son seuil (remise à zéro anticipée), sans attendre la date de réinitialisation, si la reprise automatique est cochée ; le seuil peut de nouveau se déclencher dans la même fenêtre.
+
 ## [3.52.3] — 2026-10-18
 ### Corrigé
 - **Plafond de quota sur une session qui ne s'arrête jamais de travailler** : la demande d'enregistrer et de se mettre en pause attendait la fin du tour en cours, qui pouvait ne jamais venir (session enchaînant les commandes) ; la session continuait au-delà du seuil. La demande part maintenant tout de suite, même en plein travail (Claude Code la prend au tour suivant), et la pause suit la fin du tour qui la traite, pas celle du tour en cours. Seule une demande d'autorisation en attente la retarde (le texte y répondrait).
