@@ -16,7 +16,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFile, spawn } = require('child_process');
 
-const REPO = 'khalilbenaz/claude-sessions-manager';
+const REPO = 'vantaflow/claude-sessions-manager';
 const EVERY = 30 * 60e3; // assez souvent pour qu'une app laissée ouverte en arrière-plan trouve la nouvelle version le jour même
 
 function newer(a, b) { // a > b ?

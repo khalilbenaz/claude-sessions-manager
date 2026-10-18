@@ -41,7 +41,7 @@ Nécessite Claude Code, installé séparément (https://docs.claude.com/claude-c
 
 **Mots-clés** : Claude, Claude Code, IA, terminal, sessions, développeur, git, worktree
 
-**Copyright** : © 2026 Khalil Benazzouz — licence MIT
+**Copyright** : © 2026 vantaflow — licence MIT
 
 ---
 
@@ -89,12 +89,12 @@ Requires Claude Code, installed separately (https://docs.claude.com/claude-code)
 |---|---|
 | Catégorie | Outils de développement |
 | Tarif | Gratuit |
-| Site web | https://khalilbenaz.github.io/claude-sessions-manager/ |
-| Contact support | https://github.com/khalilbenaz/claude-sessions-manager/issues |
-| Politique de confidentialité | https://khalilbenaz.github.io/claude-sessions-manager/privacy.html |
+| Site web | https://vantaflow.github.io/claude-sessions-manager/ |
+| Contact support | https://github.com/vantaflow/claude-sessions-manager/issues |
+| Politique de confidentialité | https://vantaflow.github.io/claude-sessions-manager/privacy.html |
 | Configuration requise | Windows 10/11 x64 ; Claude Code installé ; abonnement Claude ou clé API |
 | Classification par âge | questionnaire : aucun contenu sensible, pas d'achats ; communication en ligne via Claude Code |
 
 **Notes pour la certification** (à coller telles quelles, en anglais) :
 
-> Desktop app (runFullTrust, Electron) that runs the Claude Code command-line tool, installed separately by the user (https://docs.claude.com/claude-code), in embedded terminals. It starts a local server bound to 127.0.0.1 only (not reachable from the network) and collects no telemetry. To test without Claude Code installed, the app starts and shows its UI; creating a session shows "Claude Code not found" in Settings › Diagnostics. Source code: https://github.com/khalilbenaz/claude-sessions-manager
+> Desktop app (runFullTrust, Electron) that runs the Claude Code command-line tool, installed separately by the user (https://docs.claude.com/claude-code), in embedded terminals. It starts a local server bound to 127.0.0.1 only (not reachable from the network) and collects no telemetry. To test without Claude Code installed, the app starts and shows its UI; creating a session shows "Claude Code not found" in Settings › Diagnostics. Source code: https://github.com/vantaflow/claude-sessions-manager

@@ -39,7 +39,7 @@
     "terminal",
     "sessions"
   ],
-  "author": "Khalil Benazzouz",
+  "author": "vantaflow",
   "license": "MIT",
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
@@ -61,7 +61,7 @@
   "build": {
     "appId": "com.claude-sessions.app",
     "productName": "Claude Sessions",
-    "copyright": "Khalil Benazzouz",
+    "copyright": "vantaflow",
     "asar": false,
     "npmRebuild": false,
     "directories": {
@@ -126,7 +126,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "khalilbenaz",
+        "owner": "vantaflow",
         "repo": "claude-sessions-manager",
         "releaseType": "release"
       }
@@ -146,12 +146,12 @@
       "artifactName": "Claude-Sessions-${version}-store.${ext}"
     }
   },
-  "homepage": "https://khalilbenaz.github.io/claude-sessions-manager/",
+  "homepage": "https://vantaflow.github.io/claude-sessions-manager/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/khalilbenaz/claude-sessions-manager.git"
+    "url": "https://github.com/vantaflow/claude-sessions-manager.git"
   },
   "bugs": {
-    "url": "https://github.com/khalilbenaz/claude-sessions-manager/issues"
+    "url": "https://github.com/vantaflow/claude-sessions-manager/issues"
   }
 }

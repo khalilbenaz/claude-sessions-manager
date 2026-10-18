@@ -2,7 +2,7 @@
 
 Une seule fenêtre pour piloter plusieurs sessions [Claude Code](https://docs.claude.com/claude-code) au lieu d'une pile d'onglets de terminal. **Windows et macOS · libre (MIT).**
 
-**Site et guide : https://khalilbenaz.github.io/claude-sessions-manager/** · [Guide détaillé en ligne](https://khalilbenaz.github.io/claude-sessions-manager/guide.html) · [Journal des versions](CHANGELOG.md)
+**Site et guide : https://vantaflow.github.io/claude-sessions-manager/** · [Guide détaillé en ligne](https://vantaflow.github.io/claude-sessions-manager/guide.html) · [Journal des versions](CHANGELOG.md)
 
 ![Claude Sessions : sessions par groupe avec leur état, terminal de la session active, quotas en bas de la barre latérale](docs/img/app-dark.png)
 
@@ -38,7 +38,7 @@ Une seule fenêtre pour piloter plusieurs sessions [Claude Code](https://docs.cl
 
 Seul prérequis : **Claude Code** installé (la commande `claude` fonctionne dans un terminal). Node.js n'est pas nécessaire.
 
-| Système | Fichier ([dernière version](https://github.com/khalilbenaz/claude-sessions-manager/releases/latest)) | Installation |
+| Système | Fichier ([dernière version](https://github.com/vantaflow/claude-sessions-manager/releases/latest)) | Installation |
 |---|---|---|
 | Windows 10 / 11 | `Claude-Sessions-Setup-x.y.z.exe` | double-clic ; installation en un clic, sans droits administrateur |
 | Mac Apple Silicon (M1…M4) | `Claude-Sessions-x.y.z-arm64.dmg` | ouvrir, glisser **Claude Sessions** dans Applications |
@@ -525,7 +525,7 @@ Sur Mac, <kbd>Ctrl</kbd>+<kbd>Alt</kbd> = <kbd>Ctrl</kbd>+<kbd>Option</kbd>. Dan
 
 ## 19. Données, sécurité, confidentialité
 
-- **Tout reste sur ta machine.** Le serveur de l'app écoute uniquement sur `127.0.0.1` (inaccessible depuis le réseau), exige un jeton aléatoire et vérifie l'en-tête Host. Aucune télémétrie : seules tes sessions Claude Code parlent à l'API d'Anthropic, comme d'habitude. Seule exception, si tu l'actives : la synchronisation (§ 16 bis) envoie la liste des sessions (noms, dossiers, groupes, options) et, sauf si tu le désactives, leurs conversations chiffrées de bout en bout, au serveur de synchro (celui du projet ou le tien). [Politique de confidentialité](https://khalilbenaz.github.io/claude-sessions-manager/privacy.html).
+- **Tout reste sur ta machine.** Le serveur de l'app écoute uniquement sur `127.0.0.1` (inaccessible depuis le réseau), exige un jeton aléatoire et vérifie l'en-tête Host. Aucune télémétrie : seules tes sessions Claude Code parlent à l'API d'Anthropic, comme d'habitude. Seule exception, si tu l'actives : la synchronisation (§ 16 bis) envoie la liste des sessions (noms, dossiers, groupes, options) et, sauf si tu le désactives, leurs conversations chiffrées de bout en bout, au serveur de synchro (celui du projet ou le tien). [Politique de confidentialité](https://vantaflow.github.io/claude-sessions-manager/privacy.html).
 - **Fenêtre isolée** : pas d'accès système depuis la page, navigation limitée au serveur local, liens externes ouverts dans ton navigateur, permissions limitées aux notifications et au presse-papiers, aucun script extérieur (CSP).
 - **Données de l'app** : `%APPDATA%\claude-sessions` (Windows), `~/Library/Application Support/claude-sessions` (macOS) — sessions, réglages, modèles, prompts, demandes programmées, jeton, journal, copies et journal de la synchro de `~/.claude`. Désinstaller l'app ne les supprime pas.
 - **Mémoire des sessions** : `memory/` dans les données de l'app (§ 16 ter). Elle reste locale, sauf si la synchro et son option *Mémoire des sessions* sont actives ; elle est alors envoyée chiffrée.
@@ -542,7 +542,7 @@ Sur Mac, <kbd>Ctrl</kbd>+<kbd>Alt</kbd> = <kbd>Ctrl</kbd>+<kbd>Option</kbd>. Dan
 | macOS : l'app ne s'ouvre pas (« développeur non vérifié », « endommagée ») | Réglages Système › Confidentialité et sécurité › **Ouvrir quand même** ; ou `xattr -cr "/Applications/Claude Sessions.app"` puis relancer. |
 | « Your login expires in N days » / « Please run /login » | bandeau 🔑 **Renouveler** (§ 14 ter) : le navigateur s'ouvre sur la page de connexion de Claude. |
 | Mot de passe de verrouillage oublié | non récupérable : fermer la session ; la conversation reste dans les fichiers de Claude Code. |
-| Autre souci | Réglages › Diagnostic › **Copier le rapport**, puis [ouvrir une issue](https://github.com/khalilbenaz/claude-sessions-manager/issues). |
+| Autre souci | Réglages › Diagnostic › **Copier le rapport**, puis [ouvrir une issue](https://github.com/vantaflow/claude-sessions-manager/issues). |
 
 <a id="installation-en-ligne-de-commande-sans-application"></a><a id="commandes"></a><a id="options"></a>
 ## 21. Ligne de commande `csm` (sans l'application)
@@ -550,7 +550,7 @@ Sur Mac, <kbd>Ctrl</kbd>+<kbd>Alt</kbd> = <kbd>Ctrl</kbd>+<kbd>Option</kbd>. Dan
 Pour utiliser Claude Sessions dans un navigateur, sans l'application de bureau (prérequis : [Node.js](https://nodejs.org) 18+) :
 
 ```sh
-git clone https://github.com/khalilbenaz/claude-sessions-manager.git ~/claude-sessions-manager
+git clone https://github.com/vantaflow/claude-sessions-manager.git ~/claude-sessions-manager
 cd ~/claude-sessions-manager
 npm ci && npm install -g .   # commande « csm »
 csm install                  # démarrage automatique + raccourci (tâche planifiée / LaunchAgent)
@@ -584,11 +584,11 @@ Architecture : `server.js` (serveur local, un pseudo-terminal node-pty par sessi
 Windows builds are intended to be signed through the [SignPath Foundation](https://signpath.org) free code signing program for open-source projects (application pending).
 
 - Builds are produced only by the public GitHub Actions workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) from tagged commits of this repository; no locally built binary is ever signed.
-- Committers and reviewers: [@khalilbenaz](https://github.com/khalilbenaz)
-- Approvers (release signing): [@khalilbenaz](https://github.com/khalilbenaz)
+- Committers and reviewers: [@vantaflow](https://github.com/vantaflow)
+- Approvers (release signing): [@vantaflow](https://github.com/vantaflow)
 
 ## Privacy policy
 
-This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. Full policy: https://khalilbenaz.github.io/claude-sessions-manager/privacy.html
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. Full policy: https://vantaflow.github.io/claude-sessions-manager/privacy.html
 
 Claude Sessions runs a server bound to `127.0.0.1` only (not reachable from the network) and stores its data locally (`%APPDATA%\claude-sessions`, `~/Library/Application Support/claude-sessions`). It collects no telemetry. Network traffic comes only from the Claude Code sessions the user starts, which talk to Anthropic's API as Claude Code normally does.

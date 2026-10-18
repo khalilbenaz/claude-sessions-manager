@@ -22,7 +22,7 @@ function inline(s) {
   s = s.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[\s(])\*([^*]+)\*/g, '$1<i>$2</i>');
   s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t, u) => {
     if (u.startsWith('#')) u = '#' + u.slice(1).replace(/^(\d+)-/, 'g$1-'); // ancres du README → ancres du guide
-    const ext = /^https?:/.test(u) && !u.includes('khalilbenaz.github.io');
+    const ext = /^https?:/.test(u) && !u.includes('vantaflow.github.io');
     return `<a href="${u}"${ext ? ' target="_blank" rel="noopener"' : ''}>${t}</a>`;
   });
   return s.replace(/\u0000(\d+)\u0000/g, (_, i) => codes[+i]);
@@ -122,7 +122,7 @@ footer { border-top: 1px solid var(--line); padding: 26px 20px 40px; color: var(
 <body>
 <header><div class="in">
   <a class="brand" href="./"><img src="icon.svg" alt=""> Claude Sessions</a>
-  <nav><a href="./">Accueil</a><a class="on keep" href="guide.html">Guide</a><a href="./#telecharger">Télécharger</a><a href="https://github.com/khalilbenaz/claude-sessions-manager" class="keep">GitHub</a></nav>
+  <nav><a href="./">Accueil</a><a class="on keep" href="guide.html">Guide</a><a href="./#telecharger">Télécharger</a><a href="https://github.com/vantaflow/claude-sessions-manager" class="keep">GitHub</a></nav>
 </div></header>
 <div class="layout">
   <aside class="toc"><b>Sommaire</b>
@@ -130,11 +130,11 @@ ${toc.map(x => `    <a href="#${x.id}"><span>${x.n}</span>${esc(x.t.replace(/`/g
   </aside>
   <main>
     <h1>Guide de Claude Sessions</h1>
-    <p class="lead">Tout ce que fait l'application et comment s'en servir — version ${version}. Le même guide est dans le <a href="https://github.com/khalilbenaz/claude-sessions-manager#readme">README</a>.</p>
+    <p class="lead">Tout ce que fait l'application et comment s'en servir — version ${version}. Le même guide est dans le <a href="https://github.com/vantaflow/claude-sessions-manager#readme">README</a>.</p>
 ${out.join('\n')}
   </main>
 </div>
-<footer>© 2026 Khalil Benazzouz · <a href="https://github.com/khalilbenaz/claude-sessions-manager/blob/main/LICENSE">Licence MIT</a> · <a href="privacy.html">Confidentialité</a> · <a href="https://github.com/khalilbenaz/claude-sessions-manager/issues">Signaler un problème</a></footer>
+<footer>© 2026 vantaflow · <a href="https://github.com/vantaflow/claude-sessions-manager/blob/main/LICENSE">Licence MIT</a> · <a href="privacy.html">Confidentialité</a> · <a href="https://github.com/vantaflow/claude-sessions-manager/issues">Signaler un problème</a></footer>
 <script>
 // Section courante surlignée dans le sommaire.
 const links = [...document.querySelectorAll('aside.toc a')];
