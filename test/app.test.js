@@ -559,6 +559,19 @@ test('plafond de quota : réglé depuis le menu ⋯, relu, retiré', async () =>
   await win.waitForFunction(id => !sessions.get(id)?.quotaStop, id);
 });
 
+test('barre latérale : état de la synchro sur sa propre ligne, jamais coupé', async () => {
+  await win.evaluate(() => { window.csmFeatures.syncMachine = 'MacBook-Air-de-Khalil'; window.dispatchEvent(new CustomEvent('csm:sync', { detail: { enabled: true, lastOk: Date.now() } })); });
+  const r = await win.waitForFunction(() => {
+    const l = document.querySelector('#sideStatus .syncLine span');
+    return l && { text: l.textContent, cut: l.scrollWidth > l.clientWidth + 1, hist: getComputedStyle(document.querySelector('#btnHistory .lbl')).display };
+  }).then(h => h.jsonValue());
+  assert.equal(r.text, 'Synchronisé · MacBook-Air-de-Khalil');
+  assert.equal(r.cut, false, 'texte entier');
+  assert.notEqual(r.hist, 'none', 'libellé « Historique » de nouveau visible');
+  await win.evaluate(() => { delete window.csmFeatures.syncMachine; window.dispatchEvent(new CustomEvent('csm:sync', { detail: { enabled: false } })); });
+  await win.waitForFunction(() => !document.querySelector('#sideStatus .syncLine'));
+});
+
 test('nouvelle session : premier message visible, raccourci, indication du dépôt du dossier', async () => {
   const REPO = path.join(TMP, 'depot');
   fs.mkdirSync(REPO, { recursive: true });

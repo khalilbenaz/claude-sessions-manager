@@ -456,6 +456,7 @@ const EN = {
   "aucun": "none",
   "reprise automatique": "automatic resume",
   "Atteint : Claude enregistre où il en est, puis la session se met en pause (mémoire et synchro)": "Reached: Claude saves where it is, then the session pauses (memory and sync)",
+  "Dernière synchro": "Last sync",
 };
 
 let LANG = 'fr';

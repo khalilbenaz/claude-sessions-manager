@@ -21,13 +21,6 @@
 
 /* Bas de la barre latérale sur une seule ligne */
 #side footer { flex-wrap: nowrap; }
-#side footer .syncFoot { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); }
-#side footer .syncFoot[hidden] { display: none; }
-#side footer .syncFoot span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#side footer .syncFoot b { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
-#side footer .syncFoot.bad b { background: var(--warn); }
-#side footer .syncFoot:not([hidden]) ~ #btnHistory .lbl { display: none; }
-body.compact #side footer .syncFoot { display: none; }
 
 /* Champ de recherche : raccourci toujours visible */
 .palHint kbd { flex: none; }

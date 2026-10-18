@@ -26,18 +26,16 @@
     const parts = [];
     if (quota?.five) parts.push(...line(t('Quota 5 h'), quota.five));
     if (quota?.seven) parts.push(...line(t('Quota 7 j'), quota.seven));
-    // état de la synchro : sur la même ligne que les boutons du bas de la barre latérale
-    const foot = $('#syncFoot');
-    if (foot) {
-      foot.hidden = !sync?.enabled;
-      if (sync?.enabled) {
-        const machine = window.csmFeatures?.syncMachine;
-        const dot = document.createElement('b'), txt = document.createElement('span');
-        txt.textContent = sync.lastError ? t('Synchro : erreur') : `${t('Synchronisé')}${machine ? ` · ${machine}` : sync.lastOk ? ` · ${hm(sync.lastOk)}` : ''}`;
-        foot.className = `syncFoot${sync.lastError ? ' bad' : ''}`;
-        foot.title = sync.lastError || (sync.lastOk ? hm(sync.lastOk) : '');
-        foot.replaceChildren(dot, txt);
-      }
+    // état de la synchro : sur sa propre ligne, sous les quotas (dans le bas de la barre latérale, à côté des
+    // boutons, le texte était coupé : « Synchroni… »)
+    if (sync?.enabled) {
+      const machine = window.csmFeatures?.syncMachine;
+      const row = document.createElement('div'), dot = document.createElement('b'), txt = document.createElement('span');
+      row.className = `syncLine${sync.lastError ? ' bad' : ''}`;
+      row.title = sync.lastError || (sync.lastOk ? `${t('Dernière synchro')} : ${hm(sync.lastOk)}` : '');
+      txt.textContent = sync.lastError ? t('Synchro : erreur') : `${t('Synchronisé')}${machine ? ` · ${machine}` : sync.lastOk ? ` · ${hm(sync.lastOk)}` : ''}`;
+      row.append(dot, txt);
+      parts.push(row);
     }
     box.replaceChildren(...parts);
     box.hidden = !parts.length;

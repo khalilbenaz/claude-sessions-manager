@@ -476,6 +476,8 @@ a { color: var(--link); }
 .sideStatus .qbar i.hi { background: var(--work); } .sideStatus .qbar i.max { background: var(--warn); }
 .sideStatus .syncLine { display: flex; align-items: center; gap: 6px; padding-top: 2px; }
 .sideStatus .syncLine b { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+.sideStatus .syncLine span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sideStatus .syncLine.bad b { background: var(--warn); } .sideStatus .syncLine.bad { color: var(--warn); }
 .sideStatus .syncLine.bad b { background: var(--warn); }
 body.compact .sideStatus { display: none; }
 
