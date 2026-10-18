@@ -1369,7 +1369,7 @@ async function importExternal(items) {
   const busy = items.filter(x => x.status === 'busy');
   $('#impTitle').textContent = items.length > 1 ? `Ramener ${items.length} sessions dans csm` : `Ramener « ${items[0].title} »`;
   $('#impWarn').hidden = !busy.length;
-  $('#impWarn').textContent = `⚠ ${busy.length > 1 ? `${busy.length} sessions travaillent` : 'Cette session travaille'} en ce moment : « Déplacer » interrompt la tâche en cours (tu pourras la relancer dans csm). « Copier » ne l'interrompt pas.`;
+  $('#impWarn').textContent = `⚠ ${busy.length > 1 ? `${busy.length} sessions travaillent` : 'Cette session travaille'} en ce moment : « Déplacer » l'arrête dans le terminal, puis la tâche reprend toute seule dans csm. « Copier » ne l'interrompt pas.`;
   const dlg = $('#dlgImport');
   dlg.returnValue = '';
   dlg.showModal();

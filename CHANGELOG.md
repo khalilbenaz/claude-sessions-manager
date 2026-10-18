@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.52.2] — 2026-10-18
+### Corrigé
+- **Ramener une session de terminal qui travaillait** (« Déplacer ») : l'arrêt du terminal interrompait sa tâche, et dans l'app elle attendait sans rien faire (il fallait taper « continue »). Elle reçoit maintenant « continue » dès qu'elle est prête et reprend la tâche d'elle-même.
+
 ## [3.52.1] — 2026-10-18
 ### Corrigé
 - **Ramener une session de terminal** (« Déplacer ») arrêtait le terminal sans relancer la session dans l'app quand Claude Code indiquait un autre dossier que celui de la conversation (session passée dans un worktree, dossier changé en cours de route) : `--resume` ne trouvait pas la conversation (« No conversation found ») et s'arrêtait. La session reprend maintenant dans le dossier enregistré dans la conversation. Une session de terminal sans aucun message échangé s'ouvre sur une nouvelle conversation au lieu d'échouer (« Copier » aussi).

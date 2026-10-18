@@ -188,7 +188,7 @@ Bouton **± Modifications** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd>) ou ⋯
 ## 9. Historique et sessions ouvertes dans un terminal
 
 - **Historique** (🕘, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd>) : toutes tes conversations Claude Code de cet ordinateur (titre, dossier, branche, dernier message), filtrables. Clic = reprendre la conversation dans une nouvelle session, dans son dossier. Clic droit : renommer, copier le chemin ou l'identifiant.
-- **Dans un terminal** (bas de la barre latérale) : les sessions Claude lancées dans des terminaux apparaissent toutes seules. Clic → **Déplacer** (la session s'arrête dans le terminal et reprend ici, même conversation) ou **Copier** (le terminal continue, une copie s'ouvre ici). **Tout ramener** les déplace toutes.
+- **Dans un terminal** (bas de la barre latérale) : les sessions Claude lancées dans des terminaux apparaissent toutes seules. Clic → **Déplacer** (la session s'arrête dans le terminal et reprend ici, même conversation, dans le dossier où elle travaillait ; si Claude était en plein travail, la tâche repart d'elle-même avec « continue ») ou **Copier** (le terminal continue, une copie s'ouvre ici). **Tout ramener** les déplace toutes.
 
 ## 10. Images et fichiers
 

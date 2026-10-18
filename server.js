@@ -568,7 +568,10 @@ async function importExternal(pid, sessionId, mode) {
   if (pidAlive(pid)) throw new Error(`le processus ${pid} ne s'arrête pas`);
   await new Promise(r => setTimeout(r, 300)); // laisse le transcript se fermer
   // aucun message échangé dans le terminal : pas de conversation à reprendre (--resume échouerait), une neuve
-  return createSession({ cwd, name: ext.title.slice(0, 40), resume: transcriptPath(sessionId) ? sessionId : undefined, args: conversationModelArgs(sessionId) });
+  const has = !!transcriptPath(sessionId);
+  // elle travaillait : la tâche interrompue par l'arrêt du terminal repart d'elle-même (« continue » dès que prête)
+  return createSession({ cwd, name: ext.title.slice(0, 40), resume: has ? sessionId : undefined, args: conversationModelArgs(sessionId),
+    initialPrompt: has && ext.status === 'busy' ? 'continue' : undefined });
 }
 
 // ---------------------------------------------------------------- HTTP

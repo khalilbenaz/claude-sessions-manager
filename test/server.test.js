@@ -1917,7 +1917,7 @@ test('ramener une session de terminal (Déplacer) : reprise dans le dossier de l
   const term = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' }); // le « claude » du terminal
   const reg = path.join(HOME, '.claude', 'sessions');
   fs.mkdirSync(reg, { recursive: true });
-  fs.writeFileSync(path.join(reg, `${term.pid}.json`), JSON.stringify({ pid: term.pid, sessionId: id, cwd: HOME, kind: 'interactive', entrypoint: 'cli', status: 'idle', startedAt: Date.now() }));
+  fs.writeFileSync(path.join(reg, `${term.pid}.json`), JSON.stringify({ pid: term.pid, sessionId: id, cwd: HOME, kind: 'interactive', entrypoint: 'cli', status: 'busy', startedAt: Date.now() }));
   const c = await wsClient();
   let sid;
   try {
@@ -1929,6 +1929,8 @@ test('ramener une session de terminal (Déplacer) : reprise dans le dossier de l
     await waitFor(() => term.exitCode !== null || term.signalCode !== null, 5000, 'terminal arrêté');
     await waitFor(() => (c.out[sid] || '').includes('FAUX CLAUDE prêt(reprise 22222222'), 15000, 'reprise de la conversation dans csm');
     assert.ok(!(c.out[sid] || '').includes('No conversation found'));
+    // elle travaillait dans le terminal : la tâche interrompue repart d'elle-même
+    await waitFor(() => (c.out[sid] || '').includes('echo: continue'), 10000, '« continue » envoyé');
     assert.equal((await session(sid)).alive, true, 'session relancée dans csm');
   } finally {
     try { term.kill(); } catch { }
