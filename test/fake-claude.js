@@ -10,6 +10,9 @@ const { exec } = require('child_process');
 const argv = process.argv.slice(2);
 const opt = n => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : undefined; };
 if (argv.includes('--version')) { console.log('0.0.0 (faux claude)'); process.exit(0); }
+// FAKE_NO_NAME=1 : ancienne version de Claude Code, sans --name
+if (argv.includes('--help')) { console.log(`Usage: claude [options]\n  -r, --resume [value]  Resume a conversation${process.env.FAKE_NO_NAME ? '' : '\n  -n, --name <name>  Set a display name for this session'}`); process.exit(0); }
+if (process.env.FAKE_NO_NAME && (argv.includes('--name') || argv.includes('-n'))) { console.error("error: unknown option '--name'"); process.exit(1); }
 // `claude plugin marketplace add <repo>` / `plugin install|uninstall <nom@marketplace>` : registres de Claude Code
 if (argv[0] === 'plugin') {
   const dir = path.join(os.homedir(), '.claude', 'plugins');
@@ -135,6 +138,9 @@ async function prompt(text) {
   await hook('SessionStart', { source: resume ? 'resume' : 'startup' });
   if (argv.includes('--remote-control')) out(`REMOTE:${opt('--remote-control')}\r\n`);
   if (settings.language) out(`LANGUE:${settings.language}\r\n`);
+  // nom de la session pour les autres sessions : --name, sinon la dernière entrée agent-name de la conversation
+  const agentName = opt('--name') || (fs.existsSync(transcript) ? fs.readFileSync(transcript, 'utf8').split('\n').map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(o => o && o.type === 'agent-name').map(o => o.agentName).pop() : undefined);
+  if (agentName) out(`NOM:${agentName}\r\n`);
   out(`SIGNATURE:${settings.attribution ? JSON.stringify(settings.attribution) + '|' + settings.includeCoAuthoredBy : 'claude'}\r\n`);
   out(`FAUX CLAUDE prêt${resume ? '(reprise ' + resume.slice(0, 8) + ')' : ''} — session ${sessionId}\r\n❯ `);
   let buf = '';
@@ -160,6 +166,7 @@ async function prompt(text) {
     while ((i = buf.search(/[\r\n]/)) >= 0) {
       const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
       if (line === '/exit') { hook('SessionEnd').then(() => process.exit(0)); return; }
+      if (line.startsWith('/rename ')) { log({ type: 'agent-name', agentName: line.slice(8) }); out(`\r\nRENOMMÉE:${line.slice(8)}\r\n❯ `); continue; }
       if (line && pending === 'busy') queued.push(line);
       else if (line) prompt(line);
     }

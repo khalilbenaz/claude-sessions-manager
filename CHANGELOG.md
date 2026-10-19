@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.54.0] — 2026-10-19
+### Corrigé
+- **Nom des sessions quand elles se parlent** : les autres sessions voyaient un nom tiré du dossier (« Message from @downloads-55 », « projects-3c ») au lieu du nom donné dans l'app. Le nom de la session est maintenant son nom pour Claude Code (`/rename`) : passé au lancement (`--name`, si la version de Claude Code le connaît ; sinon porté par la conversation à la reprise), appliqué aussitôt à une session ouverte quand on la renomme dans l'app (`/rename`, ou dès la fin d'une demande d'autorisation), et sur les autres machines quand le nom arrive par la synchro.
+### Ajouté
+- `/rename` tapé dans une session renomme aussi la session dans l'app (et sur les autres machines).
+
 ## [3.53.0] — 2026-10-19
 ### Ajouté
 - **Modèle Claude suivi en cours de session** : changé avec `/model` dans Claude Code, le modèle réellement utilisé (lu dans la conversation à la fin de chaque tour) remplace celui de la création dans les arguments de la session ; la relance, la reprise et les autres machines (synchro) l'utilisent. Un alias et l'identifiant complet du même modèle (« opus », « claude-opus-5-5 ») ne changent rien.

@@ -277,20 +277,73 @@ function watchInterrupt(s) {
   }, ms);
 }
 
-// Même enregistrement que /rename de Claude Code : le nom suit la conversation (historique, claude --resume).
+// Même enregistrement que /rename de Claude Code : le nom suit la conversation (historique, claude --resume) et
+// sert de nom de session aux autres sessions (agent-name : ListAgents, messages entre sessions).
 function writeCustomTitle(id, title) {
   const f = transcriptPath(id);
   if (!f || !title) return false;
-  try { fs.appendFileSync(f, JSON.stringify({ type: 'custom-title', customTitle: title, sessionId: id }) + '\n'); return true; }
-  catch { return false; }
+  try {
+    fs.appendFileSync(f, JSON.stringify({ type: 'custom-title', customTitle: title, sessionId: id }) + '\n'
+      + JSON.stringify({ type: 'agent-name', agentName: title, sessionId: id }) + '\n');
+    return true;
+  } catch { return false; }
 }
+// Dernier nom donné à la conversation (/rename dans Claude Code, ou par l'app) : fin du transcript
+function conversationName(id) {
+  const f = transcriptPath(id);
+  if (!f) return null;
+  try {
+    const size = fs.statSync(f).size, len = Math.min(size, 256 * 1024), buf = Buffer.alloc(len);
+    const fd = fs.openSync(f, 'r'); fs.readSync(fd, buf, 0, len, size - len); fs.closeSync(fd);
+    for (const l of buf.toString('utf8').split('\n').reverse()) {
+      if (!l.includes('"agent-name"') && !l.includes('"custom-title"')) continue;
+      let o; try { o = JSON.parse(l); } catch { continue; }
+      const n = o.type === 'agent-name' ? o.agentName : o.type === 'custom-title' ? o.customTitle : null;
+      if (typeof n === 'string' && n.trim()) return n.trim();
+    }
+  } catch { }
+  return null;
+}
+const cleanName = n => String(n || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 80);
 
 function renameSession(s, name) {
-  s.name = String(name || s.name).trim().slice(0, 80) || s.name;
+  s.name = cleanName(name) || s.name;
   s.named = true;
   s.titleFor = s.claudeSessionId && writeCustomTitle(s.claudeSessionId, s.name) ? s.claudeSessionId : null;
   persist();
   broadcast({ t: 'session', s: publicView(s) });
+  liveRename(s);
+}
+// Session ouverte : /rename la renomme aussitôt pour Claude Code (nom vu par les autres sessions), sans relance.
+// Pas pendant une demande d'autorisation (le texte y répondrait) : dès qu'elle est réglée.
+function liveRename(s) {
+  delete s.renameOnIdle;
+  const n = cleanName(s.name);
+  if (!s.pty || !n || s.lock) return;
+  if (s.status === 'attention' || s.status === 'starting') { s.renameOnIdle = true; return; } // dès qu'elle est prête
+  s.pty.write(`\x1b[200~/rename ${n}\x1b[201~`);
+  setTimeout(() => { if (s.pty) s.pty.write('\r'); }, 150);
+}
+// /rename tapé dans la session : le nom de l'app suit (et part sur les autres machines avec la synchro).
+// Un nom donné dans l'app pas encore écrit dans la conversation (session neuve, nom reçu par la synchro) l'emporte.
+function followName(s) {
+  if (s.renameOnIdle) return liveRename(s);
+  if (!s.claudeSessionId || s.lock || (s.named && s.titleFor !== s.claudeSessionId)) return;
+  const n = cleanName(conversationName(s.claudeSessionId));
+  if (!n || n === s.name) return;
+  s.name = n; s.named = true; s.titleFor = s.claudeSessionId;
+  persist(); broadcast({ t: 'session', s: publicView(s) });
+}
+// --name (nom de la session dès le lancement) : seulement si cette version de Claude Code le connaît
+let nameFlag = { bin: '', ok: null, ready: null };
+function checkNameFlag() {
+  const bin = claudeBin();
+  if (nameFlag.bin === bin && nameFlag.ready) return nameFlag.ready;
+  nameFlag = { bin, ok: null, ready: null };
+  const cur = nameFlag;
+  cur.ready = new Promise(resolve => execFile(bin, [...splitArgs(process.env.CSM_CLAUDE_ARGS || ''), '--help'], { timeout: 8000, windowsHide: true, encoding: 'utf8' },
+    (err, out) => { cur.ok = !err && /(^|\s)--name\b/.test(out || ''); resolve(cur.ok); }));
+  return cur.ready;
 }
 
 function spawnSession(s, { resume, fork } = {}) {
@@ -300,6 +353,13 @@ function spawnSession(s, { resume, fork } = {}) {
   const args = [...splitArgs(process.env.CSM_CLAUDE_ARGS || ''), '--settings', s.settingsFile, ...splitArgs(s.args)];
   if (resume) args.push('--resume', resume);
   if (resume && fork) args.push('--fork-session'); // ponctuel : jamais mémorisé dans s.args
+  // nom de la session pour Claude Code (= nom dans l'app, /rename) : --name, sinon la conversation le porte
+  const nm = cleanName(s.name);
+  if (nm && !/(^|\s)(-n|--name)(\s|=|$)/.test(s.args || '')) {
+    if (nameFlag.bin !== claudeBin()) checkNameFlag();
+    if (nameFlag.ok) args.push('--name', nm);
+    else if (resume && !fork && s.named && conversationName(resume) !== nm) writeCustomTitle(resume, nm);
+  }
   args.push(...(ctx.remoteArgs?.(s) || [])); // accès depuis l'app Claude (lib/remote.js)
   args.push(...(ctx.typeArgs?.(s) || [])); // type de session d'une extension : consignes (lib/extensions.js)
   const env = { ...process.env, CSM_ID: s.id, CSM_PORT: String(PORT), CSM_TOKEN: HOOK_TOKEN, COLORTERM: 'truecolor' };
@@ -388,12 +448,13 @@ try {
 } catch { }
 
 function restoreSessions() {
-  toRestore.forEach((s, i) => setTimeout(() => {
+  // --name vérifié d'abord (au plus 9 s) : les sessions restaurées gardent leur nom pour les autres sessions
+  Promise.race([checkNameFlag(), new Promise(r => setTimeout(r, 9000))]).finally(() => toRestore.forEach((s, i) => setTimeout(() => {
     if (!sessions.has(s.id) || s.pty) return;
     s.buf = `\x1b[90m[csm] Session restaurée.\x1b[0m\r\n`;
     broadcast({ t: 'clear', id: s.id });
     spawnSession(s, { resume: s.claudeSessionId || undefined });
-  }, i * 1200)); // échelonné : évite de lancer N claude + hooks en même temps
+  }, i * 1200))); // échelonné : évite de lancer N claude + hooks en même temps
 }
 
 // ---------------------------------------------------------------- historique (~/.claude/projects)
@@ -912,12 +973,24 @@ function followModel(s) {
   s.args = parts.map(x => (/\s/.test(x) ? `"${x}"` : x)).join(' ');
   persist(); broadcast({ t: 'session', s: publicView(s) });
 }
-on('idle', s => { try { followModel(s); } catch { } });
+on('idle', s => { try { followModel(s); } catch { } try { followName(s); } catch { } });
+on('start', s => { if (s.renameOnIdle) setTimeout(() => liveRename(s), 1500); }); // renommée pendant le démarrage
+// /rename tapé dans une session ouverte ne finit pas de tour : conversation relue quand son fichier change (5 s)
+const nameSeen = new Map();
+setInterval(() => {
+  for (const s of sessions.values()) {
+    if (!s.pty || !s.claudeSessionId || s.renameOnIdle) continue;
+    let m = 0; try { m = fs.statSync(transcriptPath(s.claudeSessionId) || '').mtimeMs; } catch { continue; }
+    if (nameSeen.get(s.id) === m) continue;
+    nameSeen.set(s.id, m);
+    try { followName(s); } catch { }
+  }
+}, Number(process.env.CSM_NAME_POLL) || 5000).unref?.();
 on('idle', s => { if (s.applyOnIdle && s.settingsFile !== settingsFor(s)) setTimeout(() => restartSession(s).catch(() => { }), 800); else delete s.applyOnIdle; });
 
 const ctx = {
   route, on, emit, json, readBody, sessions, publicView, persist, persistHooks, broadcast, createSession, killSession, spawnSession,
-  renameSession, history, transcriptPath, setStatus, pauseAndSave, restartSession, lockedResume, splitArgs, DATA, ROOT, PORT, VERSION, IS_WIN, IS_MAC, TOKEN_FILE, CLAUDE_INSTALL,
+  renameSession, history, transcriptPath, setStatus, pauseAndSave, restartSession, liveRename, lockedResume, splitArgs, DATA, ROOT, PORT, VERSION, IS_WIN, IS_MAC, TOKEN_FILE, CLAUDE_INSTALL,
 };
 Object.defineProperty(ctx, 'CLAUDE', { get: claudeBin, enumerable: true }); // chemin toujours à jour (installé après coup)
 for (const mod of ['lock', 'git', 'settings', 'auth', 'extensions', 'secrets', 'usage', 'tools', 'queue', 'quotastop', 'remote', 'memory', 'sync', 'schedule', 'transfer']) {

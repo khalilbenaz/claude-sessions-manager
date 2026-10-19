@@ -2031,3 +2031,49 @@ test('modèle changé en cours de session (/model) : repris dans la session, don
     await api('DELETE', `/api/sessions/${A.id}`); await api('DELETE', `/api/sessions/${B.id}`);
   }
 });
+
+test('nom de session pour Claude Code (= /rename) : au lancement, au renommage dans l’app, et /rename suivi par l’app', async () => {
+  const c = await wsClient();
+  const S = await api('POST', '/api/sessions', { cwd: WORK, name: 'Revue paiements' });
+  try {
+    await waitFor(() => (c.out[S.id] || '').includes('NOM:Revue paiements'), 15000, '--name au lancement');
+    await idle(S.id);
+    c.input(S.id, 'bonjour\r');
+    await waitFor(() => (c.out[S.id] || '').includes('echo: bonjour'), 10000, 'premier échange');
+    await idle(S.id);
+    // renommée dans l'app : /rename envoyé à la session ouverte
+    await api('POST', `/api/sessions/${S.id}/rename`, { name: 'Revue CB' });
+    await waitFor(() => (c.out[S.id] || '').includes('RENOMMÉE:Revue CB'), 10000, '/rename envoyé');
+    // /rename tapé dans la session : l'app suit (puis la synchro)
+    c.input(S.id, '/rename Depuis Claude\r');
+    await waitFor(async () => (await session(S.id)).name === 'Depuis Claude', 15000, 'nom de l’app mis à jour');
+    // relancée : le nom suit
+    await api('POST', `/api/sessions/${S.id}/restart`);
+    await waitFor(() => (c.out[S.id] || '').includes('NOM:Depuis Claude'), 15000, 'nom gardé à la relance');
+  } finally {
+    c.ws.close();
+    await api('DELETE', `/api/sessions/${S.id}`);
+  }
+});
+
+test('nom de session : ancienne version de Claude Code sans --name, nom porté par la conversation', async () => {
+  ENV.FAKE_NO_NAME = '1';
+  await stopServer(); await startServer();
+  const c = await wsClient();
+  const S = await api('POST', '/api/sessions', { cwd: WORK, name: 'Ancienne' });
+  try {
+    await idle(S.id); // pas de --name : la session démarre quand même
+    assert.ok(!(c.out[S.id] || '').includes('unknown option'));
+    c.input(S.id, 'bonjour\r');
+    await waitFor(() => (c.out[S.id] || '').includes('echo: bonjour'), 10000, 'premier échange');
+    await idle(S.id);
+    await api('POST', `/api/sessions/${S.id}/rename`, { name: 'Ancienne renommée' });
+    await api('POST', `/api/sessions/${S.id}/restart`);
+    await waitFor(() => (c.out[S.id] || '').includes('NOM:Ancienne renommée'), 15000, 'nom lu dans la conversation à la reprise');
+  } finally {
+    c.ws.close();
+    await api('DELETE', `/api/sessions/${S.id}`);
+    delete ENV.FAKE_NO_NAME;
+    await stopServer(); await startServer();
+  }
+});

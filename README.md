@@ -100,7 +100,7 @@ L'état vient directement de Claude Code (des hooks sont ajoutés à chaque sess
 | Action | Où | Effet |
 |---|---|---|
 | **Nouvelle** | + Nouvelle, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>, palette | dossier, nom, groupe, modèle, mode, worktree, premier prompt, arguments |
-| **Renommer** | ✎, double-clic sur le nom, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd> | le nom est aussi écrit dans la conversation Claude (historique, `claude --resume`) |
+| **Renommer** | ✎, double-clic sur le nom, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd> | le nom est aussi écrit dans la conversation Claude (historique, `claude --resume`) et c'est **le nom de la session pour Claude Code** (`/rename`) : celui que voient les autres sessions quand elles se parlent (« Message from @… », liste des sessions). Donné au lancement, appliqué aussitôt à une session ouverte ; un `/rename` tapé dans la session renomme aussi la session dans l'app, et le nom suit sur les autres machines (synchro). |
 | **Relancer / Reprendre** | bouton ou ⋯ | relance Claude dans la **même conversation** (`--resume`) |
 | **Pause** | ⏸ Pause (barre du haut), ⋯ › Mettre en pause | arrête la session **en gardant tout** : elle reste dans la liste, ici et sur tes autres machines (« en pause »). Avant de rendre la main, sa **mémoire** est enregistrée et **tout est synchronisé** (conversation comprise) : « Reprendre », ici ou sur une autre machine, continue la conversation |
 | **Arrêter** | ⋯ › Arrêter | arrête le processus ; la session reste dans la liste |
