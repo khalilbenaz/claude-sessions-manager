@@ -2012,3 +2012,22 @@ test('plafond de quota : session en pause reprise dès que le quota est remis à
     await api('DELETE', `/api/sessions/${S.id}`); await api('DELETE', `/api/sessions/${B.id}`);
   }
 });
+
+test('modèle changé en cours de session (/model) : repris dans la session, donc relance et synchro', async () => {
+  // le faux claude répond toujours avec claude-haiku-4-5 (comme après /model haiku)
+  const A = await api('POST', '/api/sessions', { cwd: WORK, name: 'modele-change', args: '--model sonnet --permission-mode plan' });
+  const B = await api('POST', '/api/sessions', { cwd: WORK, name: 'modele-alias', args: '--model haiku' });
+  await idle(A.id); await idle(B.id);
+  const c = await wsClient();
+  try {
+    c.input(A.id, 'bonjour\r'); c.input(B.id, 'bonjour\r');
+    await waitFor(async () => /--model claude-haiku-4-5/.test((await session(A.id)).args), 15000, 'modèle suivi');
+    assert.match((await session(A.id)).args, /--permission-mode plan/, 'autres arguments gardés');
+    await waitFor(() => (c.out[B.id] || '').includes('echo: bonjour'), 15000, 'réponse');
+    await new Promise(r => setTimeout(r, 500));
+    assert.equal((await session(B.id)).args, '--model haiku', 'alias du même modèle : inchangé');
+  } finally {
+    c.ws.close();
+    await api('DELETE', `/api/sessions/${A.id}`); await api('DELETE', `/api/sessions/${B.id}`);
+  }
+});

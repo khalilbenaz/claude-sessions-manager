@@ -897,6 +897,22 @@ route('POST', /^\/api\/apply-settings$/, async ({ res }) => {
   }
   json(res, 200, { now, later });
 });
+// Modèle changé en cours de session (/model dans Claude Code) : repris dans les arguments de la session, pour qu'une
+// relance, une reprise et les autres machines (synchro) utilisent le même. Un alias (« opus ») et l'identifiant
+// complet du même modèle (« claude-opus-5-5 », « …[1m] ») ne changent rien.
+const modelFamily = m => (String(m || '').toLowerCase().match(/opus|sonnet|haiku|fable/) || [String(m || '').toLowerCase().replace(/\[.*\]$/, '')])[0];
+function followModel(s) {
+  if (!s.claudeSessionId || s.lock) return;
+  const used = (conversationModelArgs(s.claudeSessionId).match(/^--model (\S+)$/) || [])[1];
+  if (!used || used === ctx.getSettings?.().defaultModel) return; // rien lu dans la conversation (modèle par défaut)
+  const parts = splitArgs(s.args || ''), i = parts.indexOf('--model');
+  const cur = i >= 0 ? parts[i + 1] : '';
+  if (cur && modelFamily(cur) === modelFamily(used)) return;
+  if (i >= 0) parts[i + 1] = used; else parts.unshift('--model', used);
+  s.args = parts.map(x => (/\s/.test(x) ? `"${x}"` : x)).join(' ');
+  persist(); broadcast({ t: 'session', s: publicView(s) });
+}
+on('idle', s => { try { followModel(s); } catch { } });
 on('idle', s => { if (s.applyOnIdle && s.settingsFile !== settingsFor(s)) setTimeout(() => restartSession(s).catch(() => { }), 800); else delete s.applyOnIdle; });
 
 const ctx = {

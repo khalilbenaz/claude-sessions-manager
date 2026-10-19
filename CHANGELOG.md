@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.53.0] — 2026-10-19
+### Ajouté
+- **Modèle Claude suivi en cours de session** : changé avec `/model` dans Claude Code, le modèle réellement utilisé (lu dans la conversation à la fin de chaque tour) remplace celui de la création dans les arguments de la session ; la relance, la reprise et les autres machines (synchro) l'utilisent. Un alias et l'identifiant complet du même modèle (« opus », « claude-opus-5-5 ») ne changent rien.
+
 ## [3.52.4] — 2026-10-18
 ### Corrigé
 - **Quota remis à zéro avant sa date** (barre latérale bloquée à 100 % alors que Claude Code affichait 0 %) : dans une même fenêtre, l'app ne gardait que le relevé le plus haut, pour écarter les valeurs anciennes des sessions inactives ; un quota remis à zéro sans changer sa date de réinitialisation était donc ignoré. Le relevé gardé est maintenant celui de la session qui a échangé avec Claude le plus récemment ; un relevé plus ancien est écarté, même plus haut.
