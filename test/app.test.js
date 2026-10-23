@@ -195,6 +195,25 @@ test('groupes : créer un groupe vide, y glisser une session, le renommer, le su
   await win.waitForFunction(() => !groupNames().includes('Clients 2'));
 });
 
+test('compaction : l’écran effacé par Claude Code (ESC[2J ESC[3J) reste dans l’historique du terminal', async () => {
+  const has = await win.evaluate(async () => {
+    const id = [...sessions.values()].find(s => s.name === 'e2e').id, term = ensureTerm(id).term;
+    const w = d => new Promise(r => term.write(termData(d), r));
+    const text = () => { const b = term.buffer.active, out = []; for (let y = 0; y < b.length; y++) out.push(b.getLine(y).translateToString()); return out.join('\n'); };
+    await w('avant-compaction-e2e\r\n');
+    await w('\x1b[2J\x1b[3J\x1b[H');
+    const kept = text().includes('avant-compaction-e2e');
+    // réglage coupé : comportement d'origine, l'historique est effacé
+    SETTINGS.keepScrollback = false; applySettings();
+    await w('avant-effacement-e2e\r\n');
+    await w('\x1b[2J\x1b[3J\x1b[H');
+    const erased = !text().includes('avant-effacement-e2e');
+    SETTINGS.keepScrollback = true; applySettings();
+    return { kept, erased };
+  });
+  assert.deepEqual(has, { kept: true, erased: true });
+});
+
 test('sous-groupes : créer, ranger une session, replier le parent, renommer, supprimer', async () => {
   const head = n => `#list li.ghead:has(.gname:text-is("${n}"))`;
   await win.click('#btnNewGroup');

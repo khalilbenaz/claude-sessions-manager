@@ -304,7 +304,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 | Onglet | Contenu |
 |---|---|
 | **Général** | thème (système, clair, sombre), langue, modèle et mode par défaut, worktree proposé par défaut, éditeur pour « Ouvrir dans », barre d'état des quotas, mémoire des sessions (§ 16 ter), pause de la file d'attente sur quota, compactage automatique, Remote Control par défaut, mises à jour automatiques, barre latérale compacte, réduire / fermer dans la zone de notification |
-| **Terminal** | taille et police du texte |
+| **Terminal** | taille et police du texte, historique gardé à la compaction |
 | **Notifications** | notifications système, son (coupé par défaut, avec test), ne pas déranger, rappels d'attente et de longue exécution |
 | **Sécurité** | reverrouiller quand la fenêtre est masquée, après une inactivité |
 | **Modèles de session** | lancer, renommer, supprimer |
@@ -340,6 +340,7 @@ Claude Code sait rendre une session locale pilotable depuis l'**app Claude** (iO
 **Terminal**
 
 - **Taille du texte, police** : Taille et police des terminaux ; <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>−</kbd> / <kbd>0</kbd> pour zoomer.
+- **Garder l'historique affiché** (activé par défaut) : à la compaction (« Conversation compacted ») et à `/clear`, Claude Code efface l'écran **et** l'historique de défilement. Claude Sessions garde ce qui était affiché : il reste au-dessus, en remontant dans le terminal (10 000 lignes). Décoché : comportement d'origine, tout est effacé.
 
 **Notifications**
 

@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.55.0] — 2026-10-23
+### Corrigé
+- **Historique du terminal effacé à la compaction** : Claude Code efface l'écran et l'historique de défilement (`ESC[2J ESC[3J`) quand il compacte la conversation et à `/clear`, si bien que tout ce qui était affiché disparaissait. L'historique est maintenant gardé : l'écran effacé passe dans le défilement, au-dessus. Réglage *Terminal › Garder l'historique affiché…* (activé par défaut ; décoché = comportement d'origine).
+
 ## [3.54.0] — 2026-10-19
 ### Corrigé
 - **Nom des sessions quand elles se parlent** : les autres sessions voyaient un nom tiré du dossier (« Message from @downloads-55 », « projects-3c ») au lieu du nom donné dans l'app. Le nom de la session est maintenant son nom pour Claude Code (`/rename`) : passé au lancement (`--name`, si la version de Claude Code le connaît ; sinon porté par la conversation à la reprise), appliqué aussitôt à une session ouverte quand on la renomme dans l'app (`/rename`, ou dès la fin d'une demande d'autorisation), et sur les autres machines quand le nom arrive par la synchro.

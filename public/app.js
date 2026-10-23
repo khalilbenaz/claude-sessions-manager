@@ -31,6 +31,10 @@ const termTheme = () => THEMES[themeName()] || THEMES.dark;
 // Claude Code colore le code et les diffs en RVB pour son thème sombre : en thème clair, le terminal éclaircit ou
 // fonce toute couleur trop proche du fond (contraste minimal WCAG AA), sans toucher au thème de Claude Code.
 const termContrast = () => (themeName() === 'light' ? 4.5 : 1);
+// Claude Code efface l'écran et l'historique de défilement (ESC[2J ESC[3J) à la compaction et à /clear : on garde
+// l'historique (ESC[3J ignoré, l'écran effacé part dans le défilement au lieu de disparaître). Réglage keepScrollback.
+const keepScrollback = () => SETTINGS.keepScrollback !== false;
+const termData = d => (keepScrollback() && d.includes('\x1b[3J') ? d.replaceAll('\x1b[3J', '') : d);
 function applySettings() {
   document.documentElement.dataset.theme = themeName();
   document.body.classList.toggle('compact', !!SETTINGS.compactSidebar);
@@ -43,6 +47,7 @@ function applySettings() {
     tt.term.options.theme = termTheme();
     tt.el.style.setProperty('--term-bg', termTheme().background);
     tt.term.options.minimumContrastRatio = termContrast();
+    tt.term.options.scrollOnEraseInDisplay = keepScrollback();
     if (SETTINGS.fontFamily) tt.term.options.fontFamily = SETTINGS.fontFamily;
   }
   fitAll(false);
@@ -77,7 +82,7 @@ function ensureTerm(id) {
   $('#park').appendChild(el);
   const term = new Terminal({
     fontFamily: SETTINGS.fontFamily || '"JetBrains Mono", "Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", Menlo, monospace', fontSize: LS.get('csm.font', SETTINGS.fontSize || 14),
-    cursorBlink: true, scrollback: 10000, allowProposedApi: true, macOptionIsMeta: true,
+    cursorBlink: true, scrollback: 10000, allowProposedApi: true, macOptionIsMeta: true, scrollOnEraseInDisplay: keepScrollback(),
     theme: termTheme(), minimumContrastRatio: termContrast(),
   });
   const fit = new FitAddon.FitAddon();
@@ -319,7 +324,7 @@ function connect() {
       if (!sessions.has(active)) active = sorted()[0]?.id || null;
       render(); select(active); setLayout(layout);
     } else if (m.t === 'replay' || m.t === 'out') {
-      ensureTerm(m.id).term.write(m.d);
+      ensureTerm(m.id).term.write(termData(m.d));
       if (m.t === 'out' && m.id !== active) bump(m.id);
       if (m.t === 'replay' && visibleIds().includes(m.id)) scheduleRedraw(m.id);
     } else if (m.t === 'clear') {
