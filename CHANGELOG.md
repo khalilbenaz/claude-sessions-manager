@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.55.1] — 2026-10-24
+### Corrigé
+- **Terminaux figés par moments** : pendant qu'une session travaillait, la synchro relisait et compressait toute sa conversation toutes les 2 minutes dans la boucle principale du serveur ; pour une conversation de 60 Mo, tout se figeait environ 0,8 s à chaque fois (sortie des terminaux et saisie en retard), et plusieurs envois simultanés pouvaient saturer la mémoire (« Array buffer allocation failed »). Lecture et compression passent maintenant en arrière-plan, une conversation de plus de 20 Mo part au plus toutes les 10 minutes pendant le travail, et une conversation déjà trop grosse pour la synchro n'est plus relue à chaque fois.
+### Ajouté
+- `server.log` note chaque blocage du serveur de plus d'une seconde (« lenteur », avec la mémoire utilisée), pour diagnostiquer les lenteurs.
+
 ## [3.55.0] — 2026-10-23
 ### Corrigé
 - **Historique du terminal effacé à la compaction** : Claude Code efface l'écran et l'historique de défilement (`ESC[2J ESC[3J`) quand il compacte la conversation et à `/clear`, si bien que tout ce qui était affiché disparaissait. L'historique est maintenant gardé : l'écran effacé passe dans le défilement, au-dessus. Réglage *Terminal › Garder l'historique affiché…* (activé par défaut ; décoché = comportement d'origine).

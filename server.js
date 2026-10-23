@@ -43,6 +43,20 @@ for (const k of ['log', 'error']) {
   };
 }
 process.on('uncaughtException', e => console.error('uncaught', e));
+// Lenteurs : serveur figé plus d'1 s (terminaux et saisie en retard pendant ce temps) noté dans server.log, avec la
+// mémoire du moment ; au plus une ligne par minute.
+{
+  let last = Date.now(), noted = 0;
+  setInterval(() => {
+    const now = Date.now(), lag = now - last - 500;
+    last = now;
+    if (lag > 1000 && now - noted > 60000) {
+      noted = now;
+      const m = process.memoryUsage();
+      console.error(`lenteur serveur figé ${lag} ms (mémoire ${Math.round(m.rss / 1048576)} Mo, hors tas ${Math.round((m.external + m.arrayBuffers) / 1048576)} Mo)`);
+    }
+  }, 500).unref();
+}
 process.on('unhandledRejection', e => console.error('unhandled', e));
 
 // Jeton anti-CSRF : un site tiers ne peut pas lire la page, donc ne peut pas connaître le jeton.
