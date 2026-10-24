@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions [SemVer](https://semver.org/lang/fr/).
 
+## [3.56.0] — 2026-10-24
+### Modifié
+- **Mise à jour installée en quittant ou en relançant l'app, sans rien demander.** Quitter avec une version prête (menu de l'icône, ⌘Q, ou fermeture de la fenêtre quand elle quitte l'app) l'installe au passage : le serveur s'arrête proprement et les sessions reprennent au prochain lancement, sur la nouvelle version. Au lancement, une version déjà téléchargée (ou prête dans les 3 premières minutes) s'installe aussitôt, même après « Plus tard » ; la vérification part 3 s après le lancement au lieu de 20. Le menu de l'icône indique *Quitter et installer la version…*. macOS : seulement si l'app peut être remplacée sans mot de passe administrateur.
+
 ## [3.55.2] — 2026-10-24
 ### Corrigé
 - **Terminaux figés par moments** : pendant qu'une session travaillait, la synchro relisait et compressait toute sa conversation toutes les 2 minutes dans la boucle principale du serveur ; pour une conversation de 60 Mo, tout se figeait environ 0,8 s à chaque fois (sortie des terminaux et saisie en retard), et plusieurs envois simultanés pouvaient saturer la mémoire (« Array buffer allocation failed »). Lecture et compression passent maintenant en arrière-plan, une conversation de plus de 20 Mo part au plus toutes les 10 minutes pendant le travail, et une conversation déjà trop grosse pour la synchro n'est plus relue à chaque fois. La version 3.55.1 n'a pas été publiée (tests Windows restés ouverts après leur fin) : son contenu arrive avec celle-ci.

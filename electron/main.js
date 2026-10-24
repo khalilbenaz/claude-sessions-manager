@@ -194,6 +194,7 @@ function createWindow({ hidden = false } = {}) {
     saveState();
     if (quitting) return;
     if (prefs.closeToTray) { e.preventDefault(); toTray(); } // fermer = masquer (notifications, sessions continuent)
+    else if (updates?.readyOnQuit?.()) { e.preventDefault(); quitApp(); } // version prête : installée en quittant
     else { quitting = true; } // fermer = quitter l'app ; le serveur et les sessions continuent
   });
   // Réduire : dans la barre des tâches / le Dock, comme toute fenêtre ; la zone de notification se choisit dans
@@ -522,8 +523,10 @@ function buildTray() {
     { label: 'Recharger la fenêtre', click: reloadWindow },
     { label: 'Redémarrer le serveur (les sessions reviennent)', click: async () => { await stopServer(); await ensureServer(); win?.loadURL(URL_); } },
     { type: 'separator' },
-    { label: 'Quitter (les sessions continuent)', click: () => { quitting = true; app.quit(); } },
-    { label: 'Quitter et arrêter toutes les sessions', click: async () => { quitting = true; await stopServer(); app.quit(); } },
+    updates?.readyOnQuit?.()
+      ? { label: `Quitter et installer la version ${updates.state.version} (les sessions reprennent au prochain lancement)`, click: quitApp }
+      : { label: 'Quitter (les sessions continuent)', click: quitApp },
+    { label: 'Quitter et arrêter toutes les sessions', click: async () => { quitting = true; await stopServer(); quitApp(); } },
   ]);
   // Menu reconstruit à chaque ouverture (état des sessions à jour).
   const popup = async () => { lastSessions = (await serverGet('/api/sessions')) || []; tray.popUpContextMenu(menu()); };
@@ -545,7 +548,7 @@ function buildAppMenu() {
   // macOS : menu requis pour Cmd+C/V/X/A/Q dans les champs.
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { role: 'appMenu', submenu: [{ role: 'about', label: L('À propos de Claude Sessions', 'About Claude Sessions') }, { type: 'separator' }, { role: 'hide', label: L('Masquer Claude Sessions', 'Hide Claude Sessions') }, { role: 'hideOthers', label: L('Masquer les autres', 'Hide Others') }, { role: 'unhide', label: L('Tout afficher', 'Show All') }, { type: 'separator' },
-      { label: L('Quitter (les sessions continuent)', 'Quit (sessions keep running)'), accelerator: 'Cmd+Q', click: () => { quitting = true; app.quit(); } }] },
+      { label: L('Quitter (les sessions continuent)', 'Quit (sessions keep running)'), accelerator: 'Cmd+Q', click: quitApp }] },
     { label: L('Fichier', 'File'), submenu: [{ label: L('Nouvelle session…', 'New session…'), accelerator: 'Cmd+N', click: () => send('new') }, { label: L('Historique…', 'History…'), accelerator: 'Cmd+Shift+H', click: () => send('history') }, { label: L('Réglages…', 'Settings…'), accelerator: 'Cmd+,', click: () => send('settings') }, { type: 'separator' }, { role: 'close', label: L('Fermer la fenêtre', 'Close Window') }] },
     // Édition et Fenêtre construits à la main : les menus prédéfinis d'Electron restent en anglais
     { label: L('Édition', 'Edit'), submenu: [
@@ -563,6 +566,13 @@ function buildAppMenu() {
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
 // ---------------------------------------------------------------- cycle de vie
+// Quitter : une version prête s'installe au passage (le serveur est arrêté proprement, les sessions reprennent au
+// prochain lancement, sur la nouvelle version) ; sinon l'app se ferme et les sessions continuent.
+async function quitApp() {
+  quitting = true;
+  if (await updates?.installOnQuit?.()) return;
+  app.quit();
+}
 app.on('second-instance', showWindow);
 app.on('activate', showWindow); // clic sur l'icône du Dock
 app.on('before-quit', () => { quitting = true; saveState(); });

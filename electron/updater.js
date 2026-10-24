@@ -7,6 +7,8 @@
 // dossier de l'app n'est pas modifiable). En cas d'échec : lien vers la release, comme avant.
 // Sur les deux systèmes, une version prête s'installe seule (redémarrage compris) dès que canRestart() le permet :
 // réglage actif, aucune session au travail, fenêtre réduite / cachée ou ordinateur inactif. Les sessions sont restaurées au redémarrage.
+// Quitter l'app avec une version prête l'installe (sans relancer l'app) ; une version prête trouvée au lancement
+// (téléchargée avant, ou dans les 3 premières minutes) s'installe tout de suite, sans rien demander.
 // « Plus tard » (bulle de mise à jour) : cette version ne s'installe plus seule jusqu'au prochain lancement de l'app ;
 // elle reste installable à tout moment (Réglages › À propos, menu de l'icône). Une version plus récente repropose.
 const { app, net, shell, Notification } = require('electron');
@@ -27,9 +29,13 @@ function newer(a, b) { // a > b ?
 
 module.exports = function setupUpdater({ enabled, canRestart = async () => false, beforeInstall, onState, log }) {
   const state = { status: 'idle', version: null, url: `https://github.com/${REPO}/releases/latest`, error: null };
+  const BOOT = Date.now();
+  let atLaunch = () => { };
   const set = patch => {
     if (patch.status && patch.status !== state.status && patch.status !== 'checking') log(`[maj] ${patch.status}${patch.version || state.version ? ' ' + (patch.version || state.version) : ''}${patch.error ? ' : ' + patch.error : ''}`);
+    const nowReady = patch.status === 'ready' && state.status !== 'ready';
     Object.assign(state, patch); onState({ ...state });
+    if (nowReady && Date.now() - BOOT < 3 * 60e3) setTimeout(() => atLaunch(), 0);
   };
   if (!app.isPackaged) { set({ status: 'dev' }); return { state, check: async () => { }, install: () => { } }; }
   // Version Microsoft Store : c'est le Store qui installe les mises à jour.
@@ -48,7 +54,7 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
       updater.on('download-progress', p => set({ status: 'downloading', progress: Math.round(p.percent) }));
       updater.on('update-downloaded', i => {
         set({ status: 'ready', version: i.version });
-        if (Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: `Version ${i.version} prête : elle s'installera toute seule dès que la fenêtre sera en arrière-plan (ou redémarre l'application maintenant).` }).show();
+        if (Date.now() - BOOT > 3 * 60e3 && Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: `Version ${i.version} prête : elle s'installera toute seule dès que la fenêtre sera en arrière-plan, ou en quittant l'application.` }).show();
       });
       updater.on('error', e => set({ status: 'error', error: String(e && e.message || e).slice(0, 300) }));
     } catch (e) { log(`[maj] electron-updater indisponible : ${e.message}`); updater = null; }
@@ -128,7 +134,7 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
         await stage(rel, version);
       }
       set({ status: 'ready', version, progress: null });
-      if (Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: `Version ${version} prête : elle s'installera toute seule dès que la fenêtre sera en arrière-plan (ou redémarre l'application maintenant).` }).show();
+      if (Date.now() - BOOT > 3 * 60e3 && Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: `Version ${version} prête : elle s'installera toute seule dès que la fenêtre sera en arrière-plan, ou en quittant l'application.` }).show();
     } catch (e) {
       log(`[maj] ${e.message}`);
       // repli : lien vers la release
@@ -146,7 +152,7 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
   const canWrite = p => { try { fs.accessSync(p, fs.constants.W_OK); return true; } catch { return false; } };
   const macMode = dest => (canWrite(path.dirname(dest)) && canWrite(dest) ? 'replace'
     : canWrite(dest) && canWrite(path.join(dest, 'Contents')) ? 'inplace' : 'admin');
-  async function installMac(auto) {
+  async function installMac(auto, relaunch = true) {
     const dest = bundle();
     await beforeInstall({ auto });
     const mode = macMode(dest), who = os.userInfo().username.replace(/[^\w.-]/g, '');
@@ -161,12 +167,12 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
       steps[mode],
       'xattr -cr "$CSM_DEST" 2>/dev/null',
       'rm -rf "$CSM_STAGE"',
-      'open "$CSM_DEST"',
+      '[ -n "$CSM_NO_OPEN" ] || open "$CSM_DEST"',
     ].join('\n');
     const out = path.join(os.tmpdir(), 'csm-update.log'), fd = fs.openSync(out, 'a');
     spawn('/bin/sh', ['-c', script], {
       detached: true, stdio: ['ignore', fd, fd],
-      env: { ...process.env, CSM_PID: String(process.pid), CSM_SRC: staged.app, CSM_DEST: dest, CSM_STAGE: STAGE },
+      env: { ...process.env, CSM_PID: String(process.pid), CSM_SRC: staged.app, CSM_DEST: dest, CSM_STAGE: STAGE, CSM_NO_OPEN: relaunch ? '' : '1' },
     }).unref();
     fs.closeSync(fd); // le script garde sa propre copie
     app.quit();
@@ -178,18 +184,18 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
     else await checkMac();
   }
 
-  async function install(auto = false) {
-    if (process.platform === 'darwin' && state.status === 'ready' && staged && bundle()) return installMac(auto);
+  async function install(auto = false, relaunch = true) {
+    if (process.platform === 'darwin' && state.status === 'ready' && staged && bundle()) return installMac(auto, relaunch);
     if (updater && state.status === 'ready') {
       await beforeInstall({ auto }); // arrêt propre du serveur : il redémarre avec le nouveau code, sessions restaurées
-      updater.quitAndInstall(true, true);
+      updater.quitAndInstall(true, relaunch);
     } else shell.openExternal(state.url);
   }
 
   // au lancement, toutes les 30 min, et au retour sur la fenêtre si la dernière vérification date de plus d'une heure
   let last = 0;
   const run = () => { last = Date.now(); return check(); };
-  setTimeout(run, 20e3);
+  setTimeout(run, 3e3); // tôt : une version déjà téléchargée s'installe dès le lancement
   setInterval(run, EVERY);
   // Installation automatique : vérifiée chaque minute tant qu'une version est prête.
   // Sur macOS, seulement si l'app peut être remplacée sans mot de passe (sinon personne n'est là pour le taper).
@@ -204,7 +210,25 @@ module.exports = function setupUpdater({ enabled, canRestart = async () => false
       await install(true);
     } catch (e) { installing = false; log(`[maj] installation automatique : ${e.message}`); }
   }, 60e3);
+  // installable sans personne pour taper un mot de passe (macOS : app modifiable par l'utilisateur)
+  const silentOk = () => state.status === 'ready' && (process.platform !== 'darwin' || !!(staged && bundle() && macMode(bundle()) !== 'admin'));
+  atLaunch = async () => {
+    if (installing || !silentOk()) return;
+    try {
+      if (!(await enabled())) return;
+      installing = true;
+      log(`[maj] version ${state.version} prête au lancement : installation tout de suite`);
+      await install(false);
+    } catch (e) { installing = false; log(`[maj] installation au lancement : ${e.message}`); }
+  };
+  // Quitter : la version prête s'installe, l'app ne se relance pas (les sessions reprendront au prochain lancement).
+  const installOnQuit = async () => {
+    if (installing || !silentOk() || !(await enabled().catch(() => false))) return false;
+    installing = true;
+    log(`[maj] installation de la version ${state.version} en quittant`);
+    try { await install(false, false); return true; } catch (e) { installing = false; log(`[maj] installation en quittant : ${e.message}`); return false; }
+  };
   const onFocus = () => { if (Date.now() - last > 3600e3 && state.status !== 'ready' && state.status !== 'downloading') run(); };
   const postpone = () => { if (state.version) { log(`[maj] version ${state.version} reportée (Plus tard)`); set({ later: state.version }); } };
-  return { state, check: run, install, onFocus, postpone };
+  return { state, check: run, install, onFocus, postpone, installOnQuit, readyOnQuit: silentOk };
 };

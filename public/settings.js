@@ -448,7 +448,7 @@
   const UPD_LABEL = {
     dev: 'Version de développement : mises à jour automatiques désactivées.', store: 'Version Microsoft Store : les mises à jour sont installées par le Store.', idle: '', checking: 'Recherche de mises à jour…',
     uptodate: 'Claude Sessions est à jour.', disabled: 'Mises à jour automatiques désactivées dans les réglages.',
-    downloading: 'Téléchargement de la version {v}… {p}', ready: 'Version {v} prête : installation automatique dès que la fenêtre est en arrière-plan, ou redémarre maintenant.',
+    downloading: 'Téléchargement de la version {v}… {p}', ready: 'Version {v} prête : elle s’installe en quittant l’app, ou toute seule dès que la fenêtre est en arrière-plan.',
     available: 'Version {v} disponible au téléchargement.', error: 'Échec de la vérification : {e}',
   };
   const updText = st => t(st.status === 'ready' && st.later === st.version ? 'Version {v} prête, reportée : installe-la quand tu veux avec « Redémarrer pour mettre à jour ».' : UPD_LABEL[st.status] || '').replace('{v}', st.version || '').replace('{p}', st.progress ? st.progress + ' %' : '').replace('{e}', st.error || '');
